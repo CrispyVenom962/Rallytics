@@ -1,125 +1,140 @@
 import { useState, useRef, useCallback } from "react";
 
-// ─── Config ───────────────────────────────────────────────────────────────────
 const API_URL = "/api/analyze";
-
 const FRAME_INTERVAL = 30;
 const FRAME_W = 640;
 const FRAME_H = 360;
 const FRAME_QUALITY = 0.72;
 const MAX_FRAMES = 40;
 
-// ─── Frame extractor ──────────────────────────────────────────────────────────
 function extractFrames(file, onProgress) {
   return new Promise((resolve, reject) => {
     const video = document.createElement("video");
     const canvas = document.createElement("canvas");
-    canvas.width = FRAME_W;
-    canvas.height = FRAME_H;
+    canvas.width = FRAME_W; canvas.height = FRAME_H;
     const ctx = canvas.getContext("2d");
     const url = URL.createObjectURL(file);
-    video.src = url;
-    video.muted = true;
-    video.playsInline = true;
-
+    video.src = url; video.muted = true; video.playsInline = true;
     video.addEventListener("loadedmetadata", () => {
-      const duration = video.duration;
+      const dur = video.duration;
       const times = [];
-      for (let t = 2; t < duration - 2; t += FRAME_INTERVAL) {
+      for (let t = 2; t < dur - 2; t += FRAME_INTERVAL) {
         times.push(parseFloat(t.toFixed(1)));
         if (times.length >= MAX_FRAMES) break;
       }
-      if (duration > 10) times.push(parseFloat((duration - 3).toFixed(1)));
-
-      const frames = [];
-      let idx = 0;
-
+      if (dur > 10) times.push(parseFloat((dur - 3).toFixed(1)));
+      const frames = []; let idx = 0;
       const grabNext = () => {
-        if (idx >= times.length) {
-          URL.revokeObjectURL(url);
-          resolve(frames);
-          return;
-        }
+        if (idx >= times.length) { URL.revokeObjectURL(url); resolve(frames); return; }
         video.currentTime = times[idx];
       };
-
       video.addEventListener("seeked", () => {
         ctx.drawImage(video, 0, 0, FRAME_W, FRAME_H);
-        frames.push({
-          base64: canvas.toDataURL("image/jpeg", FRAME_QUALITY).split(",")[1],
-          timestamp: Math.round(times[idx]),
-        });
+        frames.push({ base64: canvas.toDataURL("image/jpeg", FRAME_QUALITY).split(",")[1], timestamp: Math.round(times[idx]) });
         onProgress?.(Math.round(((idx + 1) / times.length) * 100));
-        idx++;
-        grabNext();
+        idx++; grabNext();
       });
-
       grabNext();
     });
-
-    video.addEventListener("error", () => reject(new Error("Could not load video. Try MP4 or MOV format.")));
+    video.addEventListener("error", () => reject(new Error("Could not load video.")));
   });
 }
 
-// ─── Small components ─────────────────────────────────────────────────────────
-const Ring = ({ score, color }) => {
-  const r = 24, c = 2 * Math.PI * r;
+// ── Score Arc ──────────────────────────────────────────────────────────────────
+const ScoreArc = ({ score, label, color }) => {
+  const r = 44, c = 2 * Math.PI * r;
+  const pct = score / 10;
   return (
-    <svg width="62" height="62" viewBox="0 0 62 62">
-      <circle cx="31" cy="31" r={r} fill="none" stroke="#1c1c1c" strokeWidth="5" />
-      <circle cx="31" cy="31" r={r} fill="none" stroke={color} strokeWidth="5"
-        strokeDasharray={`${(score / 10) * c} ${c}`} strokeLinecap="round"
-        transform="rotate(-90 31 31)" style={{ transition: "stroke-dasharray 1s ease" }} />
-      <text x="31" y="31" textAnchor="middle" dominantBaseline="central"
-        fill="#fff" fontSize="14" fontWeight="800" fontFamily="Inter,sans-serif">{score}</text>
-    </svg>
-  );
-};
-
-const Chip = ({ label, positive }) => (
-  <span style={{
-    background: positive ? "#0d1f0d" : "#1a0d0d",
-    border: `1px solid ${positive ? "#1e3d1e" : "#3d1e1e"}`,
-    color: positive ? "#5bc85b" : "#e05555",
-    borderRadius: "20px", padding: "4px 12px",
-    fontSize: "12px", display: "inline-block",
-  }}>
-    {positive ? "✓" : "✗"} {label}
-  </span>
-);
-
-const ExpandCard = ({ title, subtitle, accent, children }) => {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ background: "#0e0e0e", border: "1px solid #1c1c1c", borderRadius: "10px", overflow: "hidden" }}>
-      <button onClick={() => setOpen(o => !o)} style={{
-        width: "100%", background: "none", border: "none", cursor: "pointer",
-        padding: "14px 16px", display: "flex", justifyContent: "space-between",
-        alignItems: "flex-start", textAlign: "left", gap: "10px",
-      }}>
-        <div>
-          <div style={{ fontSize: "14px", fontWeight: "700", color: "#e8e8e8" }}>{title}</div>
-          {subtitle && <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>{subtitle}</div>}
-        </div>
-        <span style={{ color: accent, fontSize: "20px", lineHeight: 1, flexShrink: 0, marginTop: "1px" }}>{open ? "−" : "+"}</span>
-      </button>
-      {open && <div style={{ padding: "0 16px 16px" }}>{children}</div>}
+    <div style={{ textAlign: "center" }}>
+      <svg width="110" height="110" viewBox="0 0 110 110">
+        <circle cx="55" cy="55" r={r} fill="none" stroke="#141414" strokeWidth="7"/>
+        <circle cx="55" cy="55" r={r} fill="none" stroke={color} strokeWidth="7"
+          strokeDasharray={`${pct * c} ${c}`} strokeLinecap="round"
+          transform="rotate(-90 55 55)"
+          style={{ transition: "stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)" }}/>
+        <text x="55" y="48" textAnchor="middle" fill="#fff" fontSize="28" fontWeight="900" fontFamily="Inter,sans-serif">{score}</text>
+        <text x="55" y="68" textAnchor="middle" fill="#444" fontSize="11" fontFamily="Inter,sans-serif">/10</text>
+      </svg>
+      <div style={{ fontSize: "11px", color: "#555", textTransform: "uppercase", letterSpacing: "0.12em", marginTop: "2px" }}>{label}</div>
     </div>
   );
 };
 
-const InfoRow = ({ label, value, highlight, accent }) => (
-  <div style={{
-    background: highlight ? "#0c180c" : "#131313",
-    border: `1px solid ${highlight ? "#1c3a1c" : "#1c1c1c"}`,
-    borderRadius: "7px", padding: "10px 13px", marginBottom: "7px",
-  }}>
-    <div style={{ fontSize: "10px", color: highlight ? (accent || "#5bc85b") : "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "3px" }}>{label}</div>
-    <p style={{ margin: 0, fontSize: "13px", color: "#bbb", lineHeight: "1.65" }}>{value}</p>
+// ── Court Line Divider ─────────────────────────────────────────────────────────
+const CourtLine = ({ color = "#e8ff3a" }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "6px 0" }}>
+    <div style={{ flex: 1, height: "1px", background: "#1a1a1a" }}/>
+    <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: color, boxShadow: `0 0 8px ${color}` }}/>
+    <div style={{ flex: 1, height: "1px", background: "#1a1a1a" }}/>
   </div>
 );
 
-// ─── Main App ─────────────────────────────────────────────────────────────────
+// ── Section Label ──────────────────────────────────────────────────────────────
+const SectionLabel = ({ children, color = "#e8ff3a", icon }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+    {icon && <span style={{ fontSize: "22px" }}>{icon}</span>}
+    <span style={{ fontSize: "10px", color, textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: "700" }}>{children}</span>
+  </div>
+);
+
+// ── Expand Panel ───────────────────────────────────────────────────────────────
+const Panel = ({ title, badge, accent = "#e8ff3a", children }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ borderRadius: "12px", overflow: "hidden", border: `1px solid ${open ? accent + "30" : "#1a1a1a"}`, transition: "border-color 0.2s" }}>
+      <button onClick={() => setOpen(o => !o)} style={{
+        width: "100%", background: open ? "#0e0e0e" : "#0a0a0a",
+        border: "none", cursor: "pointer", padding: "16px 18px",
+        display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left",
+        transition: "background 0.2s",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {badge && (
+            <div style={{ width: "4px", height: "36px", borderRadius: "2px", background: accent, flexShrink: 0 }}/>
+          )}
+          <span style={{ fontSize: "15px", fontWeight: "700", color: "#e8e8e8", lineHeight: "1.4" }}>{title}</span>
+        </div>
+        <div style={{
+          width: "28px", height: "28px", borderRadius: "50%",
+          border: `1px solid ${open ? accent : "#2a2a2a"}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: open ? accent : "#444", fontSize: "16px", flexShrink: 0,
+          transition: "all 0.2s",
+        }}>
+          {open ? "−" : "+"}
+        </div>
+      </button>
+      {open && (
+        <div style={{ background: "#0a0a0a", padding: "0 18px 18px", borderTop: `1px solid #141414` }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Info Block ─────────────────────────────────────────────────────────────────
+const Block = ({ label, value, glow }) => (
+  <div style={{
+    background: glow ? "#0b150b" : "#0e0e0e",
+    border: `1px solid ${glow ? "#1e3d1e" : "#181818"}`,
+    borderRadius: "8px", padding: "12px 14px", marginBottom: "8px",
+  }}>
+    <div style={{ fontSize: "9px", color: glow ? "#5bc85b" : "#3a3a3a", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "5px" }}>{label}</div>
+    <p style={{ margin: 0, fontSize: "13px", color: glow ? "#c8e8c8" : "#aaa", lineHeight: "1.7" }}>{value}</p>
+  </div>
+);
+
+// ── Film Guide Card ────────────────────────────────────────────────────────────
+const FilmCard = ({ emoji, title, body }) => (
+  <div style={{ background: "#0a0a0a", border: "1px solid #141414", borderRadius: "12px", padding: "18px" }}>
+    <div style={{ fontSize: "32px", marginBottom: "10px" }}>{emoji}</div>
+    <div style={{ fontSize: "13px", fontWeight: "800", color: "#e8e8e8", marginBottom: "6px", letterSpacing: "-0.01em" }}>{title}</div>
+    <div style={{ fontSize: "12px", color: "#444", lineHeight: "1.7" }}>{body}</div>
+  </div>
+);
+
+// ── Main App ───────────────────────────────────────────────────────────────────
 export default function Rallytics() {
   const [stage, setStage] = useState("upload");
   const [videoFile, setVideoFile] = useState(null);
@@ -129,291 +144,385 @@ export default function Rallytics() {
   const [error, setError] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [tab, setTab] = useState("technique");
-  const [extractPct, setExtractPct] = useState(0);
+  const [pct, setPct] = useState(0);
   const [frameCount, setFrameCount] = useState(0);
   const [duration, setDuration] = useState(0);
   const [statusMsg, setStatusMsg] = useState("");
   const fileRef = useRef();
 
   const fmt = s => `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
-  const estFrames = dur => Math.min(MAX_FRAMES, Math.floor(Math.max(0, dur - 4) / FRAME_INTERVAL) + 1);
+  const estFrames = d => Math.min(MAX_FRAMES, Math.floor(Math.max(0, d - 4) / FRAME_INTERVAL) + 1);
 
-  const handleFile = (file) => {
-    if (!file?.type.startsWith("video/")) { setError("Please upload a video file — MP4 or MOV works best."); return; }
-    setError(null);
-    setVideoFile(file);
-    setVideoUrl(URL.createObjectURL(file));
-    setStage("context");
+  const handleFile = f => {
+    if (!f?.type.startsWith("video/")) { setError("Please upload a video file — MP4 or MOV works best."); return; }
+    setError(null); setVideoFile(f); setVideoUrl(URL.createObjectURL(f)); setStage("context");
   };
 
-  const onDrop = useCallback((e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); }, []);
+  const onDrop = useCallback(e => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); }, []);
 
   const analyze = async () => {
-    setStage("working");
-    setExtractPct(0);
-    setError(null);
-
+    setStage("working"); setPct(0); setError(null);
     try {
       setStatusMsg("Extracting frames from your video…");
-      const frames = await extractFrames(videoFile, pct => setExtractPct(pct));
+      const frames = await extractFrames(videoFile, p => setPct(p));
       setFrameCount(frames.length);
-
       setStatusMsg(`Sending ${frames.length} frames to your AI coach…`);
-      setExtractPct(100);
-
-      const durationLabel = duration > 60 ? `${Math.round(duration / 60)}-minute` : `${Math.round(duration)}-second`;
-
+      setPct(100);
+      const dLabel = duration > 60 ? `${Math.round(duration / 60)}-minute` : `${Math.round(duration)}-second`;
       const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          frames: frames.map(f => f.base64),
-          context: context.trim(),
-          frameCount: frames.length,
-          durationLabel,
-        }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frames: frames.map(f => f.base64), context: context.trim(), frameCount: frames.length, durationLabel: dLabel }),
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `Server error ${res.status}`);
-      }
-
-      const data = await res.json();
-      setResult(data);
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `Error ${res.status}`); }
+      setResult(await res.json());
       setStage("result");
-
-    } catch (err) {
-      setError(err.message || "Analysis failed. Check your connection and try again.");
-      setStage("context");
+    } catch (e) {
+      setError(e.message || "Analysis failed. Try again."); setStage("context");
     }
   };
 
   const reset = () => {
-    setStage("upload"); setVideoFile(null); setVideoUrl(null);
-    setContext(""); setResult(null); setError(null);
-    setExtractPct(0); setFrameCount(0); setDuration(0); setTab("technique");
+    setStage("upload"); setVideoFile(null); setVideoUrl(null); setContext(""); setResult(null);
+    setError(null); setPct(0); setFrameCount(0); setDuration(0); setTab("technique");
   };
 
-  const levelColor = l => {
-    if (!l) return "#888";
-    if (l.includes("Beginner")) return "#5bc85b";
-    if (l.includes("Developing")) return "#a3e635";
-    if (l.includes("Intermediate")) return "#f5c842";
-    return "#f97316";
-  };
+  const lc = l => !l ? "#888" : l.includes("Beginner") ? "#5bc85b" : l.includes("Developing") ? "#a3e635" : l.includes("Intermediate") ? "#f5c842" : "#f97316";
 
   const steps = [
-    { label: "Sample frames every 30 seconds", done: extractPct >= 30 },
-    { label: "Compress & resize each frame", done: extractPct >= 70 },
-    { label: "Send frame sequence to AI coach", done: extractPct >= 100 },
+    { label: "Sample frames every 30 seconds", done: pct >= 30 },
+    { label: "Compress & resize frames", done: pct >= 70 },
+    { label: "Send sequence to AI coach", done: pct >= 100 },
     { label: "Pattern analysis across full match", done: stage === "result" },
     { label: "Build your coaching report", done: stage === "result" },
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#080808", fontFamily: "'Inter','Helvetica Neue',sans-serif", color: "#f0f0f0" }}>
+    <div style={{ minHeight: "100vh", background: "#060606", fontFamily: "'Inter','Helvetica Neue',sans-serif", color: "#f0f0f0" }}>
       <style>{`
         * { box-sizing: border-box; }
         textarea:focus { outline: none; }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-        ::placeholder { color: #333; }
+        button:focus-visible { outline: 2px solid #e8ff3a; outline-offset: 2px; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes courtScan { 0%{transform:translateX(-100%)} 100%{transform:translateX(400%)} }
+        ::placeholder { color: #282828; }
+        ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #0a0a0a; } ::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
       `}</style>
 
-      <nav style={{ borderBottom: "1px solid #111", padding: "0 20px", height: "54px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "#080808", zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-          <svg width="26" height="26" viewBox="0 0 26 26">
-            <circle cx="13" cy="13" r="12" fill="none" stroke="#e8ff3a" strokeWidth="2" />
-            <path d="M5 18 Q10 6 21 8" stroke="#e8ff3a" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      {/* ── NAV ── */}
+      <nav style={{
+        position: "sticky", top: 0, zIndex: 100,
+        background: "rgba(6,6,6,0.92)", backdropFilter: "blur(12px)",
+        borderBottom: "1px solid #111", padding: "0 24px", height: "58px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "11px" }}>
+          <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+            <circle cx="15" cy="15" r="13" stroke="#e8ff3a" strokeWidth="2"/>
+            <circle cx="15" cy="15" r="13" stroke="#e8ff3a" strokeWidth="2" strokeDasharray="4 3" opacity="0.3"/>
+            <path d="M6 21 Q12 5 24 9" stroke="#e8ff3a" strokeWidth="2.5" strokeLinecap="round"/>
           </svg>
-          <span style={{ fontWeight: "800", fontSize: "16px", letterSpacing: "-0.02em" }}>
+          <span style={{ fontWeight: "900", fontSize: "17px", letterSpacing: "-0.03em" }}>
             Rally<span style={{ color: "#e8ff3a" }}>tics</span>
           </span>
         </div>
-        {!["upload", "working"].includes(stage) && (
-          <button onClick={reset} style={{ background: "none", border: "1px solid #1e1e1e", borderRadius: "6px", color: "#555", fontSize: "12px", padding: "6px 14px", cursor: "pointer" }}>
-            New match
+        {!["upload","working"].includes(stage) && (
+          <button onClick={reset} style={{
+            background: "none", border: "1px solid #1e1e1e", borderRadius: "8px",
+            color: "#555", fontSize: "12px", padding: "7px 16px", cursor: "pointer",
+            letterSpacing: "0.04em", transition: "border-color 0.2s, color 0.2s",
+          }}
+            onMouseEnter={e => { e.target.style.borderColor = "#e8ff3a"; e.target.style.color = "#e8ff3a"; }}
+            onMouseLeave={e => { e.target.style.borderColor = "#1e1e1e"; e.target.style.color = "#555"; }}
+          >
+            ← New match
           </button>
         )}
       </nav>
 
-      <main style={{ maxWidth: "680px", margin: "0 auto", padding: "28px 18px 80px" }}>
+      <main style={{ maxWidth: "700px", margin: "0 auto", padding: "40px 20px 100px" }}>
 
+        {/* ══════════════════ UPLOAD ══════════════════ */}
         {stage === "upload" && (
-          <>
-            <div style={{ marginBottom: "32px" }}>
-              <div style={{ fontSize: "11px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: "10px" }}>AI Match Analysis</div>
-              <h1 style={{ fontSize: "clamp(28px,7vw,46px)", fontWeight: "800", letterSpacing: "-0.025em", lineHeight: 1.06, margin: "0 0 14px" }}>
-                Your match.<br />Every pattern.<br /><span style={{ color: "#e8ff3a" }}>Coached.</span>
+          <div style={{ animation: "fadeUp 0.4s ease" }}>
+            {/* Hero */}
+            <div style={{ marginBottom: "48px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#e8ff3a", boxShadow: "0 0 10px #e8ff3a" }}/>
+                <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.2em" }}>AI Match Analysis</span>
+              </div>
+              <h1 style={{ fontSize: "clamp(36px,8vw,64px)", fontWeight: "900", letterSpacing: "-0.035em", lineHeight: 0.95, margin: "0 0 20px" }}>
+                Your match.<br />Every pattern.<br /><span style={{ color: "#e8ff3a", WebkitTextStroke: "0px" }}>Coached.</span>
               </h1>
-              <p style={{ color: "#4a4a4a", fontSize: "14px", lineHeight: "1.6", maxWidth: "400px", margin: 0 }}>
-                Upload 10–20 minutes of play. Rallytics samples a frame every 30 seconds, spots your recurring habits, and gives you a real coaching breakdown — technique and strategy.
+              <p style={{ color: "#3a3a3a", fontSize: "15px", lineHeight: "1.7", maxWidth: "380px", margin: 0 }}>
+                Upload 10–20 minutes of play. Rallytics samples a frame every 30 seconds and gives you the kind of feedback you'd get from a top academy coach watching film.
               </p>
             </div>
 
+            {/* Drop zone */}
             <div
               onDragOver={e => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onDrop={onDrop}
               onClick={() => fileRef.current.click()}
               style={{
-                border: `2px dashed ${dragging ? "#e8ff3a" : "#1e1e1e"}`,
-                borderRadius: "14px", padding: "52px 20px", textAlign: "center",
-                cursor: "pointer", background: dragging ? "#0e1100" : "#0b0b0b",
-                transition: "all 0.18s",
+                border: `2px dashed ${dragging ? "#e8ff3a" : "#1c1c1c"}`,
+                borderRadius: "20px", padding: "64px 24px 56px", textAlign: "center",
+                cursor: "pointer", background: dragging ? "#0c1000" : "#080808",
+                transition: "all 0.2s", position: "relative", overflow: "hidden",
               }}
             >
-              <div style={{ fontSize: "40px", marginBottom: "14px", lineHeight: 1 }}>🎾</div>
-              <div style={{ fontWeight: "700", fontSize: "17px", marginBottom: "6px" }}>Drop your match video here</div>
-              <div style={{ color: "#444", fontSize: "13px", marginBottom: "22px" }}>MP4 or MOV · any file size · no account needed</div>
-              <div style={{ display: "inline-block", background: "#e8ff3a", color: "#080808", borderRadius: "8px", padding: "11px 30px", fontWeight: "800", fontSize: "14px" }}>
-                Choose video
+              {/* Animated court line */}
+              <div style={{
+                position: "absolute", top: 0, left: 0, right: 0, height: "2px",
+                background: "linear-gradient(90deg, transparent, #e8ff3a, transparent)",
+                animation: dragging ? "none" : "courtScan 3s linear infinite",
+                opacity: 0.4,
+              }}/>
+
+              <div style={{ fontSize: "56px", marginBottom: "16px", lineHeight: 1 }}>🎾</div>
+              <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "8px", letterSpacing: "-0.02em" }}>
+                Drop your match video here
+              </div>
+              <div style={{ color: "#2e2e2e", fontSize: "13px", marginBottom: "28px" }}>
+                MP4 or MOV · any file size · no account needed
+              </div>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: "8px",
+                background: "#e8ff3a", color: "#060606", borderRadius: "10px",
+                padding: "13px 32px", fontWeight: "900", fontSize: "14px",
+                letterSpacing: "0.02em",
+              }}>
+                <span style={{ fontSize: "16px" }}>↑</span> Choose video
               </div>
             </div>
             <input ref={fileRef} type="file" accept="video/*" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
 
-            {error && <div style={{ marginTop: "14px", background: "#160808", border: "1px solid #3a1414", borderRadius: "8px", padding: "12px 16px", color: "#e05555", fontSize: "13px" }}>{error}</div>}
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "10px", marginTop: "32px" }}>
-              {[
-                { icon: "📹", h: "Any length", b: "10–20 min matches work best. No compression before uploading." },
-                { icon: "🔬", h: "Frame sampling", b: "1 frame every 30s finds patterns, not just one moment." },
-                { icon: "🎯", h: "Full breakdown", b: "Technique skull + strategy patterns + top 3 fixes." },
-              ].map(c => (
-                <div key={c.h} style={{ background: "#0b0b0b", border: "1px solid #141414", borderRadius: "10px", padding: "16px 14px" }}>
-                  <div style={{ fontSize: "22px", marginBottom: "8px" }}>{c.icon}</div>
-                  <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "4px", color: "#ddd" }}>{c.h}</div>
-                  <div style={{ fontSize: "12px", color: "#444", lineHeight: "1.5" }}>{c.b}</div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
-        {stage === "context" && (
-          <>
-            <div style={{ marginBottom: "20px" }}>
-              <div style={{ fontSize: "11px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.13em", marginBottom: "6px" }}>Video ready</div>
-              <h2 style={{ fontSize: "22px", fontWeight: "800", letterSpacing: "-0.015em", margin: "0 0 4px" }}>Anything I should know?</h2>
-              <p style={{ color: "#444", fontSize: "13px", margin: 0 }}>Optional — but specific context means sharper feedback.</p>
-            </div>
-
-            <video src={videoUrl} controls playsInline
-              style={{ width: "100%", borderRadius: "10px", background: "#000", maxHeight: "230px", objectFit: "contain", marginBottom: "14px" }}
-              onLoadedMetadata={e => setDuration(e.target.duration)} />
-
-            {duration > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px", marginBottom: "14px" }}>
-                {[
-                  { l: "Video length", v: fmt(duration) },
-                  { l: "Frames to extract", v: `~${estFrames(duration)}` },
-                  { l: "Data sent to AI", v: `~${estFrames(duration) * 40}KB` },
-                ].map(s => (
-                  <div key={s.l} style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "8px", padding: "10px 12px" }}>
-                    <div style={{ fontSize: "10px", color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "2px" }}>{s.l}</div>
-                    <div style={{ fontWeight: "700", fontSize: "15px", color: "#e8ff3a" }}>{s.v}</div>
-                  </div>
-                ))}
+            {error && (
+              <div style={{ marginTop: "16px", background: "#120808", border: "1px solid #2e1010", borderRadius: "10px", padding: "14px 18px", color: "#e05555", fontSize: "13px" }}>
+                ⚠ {error}
               </div>
             )}
 
-            <textarea value={context} onChange={e => setContext(e.target.value)}
-              placeholder="e.g. I keep losing points from the baseline under pressure. Playing a pusher. Focus on my backhand."
-              style={{ width: "100%", minHeight: "76px", background: "#0e0e0e", border: "1px solid #1e1e1e", borderRadius: "10px", padding: "13px 14px", color: "#f0f0f0", fontSize: "14px", lineHeight: "1.6", resize: "vertical", transition: "border-color 0.15s" }}
-              onFocus={e => e.target.style.borderColor = "#e8ff3a"}
-              onBlur={e => e.target.style.borderColor = "#1e1e1e"} />
+            <CourtLine />
 
-            {error && <div style={{ marginTop: "10px", background: "#160808", border: "1px solid #3a1414", borderRadius: "8px", padding: "12px 16px", color: "#e05555", fontSize: "13px" }}>{error}</div>}
+            {/* How to film */}
+            <SectionLabel icon="📹" color="#e8ff3a">How to film yourself</SectionLabel>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "32px" }}>
+              <FilmCard emoji="📱" title="Camera position"
+                body="Back fence, 1–2 metres high, angled slightly down. Film from behind one baseline for the clearest view of stance, contact point, and court position." />
+              <FilmCard emoji="⏱️" title="Length & format"
+                body="10–20 minutes ideal. iPhone users: Settings → Camera → Formats → Most Compatible to record as MP4. Any file size works — no compression needed." />
+              <FilmCard emoji="🎾" title="What to record"
+                body="Full practice match or 15+ minutes of real rallying. Include points, not just warmup groundstrokes — strategy patterns need full points to read." />
+              <FilmCard emoji="☀️" title="Lighting"
+                body="Good daylight or bright indoor lights. Avoid backlit setups (sun behind the player). Standard video mode — not slow-mo, not portrait mode." />
+            </div>
 
-            <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
-              <button onClick={reset} style={{ flex: 1, background: "none", border: "1px solid #1e1e1e", borderRadius: "8px", color: "#555", fontSize: "14px", padding: "13px", cursor: "pointer" }}>← Change video</button>
-              <button onClick={analyze} style={{ flex: 2, background: "#e8ff3a", border: "none", borderRadius: "8px", color: "#080808", fontSize: "15px", fontWeight: "800", padding: "13px", cursor: "pointer" }}>
-                Analyze full match →
-              </button>
-            </div>
-          </>
-        )}
+            <CourtLine />
 
-        {stage === "working" && (
-          <div style={{ paddingTop: "20px" }}>
-            <div style={{ marginBottom: "28px" }}>
-              <div style={{ fontSize: "11px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.13em", marginBottom: "8px", animation: "pulse 2s infinite" }}>Processing</div>
-              <h2 style={{ fontSize: "22px", fontWeight: "800", letterSpacing: "-0.015em", margin: "0 0 6px" }}>{statusMsg}</h2>
-              <p style={{ color: "#444", fontSize: "13px", margin: 0 }}>This takes 20–40 seconds for a full match video.</p>
-            </div>
-            <div style={{ background: "#141414", borderRadius: "4px", height: "5px", overflow: "hidden", marginBottom: "28px" }}>
-              <div style={{ height: "100%", background: "#e8ff3a", borderRadius: "4px", width: `${extractPct}%`, transition: "width 0.5s ease" }} />
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "11px" }}>
-              {steps.map((s, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: "11px" }}>
-                  <div style={{
-                    width: "20px", height: "20px", borderRadius: "50%", flexShrink: 0,
-                    background: s.done ? "#e8ff3a" : "#141414",
-                    border: `1px solid ${s.done ? "#e8ff3a" : "#2a2a2a"}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "11px", color: "#080808", fontWeight: "800", transition: "all 0.3s",
-                  }}>{s.done ? "✓" : ""}</div>
-                  <span style={{ fontSize: "13px", color: s.done ? "#aaa" : "#333" }}>{s.label}</span>
+            {/* How it works */}
+            <SectionLabel icon="🔬" color="#e8ff3a">How the analysis works</SectionLabel>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px" }}>
+              {[
+                { n: "01", h: "Frame sampling", b: "1 frame every 30 seconds. Finds habits across your full match, not just one shot." },
+                { n: "02", h: "Technique skull", b: "Contact point, follow-through, unit turn, footwork — per shot type, with the chain reaction explained." },
+                { n: "03", h: "Tactical read", b: "Short ball response, net approach, rally patterns, positioning — the tactical habits costing you games." },
+              ].map(c => (
+                <div key={c.n} style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "20px 16px" }}>
+                  <div style={{ fontSize: "28px", fontWeight: "900", color: "#1e1e1e", marginBottom: "8px", letterSpacing: "-0.02em" }}>{c.n}</div>
+                  <div style={{ fontSize: "13px", fontWeight: "800", color: "#ccc", marginBottom: "6px" }}>{c.h}</div>
+                  <div style={{ fontSize: "11px", color: "#333", lineHeight: "1.6" }}>{c.b}</div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
+        {/* ══════════════════ CONTEXT ══════════════════ */}
+        {stage === "context" && (
+          <div style={{ animation: "fadeUp 0.3s ease" }}>
+            <div style={{ marginBottom: "24px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#5bc85b", boxShadow: "0 0 10px #5bc85b" }}/>
+                <span style={{ fontSize: "10px", color: "#5bc85b", textTransform: "uppercase", letterSpacing: "0.2em" }}>Video loaded</span>
+              </div>
+              <h2 style={{ fontSize: "32px", fontWeight: "900", letterSpacing: "-0.025em", margin: "0 0 6px" }}>Anything I should know?</h2>
+              <p style={{ color: "#3a3a3a", fontSize: "13px", margin: 0 }}>Optional — specific context means sharper, more targeted feedback.</p>
+            </div>
+
+            <video src={videoUrl} controls playsInline
+              style={{ width: "100%", borderRadius: "14px", background: "#000", maxHeight: "240px", objectFit: "contain", marginBottom: "16px" }}
+              onLoadedMetadata={e => setDuration(e.target.duration)} />
+
+            {duration > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px", marginBottom: "16px" }}>
+                {[
+                  { l: "Video length", v: fmt(duration) },
+                  { l: "Frames to extract", v: `~${estFrames(duration)}` },
+                  { l: "Data sent to AI", v: `~${estFrames(duration) * 40}KB` },
+                ].map(s => (
+                  <div key={s.l} style={{ background: "#080808", border: "1px solid #141414", borderRadius: "10px", padding: "12px 14px" }}>
+                    <div style={{ fontSize: "9px", color: "#2e2e2e", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "4px" }}>{s.l}</div>
+                    <div style={{ fontWeight: "900", fontSize: "18px", color: "#e8ff3a", letterSpacing: "-0.02em" }}>{s.v}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <textarea value={context} onChange={e => setContext(e.target.value)}
+              placeholder="e.g. My backhand keeps going wide under pressure. Playing against a big server. Focus on my serve and net approach."
+              style={{
+                width: "100%", minHeight: "80px", background: "#080808",
+                border: "1px solid #1a1a1a", borderRadius: "12px",
+                padding: "14px 16px", color: "#f0f0f0", fontSize: "14px",
+                lineHeight: "1.7", resize: "vertical", transition: "border-color 0.2s",
+              }}
+              onFocus={e => e.target.style.borderColor = "#e8ff3a"}
+              onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
+
+            {error && (
+              <div style={{ marginTop: "12px", background: "#120808", border: "1px solid #2e1010", borderRadius: "10px", padding: "14px 18px", color: "#e05555", fontSize: "13px" }}>
+                ⚠ {error}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: "10px", marginTop: "14px" }}>
+              <button onClick={reset} style={{
+                flex: 1, background: "none", border: "1px solid #1a1a1a", borderRadius: "10px",
+                color: "#3a3a3a", fontSize: "14px", padding: "14px", cursor: "pointer", transition: "all 0.2s",
+              }}
+                onMouseEnter={e => e.target.style.borderColor = "#333"}
+                onMouseLeave={e => e.target.style.borderColor = "#1a1a1a"}
+              >← Change video</button>
+              <button onClick={analyze} style={{
+                flex: 3, background: "#e8ff3a", border: "none", borderRadius: "10px",
+                color: "#060606", fontSize: "15px", fontWeight: "900", padding: "14px",
+                cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.2s",
+              }}
+                onMouseEnter={e => e.target.style.opacity = "0.88"}
+                onMouseLeave={e => e.target.style.opacity = "1"}
+              >
+                Analyze full match →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════ WORKING ══════════════════ */}
+        {stage === "working" && (
+          <div style={{ animation: "fadeUp 0.3s ease", paddingTop: "20px" }}>
+            <div style={{ marginBottom: "36px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#e8ff3a", animation: "pulse 1.5s infinite" }}/>
+                <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.2em" }}>Processing</span>
+              </div>
+              <h2 style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "-0.025em", margin: "0 0 8px" }}>{statusMsg}</h2>
+              <p style={{ color: "#2e2e2e", fontSize: "13px", margin: 0 }}>20–40 seconds for a full match. Do not close this tab.</p>
+            </div>
+
+            {/* Progress bar */}
+            <div style={{ background: "#0e0e0e", borderRadius: "4px", height: "3px", overflow: "hidden", marginBottom: "36px" }}>
+              <div style={{ height: "100%", background: "#e8ff3a", borderRadius: "4px", width: `${pct}%`, transition: "width 0.6s ease", boxShadow: "0 0 8px #e8ff3a" }} />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              {steps.map((s, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                  <div style={{
+                    width: "24px", height: "24px", borderRadius: "50%", flexShrink: 0,
+                    background: s.done ? "#e8ff3a" : "#0e0e0e",
+                    border: `1px solid ${s.done ? "#e8ff3a" : "#1e1e1e"}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "11px", color: "#060606", fontWeight: "900",
+                    transition: "all 0.4s", boxShadow: s.done ? "0 0 12px #e8ff3a66" : "none",
+                  }}>
+                    {s.done ? "✓" : ""}
+                  </div>
+                  <span style={{ fontSize: "14px", color: s.done ? "#bbb" : "#252525", transition: "color 0.4s" }}>{s.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════ RESULT ══════════════════ */}
         {stage === "result" && result && (() => {
           const tech = result.technique || {};
           const strat = result.strategy || {};
-          const lc = levelColor(result.player_level);
+          const lcolor = lc(result.player_level);
+
           return (
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              <div style={{ background: "#0e0e0e", border: "1px solid #1c1c1c", borderRadius: "14px", padding: "20px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px", marginBottom: "14px" }}>
-                  <div>
-                    <div style={{ fontSize: "10px", color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "7px" }}>
-                      {result.frames_analyzed || frameCount} frames · {fmt(duration)}
-                    </div>
-                    <span style={{ background: lc + "18", color: lc, border: `1px solid ${lc}40`, borderRadius: "6px", padding: "5px 14px", fontSize: "13px", fontWeight: "700" }}>
-                      {result.player_level}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", gap: "14px" }}>
-                    <div style={{ textAlign: "center" }}>
-                      <Ring score={tech.score || 5} color="#60a5fa" />
-                      <div style={{ fontSize: "10px", color: "#444", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: "4px" }}>Technique</div>
-                    </div>
-                    <div style={{ textAlign: "center" }}>
-                      <Ring score={strat.score || 5} color="#f59e0b" />
-                      <div style={{ fontSize: "10px", color: "#444", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: "4px" }}>Strategy</div>
-                    </div>
-                  </div>
+            <div style={{ animation: "fadeUp 0.4s ease" }}>
+
+              {/* ── Header ── */}
+              <div style={{ marginBottom: "32px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: lcolor, boxShadow: `0 0 10px ${lcolor}` }}/>
+                  <span style={{ fontSize: "10px", color: lcolor, textTransform: "uppercase", letterSpacing: "0.2em" }}>
+                    {result.frames_analyzed || frameCount} frames · {fmt(duration)}
+                  </span>
                 </div>
-                <p style={{ margin: "0 0 14px", fontSize: "14px", color: "#bbb", lineHeight: "1.7" }}>{result.match_overview}</p>
+
+                {/* Level badge */}
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: lcolor + "14", border: `1px solid ${lcolor}30`, borderRadius: "8px", padding: "6px 16px", marginBottom: "20px" }}>
+                  <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: lcolor }}/>
+                  <span style={{ fontSize: "13px", fontWeight: "800", color: lcolor, letterSpacing: "0.04em" }}>{result.player_level}</span>
+                </div>
+
+                <p style={{ fontSize: "15px", color: "#888", lineHeight: "1.75", margin: "0 0 20px", maxWidth: "580px" }}>
+                  {result.match_overview}
+                </p>
+
+                {/* Score arcs */}
+                <div style={{ display: "flex", gap: "28px", marginBottom: "20px" }}>
+                  <ScoreArc score={tech.score || 5} label="Technique" color="#60a5fa" />
+                  <ScoreArc score={strat.score || 5} label="Strategy" color="#f59e0b" />
+                </div>
+
+                {/* Coach verdict */}
                 {result.coach_verdict && (
-                  <div style={{ borderLeft: "3px solid #e8ff3a", paddingLeft: "12px" }}>
-                    <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.1em" }}>Coach says  </span>
-                    <span style={{ fontSize: "13px", color: "#777", fontStyle: "italic" }}>"{result.coach_verdict}"</span>
+                  <div style={{
+                    background: "#080808", borderLeft: "3px solid #e8ff3a",
+                    borderRadius: "0 10px 10px 0", padding: "16px 20px",
+                  }}>
+                    <div style={{ fontSize: "9px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "6px" }}>Coach verdict</div>
+                    <p style={{ margin: 0, fontSize: "14px", color: "#777", fontStyle: "italic", lineHeight: "1.65" }}>"{result.coach_verdict}"</p>
                   </div>
                 )}
               </div>
 
+              <CourtLine />
+
+              {/* ── Priority Fixes ── */}
               {result.priority_fixes?.length > 0 && (
-                <div style={{ background: "#0b1300", border: "1px solid #182000", borderRadius: "12px", padding: "18px 20px" }}>
-                  <div style={{ fontSize: "11px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.13em", marginBottom: "14px" }}>Top 3 fixes</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div style={{ marginBottom: "32px" }}>
+                  <SectionLabel icon="⚡" color="#e8ff3a">Top 3 fixes</SectionLabel>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {result.priority_fixes.map(p => (
-                      <div key={p.rank} style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                      <div key={p.rank} style={{
+                        background: p.rank === 1 ? "#0b1300" : "#080808",
+                        border: `1px solid ${p.rank === 1 ? "#1e3300" : "#111"}`,
+                        borderRadius: "12px", padding: "16px 18px",
+                        display: "flex", gap: "16px", alignItems: "flex-start",
+                      }}>
                         <div style={{
-                          width: "24px", height: "24px", borderRadius: "50%", flexShrink: 0,
-                          background: p.rank === 1 ? "#e8ff3a" : "#161616",
-                          color: p.rank === 1 ? "#080808" : "#555",
-                          border: `1px solid ${p.rank === 1 ? "#e8ff3a" : "#2a2a2a"}`,
+                          width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
+                          background: p.rank === 1 ? "#e8ff3a" : "#0e0e0e",
+                          color: p.rank === 1 ? "#060606" : "#2e2e2e",
+                          border: `1px solid ${p.rank === 1 ? "#e8ff3a" : "#1a1a1a"}`,
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: "11px", fontWeight: "800",
+                          fontSize: "14px", fontWeight: "900",
                         }}>{p.rank}</div>
-                        <div>
-                          <div style={{ fontSize: "14px", fontWeight: "600", color: "#e0e0e0", marginBottom: "2px" }}>{p.fix}</div>
-                          {p.why && <div style={{ fontSize: "12px", color: "#4a4a4a" }}>{p.why}</div>}
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: "15px", fontWeight: "700", color: "#e0e0e0", marginBottom: "4px", lineHeight: "1.4" }}>{p.fix}</div>
+                          {p.why && <div style={{ fontSize: "12px", color: "#3a3a3a", marginBottom: p.on_court_cue ? "8px" : 0 }}>{p.why}</div>}
+                          {p.on_court_cue && (
+                            <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: "6px", padding: "8px 12px", display: "inline-block" }}>
+                              <span style={{ fontSize: "9px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.15em" }}>Say on court: </span>
+                              <span style={{ fontSize: "12px", color: "#e8ff3a", fontStyle: "italic", fontWeight: "600" }}>"{p.on_court_cue}"</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -421,76 +530,173 @@ export default function Rallytics() {
                 </div>
               )}
 
-              <div style={{ display: "flex", gap: "8px" }}>
+              <CourtLine />
+
+              {/* ── Tabs ── */}
+              <div style={{ display: "flex", gap: "6px", marginBottom: "20px" }}>
                 {[
-                  { id: "technique", label: "🎯 Technique", ac: "#60a5fa", ab: "#0c1826", ab2: "#1e3a5a" },
-                  { id: "strategy", label: "🧠 Strategy", ac: "#f59e0b", ab: "#1a1400", ab2: "#3d3000" },
+                  { id: "technique", label: "Technique", icon: "🎯" },
+                  { id: "strategy", label: "Strategy", icon: "🧠" },
+                  { id: "training", label: "Training", icon: "🏋️" },
                 ].map(t => (
                   <button key={t.id} onClick={() => setTab(t.id)} style={{
-                    flex: 1, padding: "11px 8px",
-                    background: tab === t.id ? t.ab : "#0e0e0e",
-                    border: `1px solid ${tab === t.id ? t.ab2 : "#1a1a1a"}`,
-                    borderRadius: "8px", color: tab === t.id ? t.ac : "#444",
-                    fontSize: "13px", fontWeight: "700", cursor: "pointer", transition: "all 0.15s",
-                  }}>{t.label}</button>
+                    flex: 1, padding: "12px 8px",
+                    background: tab === t.id ? "#e8ff3a" : "#080808",
+                    border: `1px solid ${tab === t.id ? "#e8ff3a" : "#141414"}`,
+                    borderRadius: "10px",
+                    color: tab === t.id ? "#060606" : "#333",
+                    fontSize: "12px", fontWeight: "800", cursor: "pointer",
+                    transition: "all 0.18s", letterSpacing: "0.02em",
+                  }}>
+                    <span style={{ fontSize: "16px", display: "block", marginBottom: "3px" }}>{t.icon}</span>
+                    {t.label}
+                  </button>
                 ))}
               </div>
 
+              {/* ── Technique ── */}
               {tab === "technique" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", animation: "fadeUp 0.25s ease" }}>
                   {tech.strengths?.length > 0 && (
-                    <div style={{ background: "#0e0e0e", border: "1px solid #1c1c1c", borderRadius: "10px", padding: "16px" }}>
-                      <div style={{ fontSize: "11px", color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "10px" }}>What's working</div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "7px" }}>
-                        {tech.strengths.map((s, i) => <Chip key={i} label={s} positive />)}
+                    <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px" }}>
+                      <SectionLabel color="#5bc85b">What's working</SectionLabel>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                        {tech.strengths.map((s, i) => (
+                          <div key={i} style={{ background: "#0b180b", border: "1px solid #1a3a1a", borderRadius: "6px", padding: "7px 14px", fontSize: "13px", color: "#5bc85b", fontWeight: "600" }}>
+                            ✓ {s}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
+
                   {tech.shot_breakdown && (
-                    <div style={{ background: "#0e0e0e", border: "1px solid #1c1c1c", borderRadius: "10px", padding: "16px" }}>
-                      <div style={{ fontSize: "11px", color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "12px" }}>Shot-by-shot skull</div>
+                    <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px" }}>
+                      <SectionLabel icon="🔬" color="#60a5fa">Shot-by-shot skull</SectionLabel>
                       {Object.entries(tech.shot_breakdown).map(([k, v]) => (
-                        <InfoRow key={k} label={k} value={v} accent="#60a5fa" />
+                        <Block key={k} label={k.replace(/_/g, " ")} value={v} />
                       ))}
                     </div>
                   )}
-                  {tech.patterns?.map((p, i) => (
-                    <ExpandCard key={i} title={p.pattern} subtitle={p.frequency} accent="#60a5fa">
-                      <InfoRow label="What I see" value={p.what_it_looks_like} />
-                      {p.root_cause && <InfoRow label="Root cause" value={p.root_cause} />}
-                      <InfoRow label="Impact" value={p.impact} />
-                      <InfoRow label="Fix" value={p.fix} highlight accent="#5bc85b" />
-                      {p.drill && <InfoRow label="Drill" value={p.drill} accent="#818cf8" />}
-                    </ExpandCard>
+
+                  {tech.patterns?.length > 0 && (
+                    <div>
+                      <SectionLabel color="#e8ff3a">Recurring patterns</SectionLabel>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        {tech.patterns.map((p, i) => (
+                          <Panel key={i} title={p.pattern} badge accent="#60a5fa">
+                            <div style={{ paddingTop: "14px" }}>
+                              {p.frequency && <div style={{ fontSize: "11px", color: "#2e2e2e", marginBottom: "12px" }}>{p.frequency}</div>}
+                              <Block label="What I see" value={p.what_it_looks_like} />
+                              {p.root_cause && <Block label="Root cause" value={p.root_cause} />}
+                              <Block label="Impact" value={p.impact} />
+                              <Block label="The fix" value={p.fix} glow />
+                              {p.drill && <Block label="Drill" value={p.drill} />}
+                            </div>
+                          </Panel>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Strategy ── */}
+              {tab === "strategy" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", animation: "fadeUp 0.25s ease" }}>
+                  {strat.headline && (
+                    <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px" }}>
+                      <div style={{ fontSize: "9px", color: "#f59e0b", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "8px" }}>Playing style</div>
+                      <div style={{ fontSize: "22px", fontWeight: "900", letterSpacing: "-0.02em" }}>{strat.headline}</div>
+                    </div>
+                  )}
+                  {strat.strengths?.length > 0 && (
+                    <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px" }}>
+                      <SectionLabel color="#5bc85b">What's working</SectionLabel>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                        {strat.strengths.map((s, i) => (
+                          <div key={i} style={{ background: "#0b180b", border: "1px solid #1a3a1a", borderRadius: "6px", padding: "7px 14px", fontSize: "13px", color: "#5bc85b", fontWeight: "600" }}>
+                            ✓ {s}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {strat.patterns?.length > 0 && (
+                    <div>
+                      <SectionLabel color="#e8ff3a">Tactical patterns</SectionLabel>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        {strat.patterns.map((p, i) => (
+                          <Panel key={i} title={p.pattern} badge accent="#f59e0b">
+                            <div style={{ paddingTop: "14px" }}>
+                              {p.frequency && <div style={{ fontSize: "11px", color: "#2e2e2e", marginBottom: "12px" }}>{p.frequency}</div>}
+                              <Block label="What I see" value={p.what_it_looks_like} />
+                              <Block label="Impact" value={p.impact} />
+                              <Block label="Fix" value={p.fix} glow />
+                            </div>
+                          </Panel>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Training ── */}
+              {tab === "training" && result.training_plan && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", animation: "fadeUp 0.25s ease" }}>
+                  <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px" }}>
+                    <SectionLabel icon="📅" color="#a78bfa">This week</SectionLabel>
+                    <p style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: "800", color: "#e0e0e0", lineHeight: "1.5", letterSpacing: "-0.01em" }}>
+                      {result.training_plan.this_week}
+                    </p>
+                    {result.training_plan.match_focus && (
+                      <div style={{ background: "#0a1100", border: "1px solid #1a2500", borderRadius: "8px", padding: "14px 16px" }}>
+                        <div style={{ fontSize: "9px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>Match rule</div>
+                        <p style={{ margin: 0, fontSize: "13px", color: "#bbb", lineHeight: "1.65" }}>{result.training_plan.match_focus}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* On-court cues */}
+                  {result.priority_fixes?.some(p => p.on_court_cue) && (
+                    <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px" }}>
+                      <SectionLabel icon="💬" color="#e8ff3a">On-court cues</SectionLabel>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {result.priority_fixes.filter(p => p.on_court_cue).map(p => (
+                          <div key={p.rank} style={{ display: "flex", gap: "14px", alignItems: "center" }}>
+                            <div style={{
+                              width: "32px", height: "32px", borderRadius: "50%", flexShrink: 0,
+                              background: p.rank === 1 ? "#e8ff3a" : "#0e0e0e",
+                              color: p.rank === 1 ? "#060606" : "#333",
+                              border: `1px solid ${p.rank === 1 ? "#e8ff3a" : "#1a1a1a"}`,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: "12px", fontWeight: "900",
+                            }}>{p.rank}</div>
+                            <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: "8px", padding: "10px 14px", flex: 1 }}>
+                              <p style={{ margin: 0, fontSize: "14px", color: "#e8ff3a", fontStyle: "italic", fontWeight: "700" }}>"{p.on_court_cue}"</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Drills */}
+                  {[result.training_plan.drill_1, result.training_plan.drill_2].filter(Boolean).map((drill, i) => (
+                    <Panel key={i} title={drill.name} badge accent="#a78bfa">
+                      <div style={{ paddingTop: "14px" }}>
+                        {drill.targets && <div style={{ fontSize: "11px", color: "#a78bfa", marginBottom: "12px" }}>{drill.targets}</div>}
+                        <Block label="Setup" value={drill.setup} />
+                        <Block label="How to do it" value={drill.execution} />
+                        <Block label="Volume" value={drill.reps} />
+                        <Block label="You're doing it right when…" value={drill.success_marker} glow />
+                      </div>
+                    </Panel>
                   ))}
                 </div>
               )}
 
-              {tab === "strategy" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  {strat.strengths?.length > 0 && (
-                    <div style={{ background: "#0e0e0e", border: "1px solid #1c1c1c", borderRadius: "10px", padding: "16px" }}>
-                      <div style={{ fontSize: "11px", color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "10px" }}>What's working</div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "7px" }}>
-                        {strat.strengths.map((s, i) => <Chip key={i} label={s} positive />)}
-                      </div>
-                    </div>
-                  )}
-                  {strat.headline && (
-                    <div style={{ background: "#0e0e0e", border: "1px solid #1c1c1c", borderRadius: "10px", padding: "14px 16px" }}>
-                      <div style={{ fontSize: "11px", color: "#f59e0b", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Playing style</div>
-                      <div style={{ fontWeight: "700", fontSize: "16px" }}>{strat.headline}</div>
-                    </div>
-                  )}
-                  {strat.patterns?.map((p, i) => (
-                    <ExpandCard key={i} title={p.pattern} subtitle={p.frequency} accent="#f59e0b">
-                      <InfoRow label="What I see" value={p.what_it_looks_like} />
-                      <InfoRow label="Impact" value={p.impact} />
-                      <InfoRow label="Fix" value={p.fix} highlight accent="#5bc85b" />
-                    </ExpandCard>
-                  ))}
-                </div>
-              )}
             </div>
           );
         })()}
