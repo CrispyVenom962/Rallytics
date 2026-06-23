@@ -336,7 +336,7 @@ export default async function handler(req, res) {
   const content = [
     {
       type: "text",
-      text: `${playerFocus}\n\n${context ? `Additional context from the player: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames sampled every ~30 seconds across a ${durationLabel} match. Identify the recurring technical and tactical patterns for the specified player only. Be specific — name exact body positions, contact points, and moments.`,
+      text: `${playerFocus}\n\n${context ? `Additional context from the player: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames sampled every ~30 seconds across a ${durationLabel} match.\n\nIMPORTANT: Your response must be a single valid JSON object and nothing else. Do not write any text before or after the JSON. Do not use markdown code blocks. Do not write "Here is" or any introduction. Start your response with { and end with }. The JSON must be parseable by JSON.parse() with no modifications.`,
     },
     ...frames.map(base64 => ({
       type: "image",
@@ -356,10 +356,7 @@ export default async function handler(req, res) {
         model: "claude-sonnet-4-6",
         max_tokens: 4000,
         system: SYSTEM_PROMPT(frames.length, durationLabel || "unknown-length"),
-        messages: [
-          { role: "user", content },
-          { role: "assistant", content: "{" }
-        ],
+        messages: [{ role: "user", content }],
       }),
     });
 
@@ -370,28 +367,27 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    // We prefilled the assistant turn with "{" so prepend it back
-    const rawText = "{" + (data.content?.map(b => b.text || "").join("") || "");
+    const rawText = data.content?.map(b => b.text || "").join("") || "";
 
-    // Step 1: strip any accidental markdown fences
+    // Strip markdown fences
     let clean = rawText
       .replace(/```json\s*/gi, "")
       .replace(/```\s*/g, "")
       .trim();
 
-    // Step 2: remove control characters that break JSON.parse
+    // Remove bad control characters
     clean = clean.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ");
 
-    // Step 3: find outermost JSON object
+    // Find outermost JSON object
     const start = clean.indexOf("{");
     const end = clean.lastIndexOf("}");
     if (start === -1 || end === -1 || end <= start) {
-      console.error("No JSON object found. Raw:", clean.slice(0, 400));
+      console.error("No JSON found. Raw:", clean.slice(0, 400));
       return res.status(500).json({ error: "Could not read AI response. Please try again." });
     }
     let jsonStr = clean.slice(start, end + 1);
 
-    // Step 4: fix unescaped newlines inside string values
+    // Fix unescaped newlines inside string values
     jsonStr = jsonStr
       .replace(/\r\n/g, "\\n")
       .replace(/\r/g, "\\n")
