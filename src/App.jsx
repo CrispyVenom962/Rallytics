@@ -185,19 +185,28 @@ export default function Rallytics() {
     setStage("working"); setPct(0); setError(null);
     try {
       setStatusMsg("Extracting frames from your video…");
-      const frames = await extractFrames(videoFile, p => setPct(p));
+      const frames = await extractFrames(videoFile, p => setPct(Math.round(p * 0.6)));
       setFrameCount(frames.length);
       setStatusMsg(`Sending ${frames.length} frames to your AI coach…`);
-      setPct(100);
+      setPct(65);
+
+      // Slowly animate progress while AI thinks (never reaches 100 until done)
+      const aiTimer = setInterval(() => {
+        setPct(prev => prev < 88 ? prev + 1 : prev);
+      }, 800);
       const dLabel = duration > 60 ? `${Math.round(duration / 60)}-minute` : `${Math.round(duration)}-second`;
       const res = await fetch(API_URL, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ frames: frames.map(f => f.base64), context: context.trim(), playerId: playerId.trim(), frameCount: frames.length, durationLabel: dLabel, firstName: firstName.trim(), email: email.trim(), level }),
       });
+      clearInterval(aiTimer);
+      setPct(100);
+      setStatusMsg("Building your report…");
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `Error ${res.status}`); }
       setResult(await res.json());
       setStage("result");
     } catch (e) {
+      clearInterval(aiTimer);
       setError(e.message || "Analysis failed. Try again."); setStage("context");
     }
   };
