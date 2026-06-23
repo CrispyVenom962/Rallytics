@@ -942,33 +942,31 @@ export default function Rallytics() {
                 </div>
               )}
 
-            </div>
-
-            {/* ── Beta banner + waitlist ── */}
-            <div style={{ marginTop: "32px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "24px 20px", textAlign: "center" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#e8ff3a18", border: "1px solid #e8ff3a30", borderRadius: "20px", padding: "4px 14px", marginBottom: "12px" }}>
-                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#e8ff3a", animation: "pulse 1.5s infinite" }}/>
-                <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.15em" }}>Free Beta</span>
+              {/* ── Beta banner + waitlist ── */}
+              <div style={{ marginTop: "32px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "24px 20px", textAlign: "center" }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#e8ff3a18", border: "1px solid #e8ff3a30", borderRadius: "20px", padding: "4px 14px", marginBottom: "12px" }}>
+                  <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#e8ff3a", animation: "pulse 1.5s infinite" }}/>
+                  <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.15em" }}>Free Beta</span>
+                </div>
+                <p style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: "800", color: "#e0e0e0", letterSpacing: "-0.01em" }}>
+                  Rallytics is free during beta.
+                </p>
+                <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#3a3a3a", lineHeight: "1.6" }}>
+                  Want Pro features — session history, progress tracking, and coach sharing? Join the waitlist for early access.
+                </p>
+                <a
+                  href="mailto:rallyticshq@gmail.com?subject=Rallytics Pro Waitlist&body=I want early access to Rallytics Pro."
+                  style={{ display: "inline-block", background: "#e8ff3a", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}
+                >
+                  Join the Pro waitlist →
+                </a>
+                <p style={{ margin: "12px 0 0", fontSize: "11px", color: "#222" }}>
+                  No spam. Just one email when Pro launches.
+                </p>
               </div>
-              <p style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: "800", color: "#e0e0e0", letterSpacing: "-0.01em" }}>
-                Rallytics is free during beta.
-              </p>
-              <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#3a3a3a", lineHeight: "1.6" }}>
-                Want Pro features — session history, progress tracking, and coach sharing? Join the waitlist for early access.
-              </p>
-              <a
-                href="mailto:rallyticshq@gmail.com?subject=Rallytics Pro Waitlist&body=I want early access to Rallytics Pro."
-                style={{ display: "inline-block", background: "#e8ff3a", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}
-              >
-                Join the Pro waitlist →
-              </a>
-              <p style={{ margin: "12px 0 0", fontSize: "11px", color: "#222" }}>
-                No spam. Just one email when Pro launches.
-              </p>
-            </div>
 
-          </div>
-        );
+            </div>
+          );
         })()}
       </main>
     </div>
