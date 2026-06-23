@@ -336,7 +336,7 @@ export default async function handler(req, res) {
   const content = [
     {
       type: "text",
-      text: `${playerFocus}\n\n${context ? `Additional context from the player: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames sampled every ~30 seconds across a ${durationLabel} match.\n\nIMPORTANT: Your response must be a single valid JSON object and nothing else. Do not write any text before or after the JSON. Do not use markdown code blocks. Do not write "Here is" or any introduction. Start your response with { and end with }. The JSON must be parseable by JSON.parse() with no modifications.`,
+      text: `${playerFocus}\n\n${context ? `Additional context from the player: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames sampled every ~30 seconds across a ${durationLabel} match.\n\nCRITICAL JSON RULES:\n1. Your entire response must be one valid JSON object only\n2. Do not write any text before or after the JSON\n3. Do not use markdown code blocks\n4. Never use apostrophes in string values - write "do not" not "don't", "player is" not "player's"\n5. Never use unescaped double quotes inside string values\n6. Keep all string values on a single line with no line breaks inside them\n7. Start your response with { and end with }`,
     },
     ...frames.map(base64 => ({
       type: "image",
@@ -375,9 +375,6 @@ export default async function handler(req, res) {
       .replace(/```\s*/g, "")
       .trim();
 
-    // Remove bad control characters
-    clean = clean.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ");
-
     // Find outermost JSON object
     const start = clean.indexOf("{");
     const end = clean.lastIndexOf("}");
@@ -387,23 +384,32 @@ export default async function handler(req, res) {
     }
     let jsonStr = clean.slice(start, end + 1);
 
-    // Fix unescaped newlines inside string values
-    jsonStr = jsonStr
-      .replace(/\r\n/g, "\\n")
-      .replace(/\r/g, "\\n")
-      .replace(/\n/g, "\\n")
-      .replace(/\t/g, "\\t");
-
+    // Fix the JSON string by parsing it character by character
+    // Replace unescaped control characters inside string values
     let parsed;
     try {
       parsed = JSON.parse(jsonStr);
     } catch (e1) {
+      // Try aggressive sanitization
       try {
-        const reFixed = jsonStr.replace(/\\\\n/g, " ").replace(/\\n/g, " ");
-        parsed = JSON.parse(reFixed);
+        // Replace literal newlines/tabs inside the JSON
+        let fixed = jsonStr
+          .replace(/\r\n/g, " ")
+          .replace(/\r/g, " ")
+          .replace(/\n/g, " ")
+          .replace(/\t/g, " ");
+        parsed = JSON.parse(fixed);
       } catch (e2) {
-        console.error("JSON parse failed:", e2.message, "\nRaw (first 500):", jsonStr.slice(0, 500));
-        return res.status(500).json({ error: "Analysis returned an unexpected format. Please try again." });
+        // Last resort: use a regex to fix unescaped quotes inside string values
+        try {
+          // Remove all control chars
+          let aggressive = jsonStr.replace(/[\x00-\x1F\x7F]/g, " ");
+          parsed = JSON.parse(aggressive);
+        } catch (e3) {
+          console.error("All JSON parse attempts failed:", e3.message);
+          console.error("Raw (first 500):", jsonStr.slice(0, 500));
+          return res.status(500).json({ error: "Analysis returned an unexpected format. Please try again." });
+        }
       }
     }
 
