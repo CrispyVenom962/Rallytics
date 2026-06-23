@@ -356,7 +356,10 @@ export default async function handler(req, res) {
         model: "claude-sonnet-4-6",
         max_tokens: 4000,
         system: SYSTEM_PROMPT(frames.length, durationLabel || "unknown-length"),
-        messages: [{ role: "user", content }],
+        messages: [
+          { role: "user", content },
+          { role: "assistant", content: "{" }
+        ],
       }),
     });
 
@@ -367,9 +370,10 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    const rawText = data.content?.map(b => b.text || "").join("") || "";
+    // We prefilled the assistant turn with "{" so prepend it back
+    const rawText = "{" + (data.content?.map(b => b.text || "").join("") || "");
 
-    // Step 1: strip markdown fences
+    // Step 1: strip any accidental markdown fences
     let clean = rawText
       .replace(/```json\s*/gi, "")
       .replace(/```\s*/g, "")
@@ -378,36 +382,31 @@ export default async function handler(req, res) {
     // Step 2: remove control characters that break JSON.parse
     clean = clean.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ");
 
-    // Step 3: find the outermost JSON object — greedily match from first { to last }
+    // Step 3: find outermost JSON object
     const start = clean.indexOf("{");
     const end = clean.lastIndexOf("}");
     if (start === -1 || end === -1 || end <= start) {
-      console.error("No JSON object found. Raw response:", clean.slice(0, 400));
+      console.error("No JSON object found. Raw:", clean.slice(0, 400));
       return res.status(500).json({ error: "Could not read AI response. Please try again." });
     }
     let jsonStr = clean.slice(start, end + 1);
 
-    // Step 4: fix unescaped newlines and tabs inside JSON string values
+    // Step 4: fix unescaped newlines inside string values
     jsonStr = jsonStr
       .replace(/\r\n/g, "\\n")
       .replace(/\r/g, "\\n")
       .replace(/\n/g, "\\n")
       .replace(/\t/g, "\\t");
 
-    // Step 5: fix unescaped quotes inside string values (common Claude issue)
-    // Replace any " that is not preceded by \ and not a structural quote
-    // We do a simple parse attempt first, then fallback
     let parsed;
     try {
       parsed = JSON.parse(jsonStr);
     } catch (e1) {
-      // Fallback: try replacing literal \n that got double-escaped
       try {
         const reFixed = jsonStr.replace(/\\\\n/g, " ").replace(/\\n/g, " ");
         parsed = JSON.parse(reFixed);
       } catch (e2) {
-        console.error("JSON parse failed after all attempts:", e2.message);
-        console.error("Raw JSON string (first 500):", jsonStr.slice(0, 500));
+        console.error("JSON parse failed:", e2.message, "\nRaw (first 500):", jsonStr.slice(0, 500));
         return res.status(500).json({ error: "Analysis returned an unexpected format. Please try again." });
       }
     }
