@@ -323,18 +323,20 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { frames, context, frameCount, durationLabel } = req.body;
+  const { frames, context, playerId, frameCount, durationLabel, firstName, email, level } = req.body;
 
   if (!frames || !Array.isArray(frames) || frames.length === 0) {
     return res.status(400).json({ error: "No frames provided" });
   }
 
+  const playerFocus = playerId
+    ? `IMPORTANT: There are multiple players in this video. Focus your entire analysis ONLY on the player matching this description: "${playerId}". Ignore all other players completely.`
+    : "This video contains only one player — analyze that player.";
+
   const content = [
     {
       type: "text",
-      text: context
-        ? `Player note: "${context}"\n\nYou are reviewing ${frames.length} frames sampled every ~30 seconds across a ${durationLabel} match. Identify the recurring technical and tactical patterns. Be specific — name exact body positions, contact points, and moments. Do not give generic advice. Give the kind of precise feedback a top academy coach gives after watching film.`
-        : `You are reviewing ${frames.length} frames sampled every ~30 seconds across a ${durationLabel} match. Identify the recurring technical and tactical patterns. Be specific — name exact body positions, contact points, and moments. Do not give generic advice. Give the kind of precise feedback a top academy coach gives after watching film.`,
+      text: `${playerFocus}\n\n${context ? `Additional context from the player: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames sampled every ~30 seconds across a ${durationLabel} match. Identify the recurring technical and tactical patterns for the specified player only. Be specific — name exact body positions, contact points, and moments.`,
     },
     ...frames.map(base64 => ({
       type: "image",
@@ -366,24 +368,189 @@ export default async function handler(req, res) {
 
     const data = await response.json();
     const rawText = data.content?.map(b => b.text || "").join("") || "";
-    const clean = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+
+    // Strip markdown fences, then sanitize control characters that break JSON.parse
+    const stripped = rawText
+      .replace(/```json\s*/g, "")
+      .replace(/```\s*/g, "")
+      .trim();
+
+    // Remove bad control characters (0x00–0x1F except tab, newline, carriage return)
+    const sanitized = stripped.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ");
+
+    // Extract the JSON object
+    const match = sanitized.match(/\{[\s\S]*\}/);
+    if (!match) {
+      console.error("No JSON object found in response:", sanitized.slice(0, 300));
+      return res.status(500).json({ error: "Could not read AI response. Try again with a longer video clip." });
+    }
 
     let parsed;
     try {
-      parsed = JSON.parse(clean);
-    } catch {
-      const match = clean.match(/\{[\s\S]*\}/);
-      if (!match) {
-        console.error("Could not parse AI response:", clean.slice(0, 300));
-        return res.status(500).json({ error: "Could not parse AI response. Try again." });
-      }
       parsed = JSON.parse(match[0]);
+    } catch (parseErr) {
+      // Last resort: try to fix unescaped newlines inside string values
+      const fixed = match[0].replace(/(?<=:\s*"[^"]*)\n(?=[^"]*")/g, " ");
+      try {
+        parsed = JSON.parse(fixed);
+      } catch {
+        console.error("JSON parse failed:", parseErr.message, "\nRaw:", match[0].slice(0, 300));
+        return res.status(500).json({ error: "Analysis returned an unexpected format. Try again." });
+      }
     }
+
+    // Send results email via Kit (non-blocking)
+    sendResultsEmail({ firstName, email, level, result: parsed });
 
     return res.status(200).json(parsed);
 
   } catch (err) {
     console.error("Handler error:", err);
     return res.status(500).json({ error: err.message || "Unexpected server error" });
+  }
+}
+
+// ─── Kit Integration ──────────────────────────────────────────────────────────
+async function sendResultsEmail({ firstName, email, level, result }) {
+  const KIT_API_KEY = process.env.KIT_API_KEY;
+  if (!KIT_API_KEY || !email) return;
+
+  try {
+    // 1. Add subscriber to Kit
+    await fetch("https://api.convertkit.com/v3/subscribers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: KIT_API_KEY,
+        first_name: firstName,
+        email,
+        fields: { level: level || "unknown" },
+      }),
+    });
+
+    // 2. Build email HTML
+    const tech = result.technique || {};
+    const strat = result.strategy || {};
+    const fixes = result.priority_fixes || [];
+    const drill = result.training_plan?.drill_1;
+
+    const fixesHtml = fixes.map(p => `
+      <tr>
+        <td style="padding:10px 0;border-bottom:1px solid #1e1e1e;">
+          <span style="display:inline-block;width:24px;height:24px;background:${p.rank===1?"#e8ff3a":"#1a1a1a"};color:${p.rank===1?"#060606":"#666"};border-radius:50%;text-align:center;line-height:24px;font-weight:900;font-size:12px;margin-right:12px;">${p.rank}</span>
+          <strong style="color:#e8e8e8;font-size:14px;">${p.fix}</strong>
+          ${p.on_court_cue ? `<br><span style="color:#e8ff3a;font-style:italic;font-size:12px;margin-left:36px;">"${p.on_court_cue}"</span>` : ""}
+        </td>
+      </tr>`).join("");
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#060606;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#060606;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+        <!-- Header -->
+        <tr><td style="padding-bottom:32px;">
+          <span style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.02em;">Rally<span style="color:#e8ff3a;">tics</span></span>
+        </td></tr>
+
+        <!-- Greeting -->
+        <tr><td style="padding-bottom:24px;">
+          <h1 style="color:#fff;font-size:28px;font-weight:900;margin:0 0 8px;letter-spacing:-0.02em;">Your coaching report is ready, ${firstName}.</h1>
+          <p style="color:#555;font-size:14px;margin:0;line-height:1.6;">Here's what your match video revealed. Take this to your next practice session.</p>
+        </td></tr>
+
+        <!-- Scores -->
+        <tr><td style="padding-bottom:24px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td width="50%" style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:20px;text-align:center;">
+                <div style="font-size:42px;font-weight:900;color:#60a5fa;line-height:1;">${tech.score || "–"}</div>
+                <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:0.15em;margin-top:4px;">Technique</div>
+                ${tech.headline ? `<div style="font-size:12px;color:#666;margin-top:6px;">${tech.headline}</div>` : ""}
+              </td>
+              <td width="4%"></td>
+              <td width="50%" style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:20px;text-align:center;">
+                <div style="font-size:42px;font-weight:900;color:#f59e0b;line-height:1;">${strat.score || "–"}</div>
+                <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:0.15em;margin-top:4px;">Strategy</div>
+                ${strat.headline ? `<div style="font-size:12px;color:#666;margin-top:6px;">${strat.headline}</div>` : ""}
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- Coach verdict -->
+        ${result.coach_verdict ? `
+        <tr><td style="padding-bottom:24px;">
+          <div style="background:#0a0a0a;border-left:3px solid #e8ff3a;padding:16px 20px;border-radius:0 10px 10px 0;">
+            <div style="font-size:9px;color:#e8ff3a;text-transform:uppercase;letter-spacing:0.2em;margin-bottom:6px;">Coach verdict</div>
+            <p style="color:#777;font-style:italic;font-size:14px;margin:0;line-height:1.65;">"${result.coach_verdict}"</p>
+          </div>
+        </td></tr>` : ""}
+
+        <!-- Top 3 fixes -->
+        <tr><td style="padding-bottom:24px;">
+          <div style="font-size:10px;color:#e8ff3a;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:12px;">⚡ Your top 3 fixes</div>
+          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #1a1a1a;border-radius:10px;overflow:hidden;">
+            ${fixesHtml}
+          </table>
+        </td></tr>
+
+        <!-- Drill -->
+        ${drill ? `
+        <tr><td style="padding-bottom:24px;">
+          <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:20px;">
+            <div style="font-size:9px;color:#a78bfa;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:8px;">🏋️ This week's drill</div>
+            <div style="font-size:16px;font-weight:800;color:#e0e0e0;margin-bottom:6px;">${drill.name}</div>
+            <p style="color:#555;font-size:13px;margin:0 0 10px;line-height:1.6;">${drill.targets}</p>
+            <p style="color:#888;font-size:13px;margin:0;line-height:1.6;">${drill.execution}</p>
+          </div>
+        </td></tr>` : ""}
+
+        <!-- Match rule -->
+        ${result.training_plan?.match_focus ? `
+        <tr><td style="padding-bottom:32px;">
+          <div style="background:#0b1300;border:1px solid #1a2500;border-radius:10px;padding:16px 20px;">
+            <div style="font-size:9px;color:#e8ff3a;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:6px;">Match rule this week</div>
+            <p style="color:#bbb;font-size:14px;margin:0;line-height:1.65;">${result.training_plan.match_focus}</p>
+          </div>
+        </td></tr>` : ""}
+
+        <!-- Footer -->
+        <tr><td style="border-top:1px solid #1a1a1a;padding-top:24px;">
+          <p style="color:#2a2a2a;font-size:11px;margin:0 0 6px;line-height:1.6;">
+            You're receiving this because you uploaded a match to Rallytics. We will never send unsolicited emails.
+          </p>
+          <p style="color:#2a2a2a;font-size:11px;margin:0;">
+            <a href="{{unsubscribe_url}}" style="color:#3a3a3a;">Unsubscribe</a> · rallytics-seven.vercel.app
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+    // 3. Send email via Kit broadcast
+    await fetch("https://api.convertkit.com/v3/broadcasts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: KIT_API_KEY,
+        subject: `Your Rallytics coaching report is ready, ${firstName} 🎾`,
+        content: emailHtml,
+        description: `Rallytics report for ${email}`,
+        email_address: email,
+        public: false,
+      }),
+    });
+
+  } catch (err) {
+    // Email failure should not break the main analysis response
+    console.error("Kit email error:", err.message);
   }
 }
