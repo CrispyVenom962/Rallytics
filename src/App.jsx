@@ -183,6 +183,7 @@ export default function Rallytics() {
 
   const analyze = async () => {
     setStage("working"); setPct(0); setError(null);
+    let aiTimer = null;
     try {
       setStatusMsg("Extracting frames from your video…");
       const frames = await extractFrames(videoFile, p => setPct(Math.round(p * 0.6)));
@@ -190,8 +191,7 @@ export default function Rallytics() {
       setStatusMsg(`Sending ${frames.length} frames to your AI coach…`);
       setPct(65);
 
-      // Slowly animate progress while AI thinks (never reaches 100 until done)
-      const aiTimer = setInterval(() => {
+      aiTimer = setInterval(() => {
         setPct(prev => prev < 88 ? prev + 1 : prev);
       }, 800);
       const dLabel = duration > 60 ? `${Math.round(duration / 60)}-minute` : `${Math.round(duration)}-second`;
@@ -206,7 +206,7 @@ export default function Rallytics() {
       setResult(await res.json());
       setStage("result");
     } catch (e) {
-      clearInterval(aiTimer);
+      if (aiTimer) clearInterval(aiTimer);
       setError(e.message || "Analysis failed. Try again."); setStage("context");
     }
   };
