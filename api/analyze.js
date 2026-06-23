@@ -354,7 +354,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 2500,
+        max_tokens: 4000,
         system: SYSTEM_PROMPT(frames.length, durationLabel || "unknown-length"),
         messages: [{ role: "user", content }],
       }),
@@ -369,33 +369,46 @@ export default async function handler(req, res) {
     const data = await response.json();
     const rawText = data.content?.map(b => b.text || "").join("") || "";
 
-    // Strip markdown fences, then sanitize control characters that break JSON.parse
-    const stripped = rawText
-      .replace(/```json\s*/g, "")
+    // Step 1: strip markdown fences
+    let clean = rawText
+      .replace(/```json\s*/gi, "")
       .replace(/```\s*/g, "")
       .trim();
 
-    // Remove bad control characters (0x00–0x1F except tab, newline, carriage return)
-    const sanitized = stripped.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ");
+    // Step 2: remove control characters that break JSON.parse
+    clean = clean.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ");
 
-    // Extract the JSON object
-    const match = sanitized.match(/\{[\s\S]*\}/);
-    if (!match) {
-      console.error("No JSON object found in response:", sanitized.slice(0, 300));
-      return res.status(500).json({ error: "Could not read AI response. Try again with a longer video clip." });
+    // Step 3: find the outermost JSON object — greedily match from first { to last }
+    const start = clean.indexOf("{");
+    const end = clean.lastIndexOf("}");
+    if (start === -1 || end === -1 || end <= start) {
+      console.error("No JSON object found. Raw response:", clean.slice(0, 400));
+      return res.status(500).json({ error: "Could not read AI response. Please try again." });
     }
+    let jsonStr = clean.slice(start, end + 1);
 
+    // Step 4: fix unescaped newlines and tabs inside JSON string values
+    jsonStr = jsonStr
+      .replace(/\r\n/g, "\\n")
+      .replace(/\r/g, "\\n")
+      .replace(/\n/g, "\\n")
+      .replace(/\t/g, "\\t");
+
+    // Step 5: fix unescaped quotes inside string values (common Claude issue)
+    // Replace any " that is not preceded by \ and not a structural quote
+    // We do a simple parse attempt first, then fallback
     let parsed;
     try {
-      parsed = JSON.parse(match[0]);
-    } catch (parseErr) {
-      // Last resort: try to fix unescaped newlines inside string values
-      const fixed = match[0].replace(/(?<=:\s*"[^"]*)\n(?=[^"]*")/g, " ");
+      parsed = JSON.parse(jsonStr);
+    } catch (e1) {
+      // Fallback: try replacing literal \n that got double-escaped
       try {
-        parsed = JSON.parse(fixed);
-      } catch {
-        console.error("JSON parse failed:", parseErr.message, "\nRaw:", match[0].slice(0, 300));
-        return res.status(500).json({ error: "Analysis returned an unexpected format. Try again." });
+        const reFixed = jsonStr.replace(/\\\\n/g, " ").replace(/\\n/g, " ");
+        parsed = JSON.parse(reFixed);
+      } catch (e2) {
+        console.error("JSON parse failed after all attempts:", e2.message);
+        console.error("Raw JSON string (first 500):", jsonStr.slice(0, 500));
+        return res.status(500).json({ error: "Analysis returned an unexpected format. Please try again." });
       }
     }
 
