@@ -1,6 +1,9 @@
 // api/analyze.js — Rallytics Elite Coaching Engine v2
 // Vercel serverless function — API key stays server-side, never exposed to client
 
+// Tell Vercel this function needs up to 120 seconds (requires Fluid Compute enabled)
+export const maxDuration = 120;
+
 const SYSTEM_PROMPT = (frameCount, durationLabel) => `
 You are a world-class tennis coach and biomechanics specialist. Your background includes coaching at ATP Challenger level, working with national academies, and 20+ years of high-performance player development. You have studied under the Bollettieri, Sanchez-Casal, and Spanish red clay academy methodologies. You understand stroke production at a biomechanical level, not just a visual one.
 
