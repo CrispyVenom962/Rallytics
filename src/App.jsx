@@ -140,6 +140,7 @@ export default function Rallytics() {
   const [videoFile, setVideoFile] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
   const [context, setContext] = useState("");
+  const [playerId, setPlayerId] = useState("");
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [dragging, setDragging] = useState(false);
@@ -148,6 +149,11 @@ export default function Rallytics() {
   const [frameCount, setFrameCount] = useState(0);
   const [duration, setDuration] = useState(0);
   const [statusMsg, setStatusMsg] = useState("");
+  // Email gate
+  const [firstName, setFirstName] = useState("");
+  const [email, setEmail] = useState("");
+  const [level, setLevel] = useState("");
+  const [gateError, setGateError] = useState("");
   const fileRef = useRef();
 
   const fmt = s => `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
@@ -160,6 +166,21 @@ export default function Rallytics() {
 
   const onDrop = useCallback(e => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); }, []);
 
+  // After context screen — show email gate before analysis
+  const proceedToGate = () => {
+    setGateError("");
+    setStage("gate");
+  };
+
+  // Validate gate then start analysis
+  const proceedToAnalysis = () => {
+    if (!firstName.trim()) { setGateError("Please enter your first name."); return; }
+    if (!email.trim() || !email.includes("@")) { setGateError("Please enter a valid email address."); return; }
+    if (!level) { setGateError("Please select your playing level."); return; }
+    setGateError("");
+    analyze();
+  };
+
   const analyze = async () => {
     setStage("working"); setPct(0); setError(null);
     try {
@@ -171,7 +192,7 @@ export default function Rallytics() {
       const dLabel = duration > 60 ? `${Math.round(duration / 60)}-minute` : `${Math.round(duration)}-second`;
       const res = await fetch(API_URL, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frames: frames.map(f => f.base64), context: context.trim(), frameCount: frames.length, durationLabel: dLabel }),
+        body: JSON.stringify({ frames: frames.map(f => f.base64), context: context.trim(), playerId: playerId.trim(), frameCount: frames.length, durationLabel: dLabel, firstName: firstName.trim(), email: email.trim(), level }),
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `Error ${res.status}`); }
       setResult(await res.json());
@@ -182,8 +203,9 @@ export default function Rallytics() {
   };
 
   const reset = () => {
-    setStage("upload"); setVideoFile(null); setVideoUrl(null); setContext(""); setResult(null);
+    setStage("upload"); setVideoFile(null); setVideoUrl(null); setContext(""); setPlayerId(""); setResult(null);
     setError(null); setPct(0); setFrameCount(0); setDuration(0); setTab("technique");
+    setFirstName(""); setEmail(""); setLevel(""); setGateError("");
   };
 
   const lc = l => !l ? "#888" : l.includes("Beginner") ? "#5bc85b" : l.includes("Developing") ? "#a3e635" : l.includes("Intermediate") ? "#f5c842" : "#f97316";
@@ -252,10 +274,10 @@ export default function Rallytics() {
                 <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.2em" }}>AI Match Analysis</span>
               </div>
               <h1 style={{ fontSize: "clamp(36px,8vw,64px)", fontWeight: "900", letterSpacing: "-0.035em", lineHeight: 0.95, margin: "0 0 20px" }}>
-                Your match.<br />Every pattern.<br /><span style={{ color: "#e8ff3a", WebkitTextStroke: "0px" }}>Coached.</span>
+                Your game<br />is leaking points.<br /><span style={{ color: "#e8ff3a" }}>Find out where.</span>
               </h1>
-              <p style={{ color: "#3a3a3a", fontSize: "15px", lineHeight: "1.7", maxWidth: "380px", margin: 0 }}>
-                Upload 10–20 minutes of play. Rallytics samples a frame every 30 seconds and gives you the kind of feedback you'd get from a top academy coach watching film.
+              <p style={{ color: "#3a3a3a", fontSize: "15px", lineHeight: "1.7", maxWidth: "340px", margin: 0 }}>
+                Upload your match. Get your technique and tactics broken down by AI — shot by shot, pattern by pattern.
               </p>
             </div>
 
@@ -282,9 +304,12 @@ export default function Rallytics() {
 
               <div style={{ fontSize: "56px", marginBottom: "16px", lineHeight: 1 }}>🎾</div>
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "8px", letterSpacing: "-0.02em" }}>
-                Drop your match video here
+                Film don't lie. Neither does your technique.
               </div>
-              <div style={{ color: "#2e2e2e", fontSize: "13px", marginBottom: "28px" }}>
+              <div style={{ color: "#2e2e2e", fontSize: "13px", marginBottom: "6px" }}>
+                Technique. Tactics. Patterns. All in one report.
+              </div>
+              <div style={{ color: "#1e1e1e", fontSize: "11px", marginBottom: "28px" }}>
                 MP4 or MOV · any file size · no account needed
               </div>
               <div style={{
@@ -326,7 +351,7 @@ export default function Rallytics() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px" }}>
               {[
                 { n: "01", h: "Frame sampling", b: "1 frame every 30 seconds. Finds habits across your full match, not just one shot." },
-                { n: "02", h: "Technique skull", b: "Contact point, follow-through, unit turn, footwork — per shot type, with the chain reaction explained." },
+                { n: "02", h: "Technique breakdown", b: "Contact point, follow-through, unit turn, footwork — per shot type, with the chain reaction explained." },
                 { n: "03", h: "Tactical read", b: "Short ball response, net approach, rally patterns, positioning — the tactical habits costing you games." },
               ].map(c => (
                 <div key={c.n} style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "20px 16px" }}>
@@ -370,6 +395,29 @@ export default function Rallytics() {
               </div>
             )}
 
+            {/* Player ID field */}
+            <div style={{ marginBottom: "10px" }}>
+              <div style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>
+                Which player should I analyze?
+              </div>
+              <input
+                value={playerId} onChange={e => setPlayerId(e.target.value)}
+                placeholder="e.g. Red shirt, black shorts, far side of the court — leave blank if it's only you in the video"
+                style={{
+                  width: "100%", background: "#080808",
+                  border: "1px solid #1a1a1a", borderRadius: "12px",
+                  padding: "13px 16px", color: "#f0f0f0", fontSize: "14px",
+                  lineHeight: "1.5", outline: "none", transition: "border-color 0.2s",
+                }}
+                onFocus={e => e.target.style.borderColor = "#e8ff3a"}
+                onBlur={e => e.target.style.borderColor = "#1a1a1a"}
+              />
+            </div>
+
+            {/* Context field */}
+            <div style={{ fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>
+              Anything else I should know? <span style={{ color: "#2a2a2a" }}>(optional)</span>
+            </div>
             <textarea value={context} onChange={e => setContext(e.target.value)}
               placeholder="e.g. My backhand keeps going wide under pressure. Playing against a big server. Focus on my serve and net approach."
               style={{
@@ -395,7 +443,7 @@ export default function Rallytics() {
                 onMouseEnter={e => e.target.style.borderColor = "#333"}
                 onMouseLeave={e => e.target.style.borderColor = "#1a1a1a"}
               >← Change video</button>
-              <button onClick={analyze} style={{
+              <button onClick={proceedToGate} style={{
                 flex: 3, background: "#e8ff3a", border: "none", borderRadius: "10px",
                 color: "#060606", fontSize: "15px", fontWeight: "900", padding: "14px",
                 cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.2s",
@@ -403,7 +451,110 @@ export default function Rallytics() {
                 onMouseEnter={e => e.target.style.opacity = "0.88"}
                 onMouseLeave={e => e.target.style.opacity = "1"}
               >
-                Analyze full match →
+                Get my coaching report →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════ EMAIL GATE ══════════════════ */}
+        {stage === "gate" && (
+          <div style={{ animation: "fadeUp 0.3s ease" }}>
+            <div style={{ marginBottom: "28px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#e8ff3a", boxShadow: "0 0 10px #e8ff3a" }}/>
+                <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.2em" }}>Almost there</span>
+              </div>
+              <h2 style={{ fontSize: "32px", fontWeight: "900", letterSpacing: "-0.025em", margin: "0 0 8px" }}>
+                Where should we send your report?
+              </h2>
+              <p style={{ color: "#3a3a3a", fontSize: "13px", margin: 0, lineHeight: "1.6" }}>
+                Your full coaching report will be emailed to you instantly so you can reference it on court. We respect your inbox — no spam, ever. Unsubscribe anytime with one click.
+              </p>
+            </div>
+
+            {/* Fields */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+
+              {/* First name */}
+              <div>
+                <div style={{ fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>First name</div>
+                <input value={firstName} onChange={e => setFirstName(e.target.value)}
+                  placeholder="e.g. William"
+                  style={{
+                    width: "100%", background: "#080808", border: "1px solid #1a1a1a",
+                    borderRadius: "12px", padding: "14px 16px", color: "#f0f0f0",
+                    fontSize: "15px", outline: "none", transition: "border-color 0.2s",
+                  }}
+                  onFocus={e => e.target.style.borderColor = "#e8ff3a"}
+                  onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
+              </div>
+
+              {/* Email */}
+              <div>
+                <div style={{ fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>Email address</div>
+                <input value={email} onChange={e => setEmail(e.target.value)}
+                  type="email" placeholder="e.g. you@gmail.com"
+                  style={{
+                    width: "100%", background: "#080808", border: "1px solid #1a1a1a",
+                    borderRadius: "12px", padding: "14px 16px", color: "#f0f0f0",
+                    fontSize: "15px", outline: "none", transition: "border-color 0.2s",
+                  }}
+                  onFocus={e => e.target.style.borderColor = "#e8ff3a"}
+                  onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
+              </div>
+
+              {/* Playing level */}
+              <div>
+                <div style={{ fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Your playing level</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px" }}>
+                  {[
+                    { id: "beginner", label: "Beginner", sub: "Just starting out" },
+                    { id: "intermediate", label: "Intermediate", sub: "Club / league player" },
+                    { id: "advanced", label: "Advanced", sub: "Competitive / tournament" },
+                  ].map(l => (
+                    <button key={l.id} onClick={() => setLevel(l.id)} style={{
+                      background: level === l.id ? "#e8ff3a" : "#080808",
+                      border: `1px solid ${level === l.id ? "#e8ff3a" : "#1a1a1a"}`,
+                      borderRadius: "10px", padding: "14px 10px", cursor: "pointer",
+                      textAlign: "center", transition: "all 0.18s",
+                    }}>
+                      <div style={{ fontSize: "13px", fontWeight: "800", color: level === l.id ? "#060606" : "#888", marginBottom: "3px" }}>{l.label}</div>
+                      <div style={{ fontSize: "10px", color: level === l.id ? "#333" : "#2a2a2a" }}>{l.sub}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {gateError && (
+              <div style={{ marginTop: "14px", background: "#120808", border: "1px solid #2e1010", borderRadius: "10px", padding: "14px 18px", color: "#e05555", fontSize: "13px" }}>
+                ⚠ {gateError}
+              </div>
+            )}
+
+            {/* Privacy note */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginTop: "16px", padding: "12px 14px", background: "#080808", border: "1px solid #111", borderRadius: "10px" }}>
+              <span style={{ fontSize: "16px", flexShrink: 0 }}>🔒</span>
+              <p style={{ margin: 0, fontSize: "12px", color: "#2e2e2e", lineHeight: "1.6" }}>
+                Your email is used only to send your coaching report. We will never share your data or send unsolicited emails. Every email includes a one-click unsubscribe link.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", marginTop: "14px" }}>
+              <button onClick={() => setStage("context")} style={{
+                flex: 1, background: "none", border: "1px solid #1a1a1a", borderRadius: "10px",
+                color: "#3a3a3a", fontSize: "14px", padding: "14px", cursor: "pointer",
+              }}>← Back</button>
+              <button onClick={proceedToAnalysis} style={{
+                flex: 3, background: "#e8ff3a", border: "none", borderRadius: "10px",
+                color: "#060606", fontSize: "15px", fontWeight: "900", padding: "14px",
+                cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.2s",
+              }}
+                onMouseEnter={e => e.target.style.opacity = "0.88"}
+                onMouseLeave={e => e.target.style.opacity = "1"}
+              >
+                Analyze my match →
               </button>
             </div>
           </div>
@@ -572,7 +723,7 @@ export default function Rallytics() {
 
                   {tech.shot_breakdown && (
                     <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px" }}>
-                      <SectionLabel icon="🔬" color="#60a5fa">Shot-by-shot skull</SectionLabel>
+                      <SectionLabel icon="🔬" color="#60a5fa">Shot-by-shot breakdown</SectionLabel>
                       {Object.entries(tech.shot_breakdown).map(([k, v]) => (
                         <Block key={k} label={k.replace(/_/g, " ")} value={v} />
                       ))}
