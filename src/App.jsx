@@ -958,13 +958,7 @@ export default function Rallytics() {
               </p>
               <a
                 href="mailto:rallyticshq@gmail.com?subject=Rallytics Pro Waitlist&body=I want early access to Rallytics Pro."
-                style={{
-                  display: "inline-block",
-                  background: "#e8ff3a", color: "#060606",
-                  borderRadius: "10px", padding: "12px 28px",
-                  fontWeight: "900", fontSize: "14px",
-                  textDecoration: "none", letterSpacing: "0.01em",
-                }}
+                style={{ display: "inline-block", background: "#e8ff3a", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}
               >
                 Join the Pro waitlist →
               </a>
@@ -974,7 +968,7 @@ export default function Rallytics() {
             </div>
 
           </div>
-          );
+        );
         })()}
       </main>
     </div>
