@@ -303,11 +303,23 @@ export default function Rallytics() {
                 transition: "all 0.2s", position: "relative", overflow: "hidden",
               }}
             >
-              {/* Animated court line */}
+              {/* Animated scanning lines - flashes through entire box */}
+              <div style={{
+                position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%",
+                background: "linear-gradient(90deg, transparent, rgba(232,255,58,0.06), rgba(232,255,58,0.15), rgba(232,255,58,0.06), transparent)",
+                animation: "courtScan 2.5s linear infinite",
+                pointerEvents: "none",
+              }}/>
               <div style={{
                 position: "absolute", top: 0, left: 0, right: 0, height: "2px",
                 background: "linear-gradient(90deg, transparent, #e8ff3a, transparent)",
-                animation: dragging ? "none" : "courtScan 3s linear infinite",
+                animation: "courtScan 2.5s linear infinite",
+                opacity: 0.6,
+              }}/>
+              <div style={{
+                position: "absolute", bottom: 0, left: 0, right: 0, height: "1px",
+                background: "linear-gradient(90deg, transparent, #e8ff3a44, transparent)",
+                animation: "courtScan 2.5s linear infinite 1.25s",
                 opacity: 0.4,
               }}/>
 
@@ -341,16 +353,28 @@ export default function Rallytics() {
             <CourtLine />
 
             {/* How to film */}
-            <SectionLabel icon="📹" color="#e8ff3a">How to film yourself</SectionLabel>
+            <SectionLabel icon="🎥" color="#e8ff3a">How to film for best results</SectionLabel>
+
+            {/* Technique vs Tactical choice */}
+            <div style={{ background: "#080808", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "16px 18px", marginBottom: "12px" }}>
+              <div style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Choose your focus before filming</div>
+              <p style={{ margin: 0, fontSize: "13px", color: "#555", lineHeight: "1.7" }}>
+                One phone cannot perfectly capture everything at once. Decide what you want to improve — then film accordingly for the most accurate analysis.
+              </p>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
+              <FilmCard emoji="🎾" title="For technique analysis"
+                body="Film from the SIDE at mid-court, zoomed in to show waist-up. This gives the AI a clear view of your swing shape, contact point, hip rotation, and follow-through on every shot." />
+              <FilmCard emoji="📷" title="For tactical analysis"
+                body="Film from BEHIND the baseline, wide angle showing the full court. Best for reading court positioning, recovery habits, net approach patterns, and rally tendencies." />
+            </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "32px" }}>
-              <FilmCard emoji="📱" title="Camera position"
-                body="Back fence, 1–2 metres high, angled slightly down. Film from behind one baseline for the clearest view of stance, contact point, and court position." />
+              <FilmCard emoji="📐" title="Camera height & angle"
+                body="Place phone at 1–1.5 metres high. Use a tripod, lean against a fence post, or ask someone to hold it steady. Slight downward angle. Keep the phone still — shaky video reduces accuracy." />
               <FilmCard emoji="⏱️" title="Length & format"
-                body="10–20 minutes ideal. iPhone users: Settings → Camera → Formats → Most Compatible to record as MP4. Any file size works — no compression needed." />
-              <FilmCard emoji="🎾" title="What to record"
-                body="Full practice match or 15+ minutes of real rallying. Include points, not just warmup groundstrokes — strategy patterns need full points to read." />
-              <FilmCard emoji="☀️" title="Lighting"
-                body="Good daylight or bright indoor lights. Avoid backlit setups (sun behind the player). Standard video mode — not slow-mo, not portrait mode." />
+                body="10–20 minutes of real play. iPhone: Settings → Camera → Formats → Most Compatible (MP4). Android: standard video mode. No slow-mo, no portrait mode. Any file size works." />
             </div>
 
             <CourtLine />
@@ -370,6 +394,17 @@ export default function Rallytics() {
                 </div>
               ))}
             </div>
+
+            {/* Trust line */}
+            <div style={{ marginTop: "28px", textAlign: "center" }}>
+              <p style={{ margin: 0, fontSize: "12px", color: "#2a2a2a", lineHeight: "1.8" }}>
+                Made in Canada 🍁 by a Tennis Canada certified Club Pro
+              </p>
+              <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#1e1e1e", lineHeight: "1.6", fontStyle: "italic" }}>
+                who got tired of guessing what was wrong with his game.
+              </p>
+            </div>
+
           </div>
         )}
 
@@ -611,11 +646,11 @@ export default function Rallytics() {
             {/* Individual analysis bars */}
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>
               {[
-                { label: "Forehand mechanics", icon: "🎯", bar: Math.min(100, pct * 1.8), color: "#60a5fa", active: pct >= 10 },
-                { label: "Backhand mechanics", icon: "🎯", bar: Math.min(100, Math.max(0, (pct - 15) * 1.8)), color: "#60a5fa", active: pct >= 25 },
-                { label: "Serve & movement", icon: "⚡", bar: Math.min(100, Math.max(0, (pct - 30) * 1.8)), color: "#f59e0b", active: pct >= 40 },
-                { label: "Tactical patterns", icon: "🧠", bar: Math.min(100, Math.max(0, (pct - 50) * 2)), color: "#f59e0b", active: pct >= 55 },
-                { label: "Building your report", icon: "📋", bar: Math.min(100, Math.max(0, (pct - 75) * 4)), color: "#a78bfa", active: pct >= 80 },
+                { label: "Forehand mechanics", icon: "🎾", bar: Math.min(100, pct * 1.8), color: "#60a5fa", active: pct >= 10 },
+                { label: "Backhand mechanics", icon: "🎾", bar: Math.min(100, Math.max(0, (pct - 15) * 1.8)), color: "#60a5fa", active: pct >= 25 },
+                { label: "Serve & footwork", icon: "⚡", bar: Math.min(100, Math.max(0, (pct - 30) * 1.8)), color: "#f59e0b", active: pct >= 40 },
+                { label: "Tactical patterns", icon: "🔍", bar: Math.min(100, Math.max(0, (pct - 50) * 2)), color: "#f59e0b", active: pct >= 55 },
+                { label: "Building your report", icon: "✅", bar: Math.min(100, Math.max(0, (pct - 75) * 4)), color: "#a78bfa", active: pct >= 80 },
               ].map((item, i) => (
                 <div key={i} style={{ opacity: item.active ? 1 : 0.2, transition: "opacity 0.5s ease" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
@@ -782,7 +817,7 @@ export default function Rallytics() {
 
                   {tech.shot_breakdown && (
                     <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px" }}>
-                      <SectionLabel icon="🔬" color="#60a5fa">Shot-by-shot breakdown</SectionLabel>
+                      <SectionLabel icon="🎾" color="#60a5fa">Shot-by-shot breakdown</SectionLabel>
                       {Object.entries(tech.shot_breakdown).map(([k, v]) => (
                         <Block key={k} label={k.replace(/_/g, " ")} value={v} />
                       ))}
@@ -908,6 +943,37 @@ export default function Rallytics() {
               )}
 
             </div>
+
+            {/* ── Beta banner + waitlist ── */}
+            <div style={{ marginTop: "32px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "24px 20px", textAlign: "center" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#e8ff3a18", border: "1px solid #e8ff3a30", borderRadius: "20px", padding: "4px 14px", marginBottom: "12px" }}>
+                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#e8ff3a", animation: "pulse 1.5s infinite" }}/>
+                <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.15em" }}>Free Beta</span>
+              </div>
+              <p style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: "800", color: "#e0e0e0", letterSpacing: "-0.01em" }}>
+                Rallytics is free during beta.
+              </p>
+              <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#3a3a3a", lineHeight: "1.6" }}>
+                Want Pro features — session history, progress tracking, and coach sharing? Join the waitlist for early access.
+              </p>
+              <a
+                href="mailto:rallyticshq@gmail.com?subject=Rallytics Pro Waitlist&body=I want early access to Rallytics Pro."
+                style={{
+                  display: "inline-block",
+                  background: "#e8ff3a", color: "#060606",
+                  borderRadius: "10px", padding: "12px 28px",
+                  fontWeight: "900", fontSize: "14px",
+                  textDecoration: "none", letterSpacing: "0.01em",
+                }}
+              >
+                Join the Pro waitlist →
+              </a>
+              <p style={{ margin: "12px 0 0", fontSize: "11px", color: "#222" }}>
+                No spam. Just one email when Pro launches.
+              </p>
+            </div>
+
+          </div>
           );
         })()}
       </main>
