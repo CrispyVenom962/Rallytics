@@ -562,37 +562,87 @@ export default function Rallytics() {
 
         {/* ══════════════════ WORKING ══════════════════ */}
         {stage === "working" && (
-          <div style={{ animation: "fadeUp 0.3s ease", paddingTop: "20px" }}>
-            <div style={{ marginBottom: "36px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#e8ff3a", animation: "pulse 1.5s infinite" }}/>
-                <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.2em" }}>Processing</span>
+          <div style={{ animation: "fadeUp 0.3s ease", paddingTop: "10px" }}>
+            <style>{`
+              @keyframes barPulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+              @keyframes scanLine { 0%{transform:translateX(-100%)} 100%{transform:translateX(100vw)} }
+              @keyframes ballBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+            `}</style>
+
+            {/* Animated tennis ball */}
+            <div style={{ textAlign: "center", marginBottom: "28px" }}>
+              <div style={{ fontSize: "52px", display: "inline-block", animation: "ballBounce 1s ease-in-out infinite" }}>🎾</div>
+            </div>
+
+            {/* Status message */}
+            <div style={{ textAlign: "center", marginBottom: "32px" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#e8ff3a", animation: "pulse 1.2s infinite" }}/>
+                <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.2em" }}>Analyzing</span>
               </div>
-              <h2 style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "-0.025em", margin: "0 0 8px" }}>{statusMsg}</h2>
-              <p style={{ color: "#2e2e2e", fontSize: "13px", margin: 0 }}>20–40 seconds for a full match. Do not close this tab.</p>
+              <h2 style={{ fontSize: "24px", fontWeight: "900", letterSpacing: "-0.02em", margin: "0 0 6px" }}>{statusMsg}</h2>
+              <p style={{ color: "#2a2a2a", fontSize: "13px", margin: 0 }}>Do not close this tab — your report is being built</p>
             </div>
 
-            {/* Progress bar */}
-            <div style={{ background: "#0e0e0e", borderRadius: "4px", height: "3px", overflow: "hidden", marginBottom: "36px" }}>
-              <div style={{ height: "100%", background: "#e8ff3a", borderRadius: "4px", width: `${pct}%`, transition: "width 0.6s ease", boxShadow: "0 0 8px #e8ff3a" }} />
+            {/* Main progress bar */}
+            <div style={{ marginBottom: "32px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ fontSize: "11px", color: "#333", textTransform: "uppercase", letterSpacing: "0.1em" }}>Overall progress</span>
+                <span style={{ fontSize: "11px", color: "#e8ff3a", fontWeight: "700" }}>{Math.round(pct)}%</span>
+              </div>
+              <div style={{ background: "#0e0e0e", borderRadius: "6px", height: "8px", overflow: "hidden", position: "relative" }}>
+                <div style={{
+                  height: "100%", background: "linear-gradient(90deg, #e8ff3a, #a8df00)",
+                  borderRadius: "6px", width: `${pct}%`, transition: "width 0.6s ease",
+                  boxShadow: "0 0 12px #e8ff3a88", position: "relative",
+                }}/>
+              </div>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              {steps.map((s, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                  <div style={{
-                    width: "24px", height: "24px", borderRadius: "50%", flexShrink: 0,
-                    background: s.done ? "#e8ff3a" : "#0e0e0e",
-                    border: `1px solid ${s.done ? "#e8ff3a" : "#1e1e1e"}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "11px", color: "#060606", fontWeight: "900",
-                    transition: "all 0.4s", boxShadow: s.done ? "0 0 12px #e8ff3a66" : "none",
-                  }}>
-                    {s.done ? "✓" : ""}
+            {/* Individual analysis bars */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>
+              {[
+                { label: "Forehand mechanics", icon: "🎯", bar: Math.min(100, pct * 1.8), color: "#60a5fa", active: pct >= 10 },
+                { label: "Backhand mechanics", icon: "🎯", bar: Math.min(100, Math.max(0, (pct - 15) * 1.8)), color: "#60a5fa", active: pct >= 25 },
+                { label: "Serve & movement", icon: "⚡", bar: Math.min(100, Math.max(0, (pct - 30) * 1.8)), color: "#f59e0b", active: pct >= 40 },
+                { label: "Tactical patterns", icon: "🧠", bar: Math.min(100, Math.max(0, (pct - 50) * 2)), color: "#f59e0b", active: pct >= 55 },
+                { label: "Building your report", icon: "📋", bar: Math.min(100, Math.max(0, (pct - 75) * 4)), color: "#a78bfa", active: pct >= 80 },
+              ].map((item, i) => (
+                <div key={i} style={{ opacity: item.active ? 1 : 0.2, transition: "opacity 0.5s ease" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontSize: "14px" }}>{item.icon}</span>
+                      <span style={{ fontSize: "12px", color: item.active ? "#888" : "#2a2a2a", letterSpacing: "0.02em" }}>{item.label}</span>
+                    </div>
+                    {item.active && item.bar < 100 && (
+                      <span style={{ fontSize: "10px", color: item.color, animation: "barPulse 1.5s infinite" }}>scanning…</span>
+                    )}
+                    {item.bar >= 100 && (
+                      <span style={{ fontSize: "10px", color: "#5bc85b", fontWeight: "700" }}>✓ done</span>
+                    )}
                   </div>
-                  <span style={{ fontSize: "14px", color: s.done ? "#bbb" : "#252525", transition: "color 0.4s" }}>{s.label}</span>
+                  <div style={{ background: "#0e0e0e", borderRadius: "4px", height: "4px", overflow: "hidden" }}>
+                    <div style={{
+                      height: "100%", background: item.color,
+                      borderRadius: "4px", width: `${item.bar}%`,
+                      transition: "width 0.8s ease",
+                      boxShadow: item.bar > 0 ? `0 0 8px ${item.color}66` : "none",
+                    }}/>
+                  </div>
                 </div>
               ))}
+            </div>
+
+            {/* Fun tennis fact while waiting */}
+            <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "16px 18px", textAlign: "center" }}>
+              <div style={{ fontSize: "9px", color: "#2a2a2a", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>Did you know</div>
+              <p style={{ margin: 0, fontSize: "12px", color: "#2e2e2e", lineHeight: "1.7" }}>
+                {pct < 40
+                  ? "The average club player makes contact 15–20cm behind the ideal contact point on their forehand — the single most common mistake at 3.5–4.0 level."
+                  : pct < 75
+                  ? "Research shows 73% of club-level unforced errors come from just 2–3 recurring habits. Rallytics is finding yours right now."
+                  : "Elite coaches spend 60% of film review time on positioning and recovery — not just stroke mechanics. Your tactical patterns are being read now."}
+              </p>
             </div>
           </div>
         )}
