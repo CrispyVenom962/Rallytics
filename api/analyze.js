@@ -427,147 +427,138 @@ export default async function handler(req, res) {
   }
 }
 
-// ─── Kit Integration ──────────────────────────────────────────────────────────
+// ─── Resend Email Integration ─────────────────────────────────────────────────
 async function sendResultsEmail({ firstName, email, level, result }) {
-  const KIT_API_KEY = process.env.KIT_API_KEY;
-  if (!KIT_API_KEY || !email) return;
+  const RESEND_API_KEY = process.env.RESEND_API_KEY;
+  if (!RESEND_API_KEY || !email) return;
 
+  const tech = result.technique || {};
+  const strat = result.strategy || {};
+  const fixes = result.priority_fixes || [];
+  const drill = result.training_plan?.drill_1;
+
+  // Also add to Kit list (non-blocking, just for subscriber collection)
   try {
-    // 1. Add subscriber to Kit
-    await fetch("https://api.convertkit.com/v3/subscribers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: KIT_API_KEY,
-        first_name: firstName,
-        email,
-        fields: { level: level || "unknown" },
-      }),
-    });
+    const KIT_API_KEY = process.env.KIT_API_KEY;
+    if (KIT_API_KEY) {
+      await fetch("https://api.convertkit.com/v3/subscribers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: KIT_API_KEY,
+          first_name: firstName,
+          email,
+          fields: { level: level || "unknown" },
+        }),
+      });
+    }
+  } catch (e) {
+    console.error("Kit subscriber error:", e.message);
+  }
 
-    // 2. Build email HTML
-    const tech = result.technique || {};
-    const strat = result.strategy || {};
-    const fixes = result.priority_fixes || [];
-    const drill = result.training_plan?.drill_1;
+  const fixesHtml = fixes.map(p => `
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #1e1e1e;">
+      <div style="min-width:26px;height:26px;background:${p.rank===1?"#e8ff3a":"#1a1a1a"};color:${p.rank===1?"#060606":"#666"};border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;">${p.rank}</div>
+      <div>
+        <div style="color:#e0e0e0;font-size:14px;font-weight:700;margin-bottom:4px;">${p.fix || ""}</div>
+        ${p.on_court_cue ? `<div style="color:#e8ff3a;font-style:italic;font-size:12px;">Say on court: "${p.on_court_cue}"</div>` : ""}
+      </div>
+    </div>`).join("");
 
-    const fixesHtml = fixes.map(p => `
-      <tr>
-        <td style="padding:10px 0;border-bottom:1px solid #1e1e1e;">
-          <span style="display:inline-block;width:24px;height:24px;background:${p.rank===1?"#e8ff3a":"#1a1a1a"};color:${p.rank===1?"#060606":"#666"};border-radius:50%;text-align:center;line-height:24px;font-weight:900;font-size:12px;margin-right:12px;">${p.rank}</span>
-          <strong style="color:#e8e8e8;font-size:14px;">${p.fix}</strong>
-          ${p.on_court_cue ? `<br><span style="color:#e8ff3a;font-style:italic;font-size:12px;margin-left:36px;">"${p.on_court_cue}"</span>` : ""}
-        </td>
-      </tr>`).join("");
-
-    const emailHtml = `
-<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#060606;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#060606;padding:40px 20px;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#060606;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td align="center" style="padding:40px 16px;">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;">
 
-        <!-- Header -->
-        <tr><td style="padding-bottom:32px;">
-          <span style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.02em;">Rally<span style="color:#e8ff3a;">tics</span></span>
-        </td></tr>
+  <tr><td style="padding-bottom:28px;">
+    <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-0.02em;">Rally<span style="color:#e8ff3a;">tics</span></span>
+    <span style="font-size:11px;color:#444;margin-left:8px;">AI Match Analysis</span>
+  </td></tr>
 
-        <!-- Greeting -->
-        <tr><td style="padding-bottom:24px;">
-          <h1 style="color:#fff;font-size:28px;font-weight:900;margin:0 0 8px;letter-spacing:-0.02em;">Your coaching report is ready, ${firstName}.</h1>
-          <p style="color:#555;font-size:14px;margin:0;line-height:1.6;">Here's what your match video revealed. Take this to your next practice session.</p>
-        </td></tr>
+  <tr><td style="padding-bottom:24px;border-bottom:1px solid #141414;">
+    <h1 style="color:#fff;font-size:24px;font-weight:900;margin:0 0 8px;">Your coaching report is ready, ${firstName}.</h1>
+    <p style="color:#444;font-size:14px;margin:0;line-height:1.6;">Here is what your match video revealed. Take this to your next session.</p>
+  </td></tr>
 
-        <!-- Scores -->
-        <tr><td style="padding-bottom:24px;">
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td width="50%" style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:20px;text-align:center;">
-                <div style="font-size:42px;font-weight:900;color:#60a5fa;line-height:1;">${tech.score || "–"}</div>
-                <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:0.15em;margin-top:4px;">Technique</div>
-                ${tech.headline ? `<div style="font-size:12px;color:#666;margin-top:6px;">${tech.headline}</div>` : ""}
-              </td>
-              <td width="4%"></td>
-              <td width="50%" style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:20px;text-align:center;">
-                <div style="font-size:42px;font-weight:900;color:#f59e0b;line-height:1;">${strat.score || "–"}</div>
-                <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:0.15em;margin-top:4px;">Strategy</div>
-                ${strat.headline ? `<div style="font-size:12px;color:#666;margin-top:6px;">${strat.headline}</div>` : ""}
-              </td>
-            </tr>
-          </table>
-        </td></tr>
+  <tr><td style="padding:24px 0 16px;">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="48%" style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:36px;font-weight:900;color:#60a5fa;">${tech.score || "-"}</div>
+          <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;">Technique /10</div>
+          ${tech.headline ? `<div style="font-size:11px;color:#555;margin-top:6px;">${tech.headline}</div>` : ""}
+        </td>
+        <td width="4%"></td>
+        <td width="48%" style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:36px;font-weight:900;color:#f59e0b;">${strat.score || "-"}</div>
+          <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;">Strategy /10</div>
+          ${strat.headline ? `<div style="font-size:11px;color:#555;margin-top:6px;">${strat.headline}</div>` : ""}
+        </td>
+      </tr>
+    </table>
+  </td></tr>
 
-        <!-- Coach verdict -->
-        ${result.coach_verdict ? `
-        <tr><td style="padding-bottom:24px;">
-          <div style="background:#0a0a0a;border-left:3px solid #e8ff3a;padding:16px 20px;border-radius:0 10px 10px 0;">
-            <div style="font-size:9px;color:#e8ff3a;text-transform:uppercase;letter-spacing:0.2em;margin-bottom:6px;">Coach verdict</div>
-            <p style="color:#777;font-style:italic;font-size:14px;margin:0;line-height:1.65;">"${result.coach_verdict}"</p>
-          </div>
-        </td></tr>` : ""}
+  ${result.coach_verdict ? `
+  <tr><td style="padding-bottom:20px;">
+    <div style="background:#0a0a0a;border-left:3px solid #e8ff3a;padding:14px 16px;border-radius:0 8px 8px 0;">
+      <div style="font-size:9px;color:#e8ff3a;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px;">Coach verdict</div>
+      <p style="color:#777;font-style:italic;font-size:13px;margin:0;line-height:1.6;">"${result.coach_verdict}"</p>
+    </div>
+  </td></tr>` : ""}
 
-        <!-- Top 3 fixes -->
-        <tr><td style="padding-bottom:24px;">
-          <div style="font-size:10px;color:#e8ff3a;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:12px;">⚡ Your top 3 fixes</div>
-          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #1a1a1a;border-radius:10px;overflow:hidden;">
-            ${fixesHtml}
-          </table>
-        </td></tr>
+  <tr><td style="padding-bottom:20px;">
+    <div style="font-size:10px;color:#e8ff3a;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:12px;">Your top 3 fixes</div>
+    ${fixesHtml}
+  </td></tr>
 
-        <!-- Drill -->
-        ${drill ? `
-        <tr><td style="padding-bottom:24px;">
-          <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:20px;">
-            <div style="font-size:9px;color:#a78bfa;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:8px;">🏋️ This week's drill</div>
-            <div style="font-size:16px;font-weight:800;color:#e0e0e0;margin-bottom:6px;">${drill.name}</div>
-            <p style="color:#555;font-size:13px;margin:0 0 10px;line-height:1.6;">${drill.targets}</p>
-            <p style="color:#888;font-size:13px;margin:0;line-height:1.6;">${drill.execution}</p>
-          </div>
-        </td></tr>` : ""}
+  ${drill ? `
+  <tr><td style="padding-bottom:20px;">
+    <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:16px;">
+      <div style="font-size:9px;color:#a78bfa;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;">This week's drill</div>
+      <div style="font-size:15px;font-weight:800;color:#e0e0e0;margin-bottom:6px;">${drill.name}</div>
+      <p style="color:#888;font-size:13px;margin:0;line-height:1.6;">${drill.execution || ""}</p>
+    </div>
+  </td></tr>` : ""}
 
-        <!-- Match rule -->
-        ${result.training_plan?.match_focus ? `
-        <tr><td style="padding-bottom:32px;">
-          <div style="background:#0b1300;border:1px solid #1a2500;border-radius:10px;padding:16px 20px;">
-            <div style="font-size:9px;color:#e8ff3a;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:6px;">Match rule this week</div>
-            <p style="color:#bbb;font-size:14px;margin:0;line-height:1.65;">${result.training_plan.match_focus}</p>
-          </div>
-        </td></tr>` : ""}
+  ${result.training_plan?.match_focus ? `
+  <tr><td style="padding-bottom:28px;">
+    <div style="background:#0b1300;border:1px solid #1a2500;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:9px;color:#e8ff3a;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px;">Match rule this week</div>
+      <p style="color:#bbb;font-size:13px;margin:0;line-height:1.6;">${result.training_plan.match_focus}</p>
+    </div>
+  </td></tr>` : ""}
 
-        <!-- Footer -->
-        <tr><td style="border-top:1px solid #1a1a1a;padding-top:24px;">
-          <p style="color:#2a2a2a;font-size:11px;margin:0 0 6px;line-height:1.6;">
-            You're receiving this because you uploaded a match to Rallytics. We will never send unsolicited emails.
-          </p>
-          <p style="color:#2a2a2a;font-size:11px;margin:0;">
-            <a href="{{unsubscribe_url}}" style="color:#3a3a3a;">Unsubscribe</a> · rallytics-seven.vercel.app
-          </p>
-        </td></tr>
+  <tr><td style="border-top:1px solid #111;padding-top:20px;">
+    <p style="color:#222;font-size:11px;margin:0 0 4px;line-height:1.6;">You received this because you analyzed a match on Rallytics. We will never send spam.</p>
+    <p style="color:#222;font-size:11px;margin:0;">Made in Canada 🍁 by a Tennis Canada certified Club Pro · <a href="https://rallytics-seven.vercel.app" style="color:#333;">rallytics-seven.vercel.app</a></p>
+  </td></tr>
 
-      </table>
-    </td></tr>
-  </table>
+</table>
+</td></tr>
+</table>
 </body>
 </html>`;
 
-    // 3. Send email via Kit broadcast
-    await fetch("https://api.convertkit.com/v3/broadcasts", {
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+      },
       body: JSON.stringify({
-        api_key: KIT_API_KEY,
+        from: "Rallytics <onboarding@resend.dev>",
+        to: [email],
         subject: `Your Rallytics coaching report is ready, ${firstName} 🎾`,
-        content: emailHtml,
-        description: `Rallytics report for ${email}`,
-        email_address: email,
-        public: false,
+        html,
       }),
     });
-
+    const data = await res.json();
+    console.log("Resend response:", JSON.stringify(data).slice(0, 200));
   } catch (err) {
-    // Email failure should not break the main analysis response
-    console.error("Kit email error:", err.message);
+    console.error("Resend error:", err.message);
   }
 }
