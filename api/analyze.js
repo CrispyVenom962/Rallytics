@@ -615,10 +615,10 @@ async function sendResultsEmail({ firstName, email, level, result }) {
 
   const fixesHtml = fixes.map(p => `
     <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #1e1e1e;">
-      <div style="min-width:26px;height:26px;background:${p.rank===1?"#e8ff3a":"#1a1a1a"};color:${p.rank===1?"#060606":"#666"};border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;text-align:center;line-height:26px;">${p.rank}</div>
+      <div style="min-width:26px;height:26px;background:${p.rank===1?"#1D9E75":"#1a1a1a"};color:${p.rank===1?"#060606":"#666"};border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;text-align:center;line-height:26px;">${p.rank}</div>
       <div>
         <div style="color:#e0e0e0;font-size:14px;font-weight:700;margin-bottom:4px;">${p.fix || ""}</div>
-        ${p.on_court_cue ? `<div style="color:#e8ff3a;font-style:italic;font-size:12px;">Say on court: "${p.on_court_cue}"</div>` : ""}
+        ${p.on_court_cue ? `<div style="color:#1D9E75;font-style:italic;font-size:12px;">Say on court: "${p.on_court_cue}"</div>` : ""}
       </div>
     </div>`).join("");
 
@@ -630,7 +630,7 @@ async function sendResultsEmail({ firstName, email, level, result }) {
 <tr><td align="center" style="padding:40px 16px;">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;">
   <tr><td style="padding-bottom:28px;">
-    <span style="font-size:20px;font-weight:900;color:#fff;">Rally<span style="color:#e8ff3a;">tics</span></span>
+    <span style="font-size:20px;font-weight:900;color:#fff;">forty<span style="color:#1D9E75;">.</span><span style="color:#1D9E75;font-weight:300;">fifteen</span></span>
     <span style="font-size:11px;color:#444;margin-left:8px;">AI Match Analysis</span>
   </td></tr>
   <tr><td style="padding-bottom:24px;border-bottom:1px solid #141414;">
@@ -656,13 +656,13 @@ async function sendResultsEmail({ firstName, email, level, result }) {
   </td></tr>
   ${result.coach_verdict ? `
   <tr><td style="padding-bottom:20px;">
-    <div style="background:#0a0a0a;border-left:3px solid #e8ff3a;padding:14px 16px;border-radius:0 8px 8px 0;">
-      <div style="font-size:9px;color:#e8ff3a;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px;">Coach verdict</div>
+    <div style="background:#0a0a0a;border-left:3px solid #1D9E75;padding:14px 16px;border-radius:0 8px 8px 0;">
+      <div style="font-size:9px;color:#1D9E75;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px;">Coach verdict</div>
       <p style="color:#777;font-style:italic;font-size:13px;margin:0;line-height:1.6;">"${result.coach_verdict}"</p>
     </div>
   </td></tr>` : ""}
   <tr><td style="padding-bottom:20px;">
-    <div style="font-size:10px;color:#e8ff3a;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:12px;">Your top 3 fixes</div>
+    <div style="font-size:10px;color:#1D9E75;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:12px;">Your top 3 fixes</div>
     ${fixesHtml}
   </td></tr>
   ${drill ? `
@@ -676,7 +676,7 @@ async function sendResultsEmail({ firstName, email, level, result }) {
   ${result.training_plan?.match_focus ? `
   <tr><td style="padding-bottom:28px;">
     <div style="background:#0b1300;border:1px solid #1a2500;border-radius:10px;padding:14px 16px;">
-      <div style="font-size:9px;color:#e8ff3a;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px;">Match rule this week</div>
+      <div style="font-size:9px;color:#1D9E75;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px;">Match rule this week</div>
       <p style="color:#bbb;font-size:13px;margin:0;line-height:1.6;">${result.training_plan.match_focus}</p>
     </div>
   </td></tr>` : ""}
@@ -700,7 +700,7 @@ async function sendResultsEmail({ firstName, email, level, result }) {
       body: JSON.stringify({
         from: "Forty Fifteen <coach@fortyfifteen.app>",
         to: [email],
-        subject: `Your Rallytics coaching report is ready, ${firstName} 🎾`,
+        subject: `Your Forty Fifteen coaching report is ready, ${firstName} 🎾`,
         html,
       }),
     });
