@@ -135,7 +135,7 @@ const FilmCard = ({ emoji, title, body }) => (
 );
 
 // ── Main App ───────────────────────────────────────────────────────────────────
-export default function Forty Fifteen() {
+export default function App() {
   const [stage, setStage] = useState("upload");
   const [videoFile, setVideoFile] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
