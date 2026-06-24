@@ -61,7 +61,7 @@ const ScoreArc = ({ score, label, color }) => {
 };
 
 // ── Court Line Divider ─────────────────────────────────────────────────────────
-const CourtLine = ({ color = "#e8ff3a" }) => (
+const CourtLine = ({ color = "#1D9E75" }) => (
   <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "6px 0" }}>
     <div style={{ flex: 1, height: "1px", background: "#1a1a1a" }}/>
     <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: color, boxShadow: `0 0 8px ${color}` }}/>
@@ -70,7 +70,7 @@ const CourtLine = ({ color = "#e8ff3a" }) => (
 );
 
 // ── Section Label ──────────────────────────────────────────────────────────────
-const SectionLabel = ({ children, color = "#e8ff3a", icon }) => (
+const SectionLabel = ({ children, color = "#1D9E75", icon }) => (
   <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
     {icon && <span style={{ fontSize: "22px" }}>{icon}</span>}
     <span style={{ fontSize: "10px", color, textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: "700" }}>{children}</span>
@@ -78,7 +78,7 @@ const SectionLabel = ({ children, color = "#e8ff3a", icon }) => (
 );
 
 // ── Expand Panel ───────────────────────────────────────────────────────────────
-const Panel = ({ title, badge, accent = "#e8ff3a", children }) => {
+const Panel = ({ title, badge, accent = "#1D9E75", children }) => {
   const [open, setOpen] = useState(false);
   return (
     <div style={{ borderRadius: "12px", overflow: "hidden", border: `1px solid ${open ? accent + "30" : "#1a1a1a"}`, transition: "border-color 0.2s" }}>
@@ -135,7 +135,7 @@ const FilmCard = ({ emoji, title, body }) => (
 );
 
 // ── Main App ───────────────────────────────────────────────────────────────────
-export default function Rallytics() {
+export default function Forty Fifteen() {
   const [stage, setStage] = useState("upload");
   const [videoFile, setVideoFile] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
@@ -242,7 +242,7 @@ export default function Rallytics() {
       <style>{`
         * { box-sizing: border-box; }
         textarea:focus { outline: none; }
-        button:focus-visible { outline: 2px solid #e8ff3a; outline-offset: 2px; }
+        button:focus-visible { outline: 2px solid #1D9E75; outline-offset: 2px; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
         @keyframes courtScan { 0%{transform:translateX(-100%)} 100%{transform:translateX(400%)} }
@@ -258,13 +258,16 @@ export default function Rallytics() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "11px" }}>
-          <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
-            <circle cx="15" cy="15" r="13" stroke="#e8ff3a" strokeWidth="2"/>
-            <circle cx="15" cy="15" r="13" stroke="#e8ff3a" strokeWidth="2" strokeDasharray="4 3" opacity="0.3"/>
-            <path d="M6 21 Q12 5 24 9" stroke="#e8ff3a" strokeWidth="2.5" strokeLinecap="round"/>
+          <svg width="36" height="36" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="80" cy="80" r="52" fill="none" stroke="#1D9E75" strokeWidth="3"/>
+            <circle cx="80" cy="80" r="38" fill="#1D9E75"/>
+            <path d="M 52 58 A 32 32 0 0 1 108 58" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="52" y1="102" x2="108" y2="102" stroke="#ffffff" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="80" y1="58" x2="80" y2="102" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round"/>
+            <circle cx="96" cy="72" r="5" fill="#ffffff"/>
           </svg>
           <span style={{ fontWeight: "900", fontSize: "17px", letterSpacing: "-0.03em" }}>
-            Rally<span style={{ color: "#e8ff3a" }}>tics</span>
+            forty<span style={{ color: "#1D9E75" }}>.</span><span style={{ color: "#1D9E75", fontWeight: "300" }}>fifteen</span>
           </span>
         </div>
         {!["upload","working"].includes(stage) && (
@@ -273,7 +276,7 @@ export default function Rallytics() {
             color: "#555", fontSize: "12px", padding: "7px 16px", cursor: "pointer",
             letterSpacing: "0.04em", transition: "border-color 0.2s, color 0.2s",
           }}
-            onMouseEnter={e => { e.target.style.borderColor = "#e8ff3a"; e.target.style.color = "#e8ff3a"; }}
+            onMouseEnter={e => { e.target.style.borderColor = "#1D9E75"; e.target.style.color = "#1D9E75"; }}
             onMouseLeave={e => { e.target.style.borderColor = "#1e1e1e"; e.target.style.color = "#555"; }}
           >
             ← New match
@@ -289,14 +292,14 @@ export default function Rallytics() {
             {/* Hero */}
             <div style={{ marginBottom: "48px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#e8ff3a", boxShadow: "0 0 10px #e8ff3a" }}/>
-                <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.2em" }}>AI Match Analysis</span>
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#1D9E75", boxShadow: "0 0 10px #1D9E75" }}/>
+                <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em" }}>AI Match Analysis</span>
               </div>
               <h1 style={{ fontSize: "clamp(36px,8vw,64px)", fontWeight: "900", letterSpacing: "-0.035em", lineHeight: 0.95, margin: "0 0 20px" }}>
-                Your game<br />is leaking points.<br /><span style={{ color: "#e8ff3a" }}>Find out where.</span>
+                Your game<br />is leaking points.<br /><span style={{ color: "#1D9E75" }}>Find out where.</span>
               </h1>
               <p style={{ color: "#3a3a3a", fontSize: "15px", lineHeight: "1.7", maxWidth: "340px", margin: 0 }}>
-                Upload your match. Get your technique and tactics broken down by AI — shot by shot, pattern by pattern.
+                See your game the way your coach does. Upload your match video and get a full coaching report — technique, tactics, drills, and on-court cues.
               </p>
             </div>
 
@@ -307,28 +310,28 @@ export default function Rallytics() {
               onDrop={onDrop}
               onClick={() => fileRef.current.click()}
               style={{
-                border: `2px dashed ${dragging ? "#e8ff3a" : "#1c1c1c"}`,
+                border: `2px dashed ${dragging ? "#1D9E75" : "#1c1c1c"}`,
                 borderRadius: "20px", padding: "64px 24px 56px", textAlign: "center",
-                cursor: "pointer", background: dragging ? "#0c1000" : "#080808",
+                cursor: "pointer", background: dragging ? "#071a12" : "#080808",
                 transition: "all 0.2s", position: "relative", overflow: "hidden",
               }}
             >
               {/* Animated scanning lines - flashes through entire box */}
               <div style={{
                 position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%",
-                background: "linear-gradient(90deg, transparent, rgba(232,255,58,0.06), rgba(232,255,58,0.15), rgba(232,255,58,0.06), transparent)",
+                background: "linear-gradient(90deg, transparent, rgba(29,158,117,0.06), rgba(29,158,117,0.15), rgba(29,158,117,0.06), transparent)",
                 animation: "courtScan 2.5s linear infinite",
                 pointerEvents: "none",
               }}/>
               <div style={{
                 position: "absolute", top: 0, left: 0, right: 0, height: "2px",
-                background: "linear-gradient(90deg, transparent, #e8ff3a, transparent)",
+                background: "linear-gradient(90deg, transparent, #1D9E75, transparent)",
                 animation: "courtScan 2.5s linear infinite",
                 opacity: 0.6,
               }}/>
               <div style={{
                 position: "absolute", bottom: 0, left: 0, right: 0, height: "1px",
-                background: "linear-gradient(90deg, transparent, #e8ff3a44, transparent)",
+                background: "linear-gradient(90deg, transparent, #1D9E7544, transparent)",
                 animation: "courtScan 2.5s linear infinite 1.25s",
                 opacity: 0.4,
               }}/>
@@ -345,7 +348,7 @@ export default function Rallytics() {
               </div>
               <div style={{
                 display: "inline-flex", alignItems: "center", gap: "8px",
-                background: "#e8ff3a", color: "#060606", borderRadius: "10px",
+                background: "#1D9E75", color: "#060606", borderRadius: "10px",
                 padding: "13px 32px", fontWeight: "900", fontSize: "14px",
                 letterSpacing: "0.02em",
               }}>
@@ -363,11 +366,11 @@ export default function Rallytics() {
             <CourtLine />
 
             {/* How to film */}
-            <SectionLabel icon="🎥" color="#e8ff3a">How to film for best results</SectionLabel>
+            <SectionLabel icon="🎥" color="#1D9E75">How to film for best results</SectionLabel>
 
             {/* Technique vs Tactical choice */}
             <div style={{ background: "#080808", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "16px 18px", marginBottom: "12px" }}>
-              <div style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Choose your focus before filming</div>
+              <div style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Choose your focus before filming</div>
               <p style={{ margin: 0, fontSize: "13px", color: "#555", lineHeight: "1.7" }}>
                 One phone cannot perfectly capture everything at once. Decide what you want to improve — then film accordingly for the most accurate analysis.
               </p>
@@ -390,7 +393,7 @@ export default function Rallytics() {
             <CourtLine />
 
             {/* How it works */}
-            <SectionLabel icon="🔬" color="#e8ff3a">How the analysis works</SectionLabel>
+            <SectionLabel icon="🔬" color="#1D9E75">How the analysis works</SectionLabel>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px" }}>
               {[
                 { n: "01", h: "Frame sampling", b: "1 frame every 30 seconds. Finds habits across your full match, not just one shot." },
@@ -412,8 +415,7 @@ export default function Rallytics() {
               </p>
               <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#1e1e1e", lineHeight: "1.6", fontStyle: "italic" }}>
                 who got tired of guessing what was wrong with his game.
-              </p>
-            </div>
+              </p>            </div>
 
           </div>
         )}
@@ -443,7 +445,7 @@ export default function Rallytics() {
                 ].map(s => (
                   <div key={s.l} style={{ background: "#080808", border: "1px solid #141414", borderRadius: "10px", padding: "12px 14px" }}>
                     <div style={{ fontSize: "9px", color: "#2e2e2e", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "4px" }}>{s.l}</div>
-                    <div style={{ fontWeight: "900", fontSize: "18px", color: "#e8ff3a", letterSpacing: "-0.02em" }}>{s.v}</div>
+                    <div style={{ fontWeight: "900", fontSize: "18px", color: "#1D9E75", letterSpacing: "-0.02em" }}>{s.v}</div>
                   </div>
                 ))}
               </div>
@@ -451,7 +453,7 @@ export default function Rallytics() {
 
             {/* Player ID field */}
             <div style={{ marginBottom: "10px" }}>
-              <div style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>
+              <div style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>
                 Which player should I analyze?
               </div>
               <input
@@ -463,7 +465,7 @@ export default function Rallytics() {
                   padding: "13px 16px", color: "#f0f0f0", fontSize: "14px",
                   lineHeight: "1.5", outline: "none", transition: "border-color 0.2s",
                 }}
-                onFocus={e => e.target.style.borderColor = "#e8ff3a"}
+                onFocus={e => e.target.style.borderColor = "#1D9E75"}
                 onBlur={e => e.target.style.borderColor = "#1a1a1a"}
               />
             </div>
@@ -480,7 +482,7 @@ export default function Rallytics() {
                 padding: "14px 16px", color: "#f0f0f0", fontSize: "14px",
                 lineHeight: "1.7", resize: "vertical", transition: "border-color 0.2s",
               }}
-              onFocus={e => e.target.style.borderColor = "#e8ff3a"}
+              onFocus={e => e.target.style.borderColor = "#1D9E75"}
               onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
 
             {error && (
@@ -498,7 +500,7 @@ export default function Rallytics() {
                 onMouseLeave={e => e.target.style.borderColor = "#1a1a1a"}
               >← Change video</button>
               <button onClick={proceedToGate} style={{
-                flex: 3, background: "#e8ff3a", border: "none", borderRadius: "10px",
+                flex: 3, background: "#1D9E75", border: "none", borderRadius: "10px",
                 color: "#060606", fontSize: "15px", fontWeight: "900", padding: "14px",
                 cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.2s",
               }}
@@ -516,8 +518,8 @@ export default function Rallytics() {
           <div style={{ animation: "fadeUp 0.3s ease" }}>
             <div style={{ marginBottom: "28px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#e8ff3a", boxShadow: "0 0 10px #e8ff3a" }}/>
-                <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.2em" }}>Almost there</span>
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#1D9E75", boxShadow: "0 0 10px #1D9E75" }}/>
+                <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em" }}>Almost there</span>
               </div>
               <h2 style={{ fontSize: "32px", fontWeight: "900", letterSpacing: "-0.025em", margin: "0 0 8px" }}>
                 Where should we send your report?
@@ -540,7 +542,7 @@ export default function Rallytics() {
                     borderRadius: "12px", padding: "14px 16px", color: "#f0f0f0",
                     fontSize: "15px", outline: "none", transition: "border-color 0.2s",
                   }}
-                  onFocus={e => e.target.style.borderColor = "#e8ff3a"}
+                  onFocus={e => e.target.style.borderColor = "#1D9E75"}
                   onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
               </div>
 
@@ -554,7 +556,7 @@ export default function Rallytics() {
                     borderRadius: "12px", padding: "14px 16px", color: "#f0f0f0",
                     fontSize: "15px", outline: "none", transition: "border-color 0.2s",
                   }}
-                  onFocus={e => e.target.style.borderColor = "#e8ff3a"}
+                  onFocus={e => e.target.style.borderColor = "#1D9E75"}
                   onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
               </div>
 
@@ -568,8 +570,8 @@ export default function Rallytics() {
                     { id: "advanced", label: "Advanced", sub: "Competitive / tournament" },
                   ].map(l => (
                     <button key={l.id} onClick={() => setLevel(l.id)} style={{
-                      background: level === l.id ? "#e8ff3a" : "#080808",
-                      border: `1px solid ${level === l.id ? "#e8ff3a" : "#1a1a1a"}`,
+                      background: level === l.id ? "#1D9E75" : "#080808",
+                      border: `1px solid ${level === l.id ? "#1D9E75" : "#1a1a1a"}`,
                       borderRadius: "10px", padding: "14px 10px", cursor: "pointer",
                       textAlign: "center", transition: "all 0.18s",
                     }}>
@@ -601,7 +603,7 @@ export default function Rallytics() {
                 color: "#3a3a3a", fontSize: "14px", padding: "14px", cursor: "pointer",
               }}>← Back</button>
               <button onClick={proceedToAnalysis} style={{
-                flex: 3, background: "#e8ff3a", border: "none", borderRadius: "10px",
+                flex: 3, background: "#1D9E75", border: "none", borderRadius: "10px",
                 color: "#060606", fontSize: "15px", fontWeight: "900", padding: "14px",
                 cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.2s",
               }}
@@ -631,8 +633,8 @@ export default function Rallytics() {
             {/* Status message */}
             <div style={{ textAlign: "center", marginBottom: "32px" }}>
               <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#e8ff3a", animation: "pulse 1.2s infinite" }}/>
-                <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.2em" }}>Analyzing</span>
+                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.2s infinite" }}/>
+                <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em" }}>Analyzing</span>
               </div>
               <h2 style={{ fontSize: "24px", fontWeight: "900", letterSpacing: "-0.02em", margin: "0 0 6px" }}>{statusMsg}</h2>
               <p style={{ color: "#2a2a2a", fontSize: "13px", margin: 0 }}>Do not close this tab — your report is being built</p>
@@ -642,13 +644,13 @@ export default function Rallytics() {
             <div style={{ marginBottom: "32px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                 <span style={{ fontSize: "11px", color: "#333", textTransform: "uppercase", letterSpacing: "0.1em" }}>Overall progress</span>
-                <span style={{ fontSize: "11px", color: "#e8ff3a", fontWeight: "700" }}>{Math.round(pct)}%</span>
+                <span style={{ fontSize: "11px", color: "#1D9E75", fontWeight: "700" }}>{Math.round(pct)}%</span>
               </div>
               <div style={{ background: "#0e0e0e", borderRadius: "6px", height: "8px", overflow: "hidden", position: "relative" }}>
                 <div style={{
-                  height: "100%", background: "linear-gradient(90deg, #e8ff3a, #a8df00)",
+                  height: "100%", background: "linear-gradient(90deg, #1D9E75, #a8df00)",
                   borderRadius: "6px", width: `${pct}%`, transition: "width 0.6s ease",
-                  boxShadow: "0 0 12px #e8ff3a88", position: "relative",
+                  boxShadow: "0 0 12px #1D9E7588", position: "relative",
                 }}/>
               </div>
             </div>
@@ -694,7 +696,7 @@ export default function Rallytics() {
                 {pct < 40
                   ? "The average club player makes contact 15–20cm behind the ideal contact point on their forehand — the single most common mistake at 3.5–4.0 level."
                   : pct < 75
-                  ? "Research shows 73% of club-level unforced errors come from just 2–3 recurring habits. Rallytics is finding yours right now."
+                  ? "Research shows 73% of club-level unforced errors come from just 2–3 recurring habits. Forty Fifteen is finding yours right now."
                   : "Elite coaches spend 60% of film review time on positioning and recovery — not just stroke mechanics. Your tactical patterns are being read now."}
               </p>
             </div>
@@ -738,10 +740,10 @@ export default function Rallytics() {
                 {/* Coach verdict */}
                 {result.coach_verdict && (
                   <div style={{
-                    background: "#080808", borderLeft: "3px solid #e8ff3a",
+                    background: "#080808", borderLeft: "3px solid #1D9E75",
                     borderRadius: "0 10px 10px 0", padding: "16px 20px",
                   }}>
-                    <div style={{ fontSize: "9px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "6px" }}>Coach verdict</div>
+                    <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "6px" }}>Coach verdict</div>
                     <p style={{ margin: 0, fontSize: "14px", color: "#777", fontStyle: "italic", lineHeight: "1.65" }}>"{result.coach_verdict}"</p>
                   </div>
                 )}
@@ -752,7 +754,7 @@ export default function Rallytics() {
               {/* ── Priority Fixes ── */}
               {result.priority_fixes?.length > 0 && (
                 <div style={{ marginBottom: "32px" }}>
-                  <SectionLabel icon="⚡" color="#e8ff3a">Top 3 fixes</SectionLabel>
+                  <SectionLabel icon="⚡" color="#1D9E75">Top 3 fixes</SectionLabel>
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {result.priority_fixes.map(p => (
                       <div key={p.rank} style={{
@@ -763,9 +765,9 @@ export default function Rallytics() {
                       }}>
                         <div style={{
                           width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
-                          background: p.rank === 1 ? "#e8ff3a" : "#0e0e0e",
+                          background: p.rank === 1 ? "#1D9E75" : "#0e0e0e",
                           color: p.rank === 1 ? "#060606" : "#2e2e2e",
-                          border: `1px solid ${p.rank === 1 ? "#e8ff3a" : "#1a1a1a"}`,
+                          border: `1px solid ${p.rank === 1 ? "#1D9E75" : "#1a1a1a"}`,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: "14px", fontWeight: "900",
                         }}>{p.rank}</div>
@@ -774,8 +776,8 @@ export default function Rallytics() {
                           {p.why && <div style={{ fontSize: "12px", color: "#3a3a3a", marginBottom: p.on_court_cue ? "8px" : 0 }}>{p.why}</div>}
                           {p.on_court_cue && (
                             <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: "6px", padding: "8px 12px", display: "inline-block" }}>
-                              <span style={{ fontSize: "9px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.15em" }}>Say on court: </span>
-                              <span style={{ fontSize: "12px", color: "#e8ff3a", fontStyle: "italic", fontWeight: "600" }}>"{p.on_court_cue}"</span>
+                              <span style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em" }}>Say on court: </span>
+                              <span style={{ fontSize: "12px", color: "#1D9E75", fontStyle: "italic", fontWeight: "600" }}>"{p.on_court_cue}"</span>
                             </div>
                           )}
                         </div>
@@ -796,8 +798,8 @@ export default function Rallytics() {
                 ].map(t => (
                   <button key={t.id} onClick={() => setTab(t.id)} style={{
                     flex: 1, padding: "12px 8px",
-                    background: tab === t.id ? "#e8ff3a" : "#080808",
-                    border: `1px solid ${tab === t.id ? "#e8ff3a" : "#141414"}`,
+                    background: tab === t.id ? "#1D9E75" : "#080808",
+                    border: `1px solid ${tab === t.id ? "#1D9E75" : "#141414"}`,
                     borderRadius: "10px",
                     color: tab === t.id ? "#060606" : "#333",
                     fontSize: "12px", fontWeight: "800", cursor: "pointer",
@@ -836,7 +838,7 @@ export default function Rallytics() {
 
                   {tech.patterns?.length > 0 && (
                     <div>
-                      <SectionLabel color="#e8ff3a">Recurring patterns</SectionLabel>
+                      <SectionLabel color="#1D9E75">Recurring patterns</SectionLabel>
                       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         {tech.patterns.map((p, i) => (
                           <Panel key={i} title={p.pattern} badge accent="#60a5fa">
@@ -879,7 +881,7 @@ export default function Rallytics() {
                   )}
                   {strat.patterns?.length > 0 && (
                     <div>
-                      <SectionLabel color="#e8ff3a">Tactical patterns</SectionLabel>
+                      <SectionLabel color="#1D9E75">Tactical patterns</SectionLabel>
                       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         {strat.patterns.map((p, i) => (
                           <Panel key={i} title={p.pattern} badge accent="#f59e0b">
@@ -907,7 +909,7 @@ export default function Rallytics() {
                     </p>
                     {result.training_plan.match_focus && (
                       <div style={{ background: "#0a1100", border: "1px solid #1a2500", borderRadius: "8px", padding: "14px 16px" }}>
-                        <div style={{ fontSize: "9px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>Match rule</div>
+                        <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>Match rule</div>
                         <p style={{ margin: 0, fontSize: "13px", color: "#bbb", lineHeight: "1.65" }}>{result.training_plan.match_focus}</p>
                       </div>
                     )}
@@ -916,20 +918,20 @@ export default function Rallytics() {
                   {/* On-court cues */}
                   {result.priority_fixes?.some(p => p.on_court_cue) && (
                     <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px" }}>
-                      <SectionLabel icon="💬" color="#e8ff3a">On-court cues</SectionLabel>
+                      <SectionLabel icon="💬" color="#1D9E75">On-court cues</SectionLabel>
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         {result.priority_fixes.filter(p => p.on_court_cue).map(p => (
                           <div key={p.rank} style={{ display: "flex", gap: "14px", alignItems: "center" }}>
                             <div style={{
                               width: "32px", height: "32px", borderRadius: "50%", flexShrink: 0,
-                              background: p.rank === 1 ? "#e8ff3a" : "#0e0e0e",
+                              background: p.rank === 1 ? "#1D9E75" : "#0e0e0e",
                               color: p.rank === 1 ? "#060606" : "#333",
-                              border: `1px solid ${p.rank === 1 ? "#e8ff3a" : "#1a1a1a"}`,
+                              border: `1px solid ${p.rank === 1 ? "#1D9E75" : "#1a1a1a"}`,
                               display: "flex", alignItems: "center", justifyContent: "center",
                               fontSize: "12px", fontWeight: "900",
                             }}>{p.rank}</div>
                             <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: "8px", padding: "10px 14px", flex: 1 }}>
-                              <p style={{ margin: 0, fontSize: "14px", color: "#e8ff3a", fontStyle: "italic", fontWeight: "700" }}>"{p.on_court_cue}"</p>
+                              <p style={{ margin: 0, fontSize: "14px", color: "#1D9E75", fontStyle: "italic", fontWeight: "700" }}>"{p.on_court_cue}"</p>
                             </div>
                           </div>
                         ))}
@@ -954,19 +956,19 @@ export default function Rallytics() {
 
               {/* ── Beta banner + waitlist ── */}
               <div style={{ marginTop: "32px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "24px 20px", textAlign: "center" }}>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#e8ff3a18", border: "1px solid #e8ff3a30", borderRadius: "20px", padding: "4px 14px", marginBottom: "12px" }}>
-                  <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#e8ff3a", animation: "pulse 1.5s infinite" }}/>
-                  <span style={{ fontSize: "10px", color: "#e8ff3a", textTransform: "uppercase", letterSpacing: "0.15em" }}>Free Beta</span>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1D9E7518", border: "1px solid #1D9E7530", borderRadius: "20px", padding: "4px 14px", marginBottom: "12px" }}>
+                  <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
+                  <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em" }}>Free Beta</span>
                 </div>
                 <p style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: "800", color: "#e0e0e0", letterSpacing: "-0.01em" }}>
-                  Rallytics is free during beta.
+                  Forty Fifteen is free during beta.
                 </p>
                 <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#3a3a3a", lineHeight: "1.6" }}>
                   Want Pro features — session history, progress tracking, and coach sharing? Join the waitlist for early access.
                 </p>
                 <a
                   href="mailto:coach@fortyfifteen.app?subject=Pro Waitlist&body=I want early access to Forty Fifteen Pro."
-                  style={{ display: "inline-block", background: "#e8ff3a", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}
+                  style={{ display: "inline-block", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}
                 >
                   Join the Pro waitlist →
                 </a>
