@@ -682,7 +682,7 @@ async function sendResultsEmail({ firstName, email, level, result }) {
   </td></tr>` : ""}
   <tr><td style="border-top:1px solid #111;padding-top:20px;">
     <p style="color:#222;font-size:11px;margin:0 0 4px;">You received this because you analyzed a match on Rallytics. We will never send spam.</p>
-    <p style="color:#222;font-size:11px;margin:0;">Made in Canada 🍁 by a Tennis Canada certified Club Pro</p>
+    <p style="color:#222;font-size:11px;margin:0;">Made in Canada 🍁 by a Tennis Canada certified Club Pro · <a href="https://fortyfifteen.app" style="color:#333;">fortyfifteen.app</a></p>
   </td></tr>
 </table>
 </td></tr>
@@ -698,7 +698,7 @@ async function sendResultsEmail({ firstName, email, level, result }) {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Rallytics <onboarding@resend.dev>",
+        from: "Forty Fifteen <coach@fortyfifteen.app>",
         to: [email],
         subject: `Your Rallytics coaching report is ready, ${firstName} 🎾`,
         html,
