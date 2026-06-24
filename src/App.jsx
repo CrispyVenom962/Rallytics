@@ -191,9 +191,19 @@ export default function Rallytics() {
       setStatusMsg(`Sending ${frames.length} frames to your AI coach…`);
       setPct(65);
 
+      // Animate progress in stages with status messages
+      let currentPct = 65;
       aiTimer = setInterval(() => {
-        setPct(prev => prev < 88 ? prev + 1 : prev);
-      }, 800);
+        currentPct += 1;
+        setPct(currentPct);
+        if (currentPct === 70) setStatusMsg("Reading your technique patterns…");
+        if (currentPct === 78) setStatusMsg("Analyzing tactical habits across the match…");
+        if (currentPct === 85) setStatusMsg("Cross-referencing patterns…");
+        if (currentPct === 90) setStatusMsg("Almost there — writing your coaching report…");
+        if (currentPct === 95) setStatusMsg("Final checks on your analysis…");
+        if (currentPct >= 97) clearInterval(aiTimer);
+      }, 1200);
+
       const dLabel = duration > 60 ? `${Math.round(duration / 60)}-minute` : `${Math.round(duration)}-second`;
       const res = await fetch(API_URL, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -201,7 +211,7 @@ export default function Rallytics() {
       });
       clearInterval(aiTimer);
       setPct(100);
-      setStatusMsg("Building your report…");
+      setStatusMsg("Your report is ready!");
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `Error ${res.status}`); }
       setResult(await res.json());
       setStage("result");
