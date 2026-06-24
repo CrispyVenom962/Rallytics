@@ -965,7 +965,7 @@ export default function Rallytics() {
                   Want Pro features — session history, progress tracking, and coach sharing? Join the waitlist for early access.
                 </p>
                 <a
-                  href="mailto:rallyticshq@gmail.com?subject=Rallytics Pro Waitlist&body=I want early access to Rallytics Pro."
+                  href="mailto:coach@fortyfifteen.app?subject=Pro Waitlist&body=I want early access to Forty Fifteen Pro."
                   style={{ display: "inline-block", background: "#e8ff3a", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}
                 >
                   Join the Pro waitlist →
