@@ -660,13 +660,6 @@ export default async function handler(req, res) {
   }
 }
 
-
-  } catch (err) {
-    console.error("Handler error:", err);
-    return res.status(500).json({ error: err.message || "Unexpected server error" });
-  }
-}
-
 // ─── Resend Email ─────────────────────────────────────────────────────────────
 async function sendResultsEmail({ firstName, email, level, result }) {
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
