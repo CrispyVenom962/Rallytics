@@ -496,9 +496,10 @@ Never use line breaks inside string values.
 
 // ─── Airtable Email Gate ───────────────────────────────────────────────────────
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
-const AIRTABLE_TABLE = "Analyses";
+const AIRTABLE_TABLE = "Analysis";
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 const MAX_FREE = 2;
+const ADMIN_EMAILS = ["ayerswilliam@gmail.com", "nimrodayers@gmail.com", "rallyticshq@gmail.com"];
 
 async function checkEmailUsage(email) {
   if (!AIRTABLE_BASE_ID || !AIRTABLE_API_KEY) return { count: 0, recordId: null };
@@ -552,15 +553,23 @@ export default async function handler(req, res) {
   // ── Email usage gate ──
   let emailRecordId = null;
   let emailCount = 0;
-  if (email) {
-    const usage = await checkEmailUsage(email.toLowerCase().trim());
-    emailCount = usage.count;
-    emailRecordId = usage.recordId;
-    if (emailCount >= MAX_FREE) {
-      return res.status(403).json({
-        error: "EMAIL_LIMIT_REACHED",
-        message: `You have already used your ${MAX_FREE} free analyses. Join the Pro waitlist for unlimited access.`,
-      });
+  const emailNorm = email?.toLowerCase().trim() || "";
+  const isAdmin = ADMIN_EMAILS.includes(emailNorm);
+
+  if (email && !isAdmin) {
+    try {
+      const usage = await checkEmailUsage(emailNorm);
+      emailCount = usage.count;
+      emailRecordId = usage.recordId;
+      if (emailCount >= MAX_FREE) {
+        return res.status(403).json({
+          error: "EMAIL_LIMIT_REACHED",
+          message: `You have already used your ${MAX_FREE} free analyses with this email. Join the Pro waitlist for unlimited access.`,
+        });
+      }
+    } catch (e) {
+      console.error("Email gate error:", e.message);
+      // If Airtable fails, allow the analysis to proceed
     }
   }
 
@@ -635,8 +644,10 @@ export default async function handler(req, res) {
     }
 
 
-    // Increment email usage in Airtable
-    await incrementEmailUsage(email?.toLowerCase().trim(), firstName, level, emailRecordId, emailCount);
+    // Increment email usage in Airtable (skip for admin emails)
+    if (!isAdmin) {
+      await incrementEmailUsage(emailNorm, firstName, level, emailRecordId, emailCount);
+    }
 
     // Send email via Resend
     await sendResultsEmail({ firstName, email, level, result: parsed });
