@@ -182,6 +182,7 @@ export default function App() {
   const [gateError, setGateError] = useState("");
   const fileRef = useRef();
   const factTimer = useRef(null);
+  const wakeLock = useRef(null);
 
   const fmt = s => `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
   const estFrames = d => Math.min(MAX_FRAMES, Math.floor(Math.max(0, d - 4) / FRAME_INTERVAL) + 1);
@@ -218,6 +219,15 @@ export default function App() {
 
   const analyze = async () => {
     setStage("working"); setPct(0); setError(null); setFramesDone(0); setStatusPhase(0);
+
+    // Request wake lock to keep screen on during analysis
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock.current = await navigator.wakeLock.request('screen');
+      }
+    } catch (e) {
+      console.log('Wake lock not available:', e.message);
+    }
 
     // Phases with messages
     const phases = [
@@ -305,9 +315,12 @@ export default function App() {
 
       setResult(await res.json());
       setStage("result");
+      // Release wake lock
+      if (wakeLock.current) { try { await wakeLock.current.release(); } catch(e) {} wakeLock.current = null; }
     } catch (e) {
       if (aiTimer) clearInterval(aiTimer);
-      setError(e.message || "Analysis failed. Try again."); setStage("context");
+      if (wakeLock.current) { try { await wakeLock.current.release(); } catch(err) {} wakeLock.current = null; }
+      setError("ANALYSIS_ERROR"); setStage("context");
     }
   };
 
@@ -379,22 +392,81 @@ export default function App() {
         {stage === "upload" && (
           <div style={{ animation: "fadeUp 0.4s ease" }}>
 
-            {/* Hero */}
-            <div style={{ marginBottom: "48px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#1D9E75", boxShadow: "0 0 10px #1D9E75" }}/>
-                <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em" }}>AI Match Analysis</span>
-
+            {/* ── HERO ── */}
+            <div style={{ marginBottom: "40px" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1D9E7512", border: "1px solid #1D9E7525", borderRadius: "20px", padding: "5px 14px", marginBottom: "20px" }}>
+                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
+                <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.18em" }}>Free during beta</span>
               </div>
-              <h1 style={{ fontSize: "clamp(36px,8vw,64px)", fontWeight: "900", letterSpacing: "-0.035em", lineHeight: 0.95, margin: "0 0 20px" }}>
+              <h1 style={{ fontSize: "clamp(38px,9vw,68px)", fontWeight: "900", letterSpacing: "-0.04em", lineHeight: 0.92, margin: "0 0 22px" }}>
                 Your game<br />is leaking points.<br /><span style={{ color: "#1D9E75" }}>Find out where.</span>
               </h1>
-              <p style={{ color: "#3a3a3a", fontSize: "15px", lineHeight: "1.7", maxWidth: "340px", margin: 0 }}>
-                See your game the way your coach does. Upload your match video and get a full coaching report — technique, tactics, drills, and on-court cues.
+              <p style={{ color: "#444", fontSize: "16px", lineHeight: "1.7", maxWidth: "400px", margin: "0 0 28px" }}>
+                Upload your match video and get a full AI coaching report in minutes — technique breakdowns, tactical patterns, drills, and on-court cues.
               </p>
+
+              {/* Social proof strip */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "8px" }}>
+                {[
+                  { icon: "🎾", text: "Tennis Canada certified" },
+                  { icon: "🧠", text: "AI coaching engine" },
+                  { icon: "📧", text: "Report emailed to you" },
+                  { icon: "🔒", text: "No account needed" },
+                ].map((b, i) => (
+                  <div key={i} style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "20px", padding: "5px 12px" }}>
+                    <span style={{ fontSize: "12px" }}>{b.icon}</span>
+                    <span style={{ fontSize: "11px", color: "#444", letterSpacing: "0.02em" }}>{b.text}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Drop zone */}
+            {/* ── MOCK REPORT PREVIEW ── */}
+            <div style={{ background: "#080808", border: "1px solid #1a1a1a", borderRadius: "16px", padding: "20px", marginBottom: "32px", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #1D9E75, transparent)", opacity: 0.4 }}/>
+              <div style={{ fontSize: "9px", color: "#333", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "14px" }}>Example report preview</div>
+              {/* Score row */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
+                {[
+                  { label: "Technique", score: "6", color: "#60a5fa", sub: "Arm-Only Hitter" },
+                  { label: "Strategy", score: "5", color: "#f59e0b", sub: "Passive Baseliner" },
+                ].map((s, i) => (
+                  <div key={i} style={{ background: "#0e0e0e", border: "1px solid #1e1e1e", borderRadius: "10px", padding: "14px", textAlign: "center" }}>
+                    <div style={{ fontSize: "32px", fontWeight: "900", color: s.color, lineHeight: 1 }}>{s.score}</div>
+                    <div style={{ fontSize: "9px", color: "#333", textTransform: "uppercase", letterSpacing: "0.12em", margin: "4px 0" }}>{s.label} /10</div>
+                    <div style={{ fontSize: "10px", color: "#2a2a2a" }}>{s.sub}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Coach verdict preview */}
+              <div style={{ background: "#0a0a0a", borderLeft: "2px solid #1D9E75", padding: "10px 14px", borderRadius: "0 8px 8px 0", marginBottom: "12px" }}>
+                <div style={{ fontSize: "8px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "4px" }}>Coach verdict</div>
+                <p style={{ margin: 0, fontSize: "12px", color: "#3a3a3a", fontStyle: "italic", lineHeight: "1.6" }}>"The arm is doing all the work while the body watches. Fix the unit turn first and everything downstream improves."</p>
+              </div>
+              {/* Top fixes preview */}
+              <div style={{ fontSize: "8px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Top 3 fixes</div>
+              {[
+                { rank: 1, fix: "Establish a complete unit turn before every swing", cue: "Shoulder to net post before I swing" },
+                { rank: 2, fix: "Begin recovery the instant the ball leaves your strings", cue: "Ball leaves strings, feet start moving" },
+              ].map((f, i) => (
+                <div key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "8px", opacity: i === 1 ? 0.5 : 1 }}>
+                  <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: i === 0 ? "#1D9E75" : "#141414", border: `1px solid ${i === 0 ? "#1D9E75" : "#222"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "900", color: i === 0 ? "#060606" : "#333", flexShrink: 0 }}>{f.rank}</div>
+                  <div>
+                    <div style={{ fontSize: "11px", color: "#555", marginBottom: "2px" }}>{f.fix}</div>
+                    <div style={{ fontSize: "10px", color: "#1D9E75", fontStyle: "italic" }}>"{f.cue}"</div>
+                  </div>
+                </div>
+              ))}
+              {/* Blur overlay at bottom */}
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60px", background: "linear-gradient(transparent, #080808)", borderRadius: "0 0 16px 16px" }}/>
+              <div style={{ position: "absolute", bottom: "10px", left: 0, right: 0, textAlign: "center" }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1D9E7518", border: "1px solid #1D9E7530", borderRadius: "20px", padding: "4px 14px" }}>
+                  <span style={{ fontSize: "10px", color: "#1D9E75" }}>Upload your video to unlock your real report</span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── DROP ZONE ── */}
             <div
               onDragOver={e => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
@@ -402,7 +474,7 @@ export default function App() {
               onClick={() => fileRef.current.click()}
               style={{
                 border: `2px dashed ${dragging ? "#1D9E75" : "#1c1c1c"}`,
-                borderRadius: "20px", padding: "64px 24px 56px", textAlign: "center",
+                borderRadius: "20px", padding: "48px 24px 44px", textAlign: "center",
                 cursor: "pointer",
                 background: dragging ? "#071a12" : "#080808",
                 transition: "all 0.2s", position: "relative", overflow: "hidden",
@@ -410,78 +482,132 @@ export default function App() {
             >
               <div style={{ position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%", background: "linear-gradient(90deg, transparent, rgba(29,158,117,0.06), rgba(29,158,117,0.15), rgba(29,158,117,0.06), transparent)", animation: "courtScan 2.5s linear infinite", pointerEvents: "none" }}/>
               <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #1D9E75, transparent)", animation: "courtScan 2.5s linear infinite", opacity: 0.6 }}/>
-              <div style={{ fontSize: "56px", marginBottom: "16px", lineHeight: 1 }}>🎾</div>
-              <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "8px", letterSpacing: "-0.02em" }}>
-                Film doesn't lie. Neither does your technique.
+              <div style={{ fontSize: "48px", marginBottom: "14px", lineHeight: 1 }}>🎾</div>
+              <div style={{ fontSize: "18px", fontWeight: "800", marginBottom: "6px", letterSpacing: "-0.02em", color: "#e0e0e0" }}>
+                The ball never lies. Find out what yours has been saying.
               </div>
-              <div style={{ color: "#2e2e2e", fontSize: "13px", marginBottom: "6px" }}>
-                Technique. Tactics. Patterns. All in one report.
-              </div>
-              <div style={{ color: "#1e1e1e", fontSize: "11px", marginBottom: "28px" }}>
-                MP4 or MOV · any file size · no account needed
+              <div style={{ color: "#2a2a2a", fontSize: "12px", marginBottom: "22px" }}>
+                MP4 or MOV · any length · any file size
               </div>
               <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "13px 32px", fontWeight: "900", fontSize: "14px", letterSpacing: "0.02em" }}>
-                <span style={{ fontSize: "16px" }}>↑</span> Choose video
+                <span>↑</span> Choose video
               </div>
             </div>
             <input ref={fileRef} type="file" accept="video/*" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
 
-            {error && (
-              <div style={{ marginTop: "16px", background: "#120808", border: "1px solid #2e1010", borderRadius: "10px", padding: "14px 18px", color: "#e05555", fontSize: "13px" }}>
+            {error && error !== "ANALYSIS_ERROR" && (
+              <div style={{ marginTop: "14px", background: "#120808", border: "1px solid #2e1010", borderRadius: "10px", padding: "14px 18px", color: "#e05555", fontSize: "13px" }}>
                 ⚠ {error}
               </div>
             )}
 
-            {/* Free beta urgency strip */}
-            <div style={{ marginTop: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "10px 16px", background: "#1D9E7508", border: "1px solid #1D9E7518", borderRadius: "10px" }}>
+            {/* ── BETA STRIP ── */}
+            <div style={{ marginTop: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "10px 16px", background: "#1D9E7508", border: "1px solid #1D9E7518", borderRadius: "10px" }}>
               <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
-              <span style={{ fontSize: "11px", color: "#1D9E75", letterSpacing: "0.06em" }}>
-                Free during beta · 2 analyses per email · No credit card
+              <span style={{ fontSize: "11px", color: "#1D9E75", letterSpacing: "0.05em" }}>
+                Free during beta · 2 analyses per email · No credit card required
               </span>
             </div>
 
-            <CourtLine />
+            {/* ── FEATURE GRID ── */}
+            <div style={{ marginTop: "48px" }}>
+              <div style={{ textAlign: "center", marginBottom: "28px" }}>
+                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px" }}>What you get</div>
+                <h2 style={{ fontSize: "clamp(22px,5vw,32px)", fontWeight: "900", letterSpacing: "-0.03em", margin: 0 }}>
+                  See your game the way<br />your coach does.
+                </h2>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                {[
+                  { icon: "🎯", title: "Biomechanics breakdown", body: "Contact point, unit turn, swing path, follow-through — per shot type, with the kinetic chain explained." },
+                  { icon: "🧠", title: "Tactical patterns", body: "Court positioning, recovery habits, short ball response — the patterns costing you games every match." },
+                  { icon: "⚡", title: "Priority fixes", body: "Your top 3 root-cause fixes ranked by impact. Fix the upstream fault and multiple problems resolve." },
+                  { icon: "📋", title: "Training plan", body: "Two specific drills plus a match rule simple enough to hold in your head during a point." },
+                ].map((f, i) => (
+                  <div key={i} style={{ background: "#080808", border: "1px solid #141414", borderRadius: "14px", padding: "20px 18px" }}>
+                    <div style={{ fontSize: "28px", marginBottom: "12px" }}>{f.icon}</div>
+                    <div style={{ fontSize: "13px", fontWeight: "800", color: "#ddd", marginBottom: "8px", letterSpacing: "-0.01em" }}>{f.title}</div>
+                    <div style={{ fontSize: "12px", color: "#333", lineHeight: "1.7" }}>{f.body}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-            {/* How to film */}
-            <SectionLabel icon="🎥" color="#1D9E75">How to film for best results</SectionLabel>
-            <div style={{ background: "#080808", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "16px 18px", marginBottom: "12px" }}>
-              <div style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Choose your focus before filming</div>
-              <p style={{ margin: 0, fontSize: "13px", color: "#555", lineHeight: "1.7" }}>
-                One phone cannot perfectly capture everything at once. Decide what you want to improve — then film accordingly for the most accurate analysis.
+            {/* ── HOW IT WORKS ── */}
+            <div style={{ marginTop: "48px" }}>
+              <div style={{ textAlign: "center", marginBottom: "28px" }}>
+                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px" }}>How it works</div>
+                <h2 style={{ fontSize: "clamp(22px,5vw,32px)", fontWeight: "900", letterSpacing: "-0.03em", margin: 0 }}>Three steps to your report.</h2>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                {[
+                  { n: "01", h: "Upload your match video", b: "Any length, any file size. MP4 or MOV from your phone. The coaching engine samples one frame every 30 seconds across the full match.", color: "#1D9E75" },
+                  { n: "02", h: "AI analyzes your game", b: "The coaching engine reads biomechanics, identifies recurring patterns, and cross-references against club-level benchmarks. Takes 2–3 minutes.", color: "#60a5fa" },
+                  { n: "03", h: "Get your full report", b: "Technique scores, top fixes, drills, on-court cues — displayed instantly and emailed to you so you can reference it on court.", color: "#a78bfa" },
+                ].map((s, i) => (
+                  <div key={i} style={{ display: "flex", gap: "16px", padding: "20px", background: "#080808", border: "1px solid #111", borderRadius: "14px", marginBottom: "8px" }}>
+                    <div style={{ fontSize: "32px", fontWeight: "900", color: s.color, opacity: 0.3, lineHeight: 1, flexShrink: 0, width: "36px" }}>{s.n}</div>
+                    <div>
+                      <div style={{ fontSize: "14px", fontWeight: "800", color: "#ddd", marginBottom: "6px" }}>{s.h}</div>
+                      <div style={{ fontSize: "12px", color: "#333", lineHeight: "1.7" }}>{s.b}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── FILMING GUIDE ── */}
+            <div style={{ marginTop: "48px" }}>
+              <div style={{ textAlign: "center", marginBottom: "28px" }}>
+                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px" }}>Before you film</div>
+                <h2 style={{ fontSize: "clamp(22px,5vw,32px)", fontWeight: "900", letterSpacing: "-0.03em", margin: 0 }}>How to film for best results.</h2>
+              </div>
+              <div style={{ background: "#080808", border: "1px solid #141414", borderRadius: "14px", padding: "18px", marginBottom: "10px" }}>
+                <div style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Choose your focus first</div>
+                <p style={{ margin: 0, fontSize: "13px", color: "#444", lineHeight: "1.7" }}>One phone cannot capture everything perfectly. Decide what you want to improve — then film accordingly for the sharpest analysis.</p>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+                <FilmCard emoji="🎾" title="For technique" body="Film from the SIDE at mid-court, zoomed in to show waist-up. Clear view of swing shape, contact point, and follow-through." />
+                <FilmCard emoji="📷" title="For tactics" body="Film from BEHIND the baseline, wide angle showing the full court. Best for positioning, recovery, and net approach patterns." />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <FilmCard emoji="📐" title="Camera position" body="1–1.5 metres high, slight downward angle. Use a tripod or lean against a fence. Keep it steady — shaky video reduces accuracy." />
+                <FilmCard emoji="⏱️" title="Length & format" body="10–20 minutes of real play. iPhone: Settings → Camera → Most Compatible. Android: standard video. No slow-mo or portrait mode." />
+              </div>
+            </div>
+
+            {/* ── PRO WAITLIST SECTION ── */}
+            <div style={{ marginTop: "48px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "16px", padding: "28px 24px", textAlign: "center" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1D9E7518", border: "1px solid #1D9E7530", borderRadius: "20px", padding: "4px 14px", marginBottom: "16px" }}>
+                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
+                <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em" }}>Coming soon</span>
+              </div>
+              <h3 style={{ fontSize: "22px", fontWeight: "900", letterSpacing: "-0.02em", margin: "0 0 10px", color: "#e8e8e8" }}>
+                Forty Fifteen gets smarter every match.
+              </h3>
+              <p style={{ margin: "0 0 8px", fontSize: "14px", color: "#444", lineHeight: "1.7", maxWidth: "420px", marginLeft: "auto", marginRight: "auto" }}>
+                Every analysis sharpens the coaching engine — pattern recognition improves, benchmarks get more accurate, and new tactical frameworks get added continuously.
+              </p>
+              <p style={{ margin: "0 0 20px", fontSize: "13px", color: "#2a2a2a", lineHeight: "1.7" }}>
+                Pro members get unlimited analyses, session history, progress tracking, coach sharing, and first access to every new capability as it launches.
+              </p>
+              <a href="https://tally.so/r/RG2pGj" target="_blank" rel="noopener noreferrer"
+                style={{ display: "inline-block", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "13px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}>
+                Join the Pro waitlist →
+              </a>
+              <p style={{ margin: "12px 0 0", fontSize: "11px", color: "#1e1e1e" }}>
+                Early members get founding pricing. No spam. One email when Pro launches.
               </p>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
-              <FilmCard emoji="🎾" title="For technique analysis" body="Film from the SIDE at mid-court, zoomed in to show waist-up. This gives the AI a clear view of your swing shape, contact point, hip rotation, and follow-through on every shot." />
-              <FilmCard emoji="📷" title="For tactical analysis" body="Film from BEHIND the baseline, wide angle showing the full court. Best for reading court positioning, recovery habits, net approach patterns, and rally tendencies." />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "32px" }}>
-              <FilmCard emoji="📐" title="Camera height & angle" body="Place phone at 1–1.5 metres high. Use a tripod, lean against a fence post, or ask someone to hold it steady. Slight downward angle. Keep the phone still — shaky video reduces accuracy." />
-              <FilmCard emoji="⏱️" title="Length & format" body="10–20 minutes of real play. iPhone: Settings → Camera → Formats → Most Compatible (MP4). Android: standard video mode. No slow-mo, no portrait mode. Any file size works." />
+
+            {/* ── TRUST FOOTER ── */}
+            <div style={{ marginTop: "32px", textAlign: "center", paddingBottom: "16px" }}>
+              <p style={{ margin: 0, fontSize: "12px", color: "#222", lineHeight: "1.9" }}>
+                Made in Canada 🍁 by a Tennis Canada certified Club Pro<br />
+                <span style={{ fontStyle: "italic", color: "#1a1a1a" }}>who got tired of guessing what was wrong with his game.</span>
+              </p>
             </div>
 
-            <CourtLine />
-
-            {/* How it works */}
-            <SectionLabel icon="🔬" color="#1D9E75">How the analysis works</SectionLabel>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px" }}>
-              {[
-                { n: "01", h: "Frame sampling", b: "1 frame every 30 seconds. Finds habits across your full match, not just one shot." },
-                { n: "02", h: "Technique breakdown", b: "Contact point, follow-through, unit turn, footwork — per shot type, with the chain reaction explained." },
-                { n: "03", h: "Tactical read", b: "Short ball response, net approach, rally patterns, positioning — the tactical habits costing you games." },
-              ].map(c => (
-                <div key={c.n} style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "20px 16px" }}>
-                  <div style={{ fontSize: "28px", fontWeight: "900", color: "#1e1e1e", marginBottom: "8px", letterSpacing: "-0.02em" }}>{c.n}</div>
-                  <div style={{ fontSize: "13px", fontWeight: "800", color: "#ccc", marginBottom: "6px" }}>{c.h}</div>
-                  <div style={{ fontSize: "11px", color: "#333", lineHeight: "1.6" }}>{c.b}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Trust line */}
-            <div style={{ marginTop: "28px", textAlign: "center" }}>
-              <p style={{ margin: 0, fontSize: "12px", color: "#2a2a2a", lineHeight: "1.8" }}>Made in Canada 🍁 by a Tennis Canada certified Club Pro</p>
-              <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#1e1e1e", lineHeight: "1.6", fontStyle: "italic" }}>who got tired of guessing what was wrong with his game.</p>
-            </div>
           </div>
         )}
 
@@ -535,7 +661,20 @@ export default function App() {
               onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
 
             {error && (
-              <div style={{ marginTop: "12px", background: "#120808", border: "1px solid #2e1010", borderRadius: "10px", padding: "14px 18px", color: "#e05555", fontSize: "13px" }}>⚠ {error}</div>
+              <div style={{ marginTop: "12px", background: "#120808", border: "1px solid #2e1010", borderRadius: "12px", padding: "18px 20px" }}>
+                <div style={{ fontSize: "20px", marginBottom: "8px" }}>🎾</div>
+                <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "6px" }}>
+                  Oops — your AI coach hit one into the net.
+                </div>
+                <p style={{ margin: "0 0 12px", fontSize: "13px", color: "#555", lineHeight: "1.6" }}>
+                  Something went wrong during analysis. This is usually a one-time glitch — hit the button again and it should work.
+                </p>
+                <p style={{ margin: 0, fontSize: "12px", color: "#333", lineHeight: "1.6" }}>
+                  If this keeps happening, reach out at{" "}
+                  <a href="mailto:coach@fortyfifteen.app" style={{ color: "#1D9E75", textDecoration: "none" }}>coach@fortyfifteen.app</a>
+                  {" "}and we'll sort it out.
+                </p>
+              </div>
             )}
 
             <div style={{ display: "flex", gap: "10px", marginTop: "14px" }}>
@@ -673,7 +812,11 @@ export default function App() {
                   {framesTotal > 0 ? `${framesTotal} frames` : "Frames"} sent · Your digital coach is studying the film…
                 </div>
               )}
-              <p style={{ color: "#1e1e1e", fontSize: "12px", margin: "6px 0 0" }}>Do not close this tab — your report is being built</p>
+              <p style={{ color: "#2a2a2a", fontSize: "12px", margin: "6px 0 0" }}>Keep this tab open and your screen unlocked — your report is being built</p>
+              <div style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "6px", background: "#1a1000", border: "1px solid #2a1e00", borderRadius: "8px", padding: "7px 14px" }}>
+                <span style={{ fontSize: "13px" }}>📱</span>
+                <span style={{ fontSize: "11px", color: "#a07020" }}>On mobile: turn off auto-lock or keep tapping the screen</span>
+              </div>
             </div>
 
             {/* Main progress bar */}
