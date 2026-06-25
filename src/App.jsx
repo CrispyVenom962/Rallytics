@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 const API_URL = "/api/analyze";
 const FRAME_INTERVAL = 30;
@@ -6,6 +6,21 @@ const FRAME_W = 640;
 const FRAME_H = 360;
 const FRAME_QUALITY = 0.72;
 const MAX_FRAMES = 40;
+const MAX_FREE_ANALYSES = 2;
+const STORAGE_KEY = "ff_analyses_used";
+
+const TENNIS_FACTS = [
+  "60% of club coaches say late contact point is the single most damaging habit they see — it forces arm-only swings and kills consistency.",
+  "Research shows 73% of club-level unforced errors trace back to just 2–3 recurring habits. The same mistake, disguised in different shots.",
+  "Elite coaches spend 60% of film review time on positioning and recovery — not stroke mechanics. Where you are matters more than what you do.",
+  "The average 3.5–4.0 player makes contact 15–20cm behind the ideal contact point on their forehand — the root cause of most topspin problems.",
+  "Players who receive written coaching feedback retain 40% more of the advice after one week compared to verbal-only feedback.",
+  "On clay, the average rally at club level is 5–7 shots. On hard courts, it drops to 3–4. Your surface changes everything about shot selection.",
+  "The kinetic chain — ground to racket — takes 0.08 seconds to fire. One broken link in that chain can cost you 20–30% of racket speed.",
+  "Top-ranked juniors watch an average of 45 minutes of their own match footage per week. Most club players watch zero.",
+  "Split step timing is the most undercoached skill in recreational tennis. Players who master it cover 30% more court with the same fitness.",
+  "A 5cm shift in toss position changes a flat serve into a kick serve. Toss position is the most diagnostic tell in serve analysis.",
+];
 
 function extractFrames(file, onProgress) {
   return new Promise((resolve, reject) => {
@@ -31,7 +46,7 @@ function extractFrames(file, onProgress) {
       video.addEventListener("seeked", () => {
         ctx.drawImage(video, 0, 0, FRAME_W, FRAME_H);
         frames.push({ base64: canvas.toDataURL("image/jpeg", FRAME_QUALITY).split(",")[1], timestamp: Math.round(times[idx]) });
-        onProgress?.(Math.round(((idx + 1) / times.length) * 100));
+        onProgress?.(idx + 1, times.length);
         idx++; grabNext();
       });
       grabNext();
@@ -89,9 +104,7 @@ const Panel = ({ title, badge, accent = "#1D9E75", children }) => {
         transition: "background 0.2s",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          {badge && (
-            <div style={{ width: "4px", height: "36px", borderRadius: "2px", background: accent, flexShrink: 0 }}/>
-          )}
+          {badge && <div style={{ width: "4px", height: "36px", borderRadius: "2px", background: accent, flexShrink: 0 }}/>}
           <span style={{ fontSize: "15px", fontWeight: "700", color: "#e8e8e8", lineHeight: "1.4" }}>{title}</span>
         </div>
         <div style={{
@@ -105,7 +118,7 @@ const Panel = ({ title, badge, accent = "#1D9E75", children }) => {
         </div>
       </button>
       {open && (
-        <div style={{ background: "#0a0a0a", padding: "0 18px 18px", borderTop: `1px solid #141414` }}>
+        <div style={{ background: "#0a0a0a", padding: "0 18px 18px", borderTop: "1px solid #141414" }}>
           {children}
         </div>
       )}
@@ -134,6 +147,18 @@ const FilmCard = ({ emoji, title, body }) => (
   </div>
 );
 
+// ── Logo SVG ───────────────────────────────────────────────────────────────────
+const Logo = ({ size = 36 }) => (
+  <svg width={size} height={size} viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="80" cy="80" r="52" fill="none" stroke="#1D9E75" strokeWidth="3"/>
+    <circle cx="80" cy="80" r="38" fill="#1D9E75"/>
+    <path d="M 52 58 A 32 32 0 0 1 108 58" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round"/>
+    <line x1="52" y1="102" x2="108" y2="102" stroke="#ffffff" strokeWidth="2" strokeLinecap="round"/>
+    <line x1="80" y1="58" x2="80" y2="102" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round"/>
+    <circle cx="96" cy="72" r="5" fill="#ffffff"/>
+  </svg>
+);
+
 // ── Main App ───────────────────────────────────────────────────────────────────
 export default function App() {
   const [stage, setStage] = useState("upload");
@@ -146,18 +171,37 @@ export default function App() {
   const [dragging, setDragging] = useState(false);
   const [tab, setTab] = useState("technique");
   const [pct, setPct] = useState(0);
-  const [frameCount, setFrameCount] = useState(0);
+  const [framesDone, setFramesDone] = useState(0);
+  const [framesTotal, setFramesTotal] = useState(0);
   const [duration, setDuration] = useState(0);
   const [statusMsg, setStatusMsg] = useState("");
+  const [statusPhase, setStatusPhase] = useState(0);
+  const [factIndex, setFactIndex] = useState(0);
+  const [analysesUsed, setAnalysesUsed] = useState(() => parseInt(localStorage.getItem(STORAGE_KEY) || "0"));
   // Email gate
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [level, setLevel] = useState("");
   const [gateError, setGateError] = useState("");
   const fileRef = useRef();
+  const factTimer = useRef(null);
 
   const fmt = s => `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
   const estFrames = d => Math.min(MAX_FRAMES, Math.floor(Math.max(0, d - 4) / FRAME_INTERVAL) + 1);
+  const analysesLeft = Math.max(0, MAX_FREE_ANALYSES - analysesUsed);
+
+  // Rotate facts every 6 seconds during analysis
+  useEffect(() => {
+    if (stage === "working") {
+      setFactIndex(Math.floor(Math.random() * TENNIS_FACTS.length));
+      factTimer.current = setInterval(() => {
+        setFactIndex(i => (i + 1) % TENNIS_FACTS.length);
+      }, 6000);
+    } else {
+      clearInterval(factTimer.current);
+    }
+    return () => clearInterval(factTimer.current);
+  }, [stage]);
 
   const handleFile = f => {
     if (!f?.type.startsWith("video/")) { setError("Please upload a video file — MP4 or MOV works best."); return; }
@@ -166,13 +210,8 @@ export default function App() {
 
   const onDrop = useCallback(e => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); }, []);
 
-  // After context screen — show email gate before analysis
-  const proceedToGate = () => {
-    setGateError("");
-    setStage("gate");
-  };
+  const proceedToGate = () => { setGateError(""); setStage("gate"); };
 
-  // Validate gate then start analysis
   const proceedToAnalysis = () => {
     if (!firstName.trim()) { setGateError("Please enter your first name."); return; }
     if (!email.trim() || !email.includes("@")) { setGateError("Please enter a valid email address."); return; }
@@ -182,37 +221,84 @@ export default function App() {
   };
 
   const analyze = async () => {
-    setStage("working"); setPct(0); setError(null);
+    setStage("working"); setPct(0); setError(null); setFramesDone(0); setStatusPhase(0);
+
+    // Phases with messages
+    const phases = [
+      "Extracting frames from your video…",
+      "Sampling key moments across the match…",
+      "Sending frames to your AI coach…",
+      "Reading your technique patterns…",
+      "Analyzing forehand & backhand mechanics…",
+      "Checking serve mechanics and footwork…",
+      "Identifying tactical habits…",
+      "Cross-referencing pattern clusters…",
+      "Writing your priority fixes…",
+      "Building your coaching report…",
+      "Final review — almost there…",
+    ];
+
     let aiTimer = null;
     try {
-      setStatusMsg("Extracting frames from your video…");
-      const frames = await extractFrames(videoFile, p => setPct(Math.round(p * 0.6)));
-      setFrameCount(frames.length);
-      setStatusMsg(`Sending ${frames.length} frames to your AI coach…`);
-      setPct(65);
+      setStatusMsg(phases[0]);
+      setStatusPhase(0);
 
-      // Animate progress in stages with status messages
-      let currentPct = 65;
+      const frames = await extractFrames(videoFile, (done, total) => {
+        setFramesDone(done);
+        setFramesTotal(total);
+        const extractPct = Math.round((done / total) * 55);
+        setPct(extractPct);
+        if (done < total * 0.3) setStatusMsg(phases[0]);
+        else if (done < total * 0.7) setStatusMsg(phases[1]);
+        else setStatusMsg(phases[2]);
+      });
+
+      setFramesDone(frames.length);
+      setStatusMsg(phases[2]);
+      setPct(58);
+
+      // Animated AI phase — steps from 60 → 97
+      const aiSteps = [
+        { at: 60, msg: phases[3], phase: 3 },
+        { at: 67, msg: phases[4], phase: 4 },
+        { at: 73, msg: phases[5], phase: 5 },
+        { at: 79, msg: phases[6], phase: 6 },
+        { at: 84, msg: phases[7], phase: 7 },
+        { at: 88, msg: phases[8], phase: 8 },
+        { at: 92, msg: phases[9], phase: 9 },
+        { at: 95, msg: phases[10], phase: 10 },
+      ];
+
+      let currentPct = 58;
       aiTimer = setInterval(() => {
-        currentPct += 1;
+        currentPct = Math.min(97, currentPct + 1);
         setPct(currentPct);
-        if (currentPct === 70) setStatusMsg("Reading your technique patterns…");
-        if (currentPct === 78) setStatusMsg("Analyzing tactical habits across the match…");
-        if (currentPct === 85) setStatusMsg("Cross-referencing patterns…");
-        if (currentPct === 90) setStatusMsg("Almost there — writing your coaching report…");
-        if (currentPct === 95) setStatusMsg("Final checks on your analysis…");
+        const step = aiSteps.findLast(s => currentPct >= s.at);
+        if (step) { setStatusMsg(step.msg); setStatusPhase(step.phase); }
         if (currentPct >= 97) clearInterval(aiTimer);
-      }, 1200);
+      }, 900);
 
       const dLabel = duration > 60 ? `${Math.round(duration / 60)}-minute` : `${Math.round(duration)}-second`;
       const res = await fetch(API_URL, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frames: frames.map(f => f.base64), context: context.trim(), playerId: playerId.trim(), frameCount: frames.length, durationLabel: dLabel, firstName: firstName.trim(), email: email.trim(), level }),
+        body: JSON.stringify({
+          frames: frames.map(f => f.base64),
+          context: context.trim(), playerId: playerId.trim(),
+          frameCount: frames.length, durationLabel: dLabel,
+          firstName: firstName.trim(), email: email.trim(), level,
+        }),
       });
+
       clearInterval(aiTimer);
       setPct(100);
       setStatusMsg("Your report is ready!");
+
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `Error ${res.status}`); }
+
+      const newCount = analysesUsed + 1;
+      setAnalysesUsed(newCount);
+      localStorage.setItem(STORAGE_KEY, String(newCount));
+
       setResult(await res.json());
       setStage("result");
     } catch (e) {
@@ -222,19 +308,20 @@ export default function App() {
   };
 
   const reset = () => {
-    setStage("upload"); setVideoFile(null); setVideoUrl(null); setContext(""); setPlayerId(""); setResult(null);
-    setError(null); setPct(0); setFrameCount(0); setDuration(0); setTab("technique");
-    setFirstName(""); setEmail(""); setLevel(""); setGateError("");
+    setStage("upload"); setVideoFile(null); setVideoUrl(null); setContext(""); setPlayerId("");
+    setResult(null); setError(null); setPct(0); setFramesDone(0); setFramesTotal(0);
+    setDuration(0); setTab("technique"); setFirstName(""); setEmail(""); setLevel(""); setGateError("");
   };
 
   const lc = l => !l ? "#888" : l.includes("Beginner") ? "#5bc85b" : l.includes("Developing") ? "#a3e635" : l.includes("Intermediate") ? "#f5c842" : "#f97316";
 
-  const steps = [
-    { label: "Sample frames every 30 seconds", done: pct >= 30 },
-    { label: "Compress & resize frames", done: pct >= 70 },
-    { label: "Send sequence to AI coach", done: pct >= 100 },
-    { label: "Pattern analysis across full match", done: stage === "result" },
-    { label: "Build your coaching report", done: stage === "result" },
+  // Analysis bars keyed to phase
+  const analysisBars = [
+    { label: "Forehand mechanics", color: "#60a5fa", activePhase: 4, donePhase: 6 },
+    { label: "Backhand mechanics", color: "#60a5fa", activePhase: 4, donePhase: 6 },
+    { label: "Serve & footwork", color: "#f59e0b", activePhase: 5, donePhase: 7 },
+    { label: "Tactical patterns", color: "#f59e0b", activePhase: 6, donePhase: 8 },
+    { label: "Building your report", color: "#a78bfa", activePhase: 8, donePhase: 11 },
   ];
 
   return (
@@ -246,6 +333,8 @@ export default function App() {
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
         @keyframes courtScan { 0%{transform:translateX(-100%)} 100%{transform:translateX(400%)} }
+        @keyframes factFade { 0%{opacity:0;transform:translateY(6px)} 15%{opacity:1;transform:translateY(0)} 85%{opacity:1} 100%{opacity:0} }
+        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
         ::placeholder { color: #282828; }
         ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #0a0a0a; } ::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
       `}</style>
@@ -258,30 +347,34 @@ export default function App() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "11px" }}>
-          <svg width="36" height="36" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="80" cy="80" r="52" fill="none" stroke="#1D9E75" strokeWidth="3"/>
-            <circle cx="80" cy="80" r="38" fill="#1D9E75"/>
-            <path d="M 52 58 A 32 32 0 0 1 108 58" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="52" y1="102" x2="108" y2="102" stroke="#ffffff" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="80" y1="58" x2="80" y2="102" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round"/>
-            <circle cx="96" cy="72" r="5" fill="#ffffff"/>
-          </svg>
+          <Logo size={36} />
           <span style={{ fontWeight: "900", fontSize: "17px", letterSpacing: "-0.03em" }}>
             forty<span style={{ color: "#1D9E75" }}>.</span><span style={{ color: "#1D9E75", fontWeight: "300" }}>fifteen</span>
           </span>
         </div>
-        {!["upload","working"].includes(stage) && (
-          <button onClick={reset} style={{
-            background: "none", border: "1px solid #1e1e1e", borderRadius: "8px",
-            color: "#555", fontSize: "12px", padding: "7px 16px", cursor: "pointer",
-            letterSpacing: "0.04em", transition: "border-color 0.2s, color 0.2s",
-          }}
-            onMouseEnter={e => { e.target.style.borderColor = "#1D9E75"; e.target.style.color = "#1D9E75"; }}
-            onMouseLeave={e => { e.target.style.borderColor = "#1e1e1e"; e.target.style.color = "#555"; }}
-          >
-            ← New match
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {/* Free analyses counter */}
+          {stage === "upload" && analysesLeft > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#1D9E7514", border: "1px solid #1D9E7525", borderRadius: "20px", padding: "4px 12px" }}>
+              <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75" }}/>
+              <span style={{ fontSize: "10px", color: "#1D9E75", letterSpacing: "0.08em" }}>
+                {analysesLeft} free {analysesLeft === 1 ? "analysis" : "analyses"} left
+              </span>
+            </div>
+          )}
+          {!["upload", "working"].includes(stage) && (
+            <button onClick={reset} style={{
+              background: "none", border: "1px solid #1e1e1e", borderRadius: "8px",
+              color: "#555", fontSize: "12px", padding: "7px 16px", cursor: "pointer",
+              letterSpacing: "0.04em", transition: "border-color 0.2s, color 0.2s",
+            }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "#1D9E75"; e.currentTarget.style.color = "#1D9E75"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e1e"; e.currentTarget.style.color = "#555"; }}
+            >
+              ← New match
+            </button>
+          )}
+        </div>
       </nav>
 
       <main style={{ maxWidth: "700px", margin: "0 auto", padding: "40px 20px 100px" }}>
@@ -289,11 +382,32 @@ export default function App() {
         {/* ══════════════════ UPLOAD ══════════════════ */}
         {stage === "upload" && (
           <div style={{ animation: "fadeUp 0.4s ease" }}>
+
+            {/* Limit warning */}
+            {analysesLeft === 0 && (
+              <div style={{ marginBottom: "24px", background: "#120808", border: "1px solid #2e1010", borderRadius: "14px", padding: "20px 24px" }}>
+                <div style={{ fontSize: "10px", color: "#e05555", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "8px" }}>Free limit reached</div>
+                <p style={{ margin: "0 0 14px", fontSize: "15px", fontWeight: "700", color: "#e8e8e8" }}>You've used your 2 free analyses.</p>
+                <p style={{ margin: "0 0 16px", fontSize: "13px", color: "#555", lineHeight: "1.6" }}>
+                  Join the Pro waitlist for unlimited match analysis, session history, and progress tracking.
+                </p>
+                <a href="mailto:coach@fortyfifteen.app?subject=Pro Waitlist&body=I want early access to Forty Fifteen Pro."
+                  style={{ display: "inline-block", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "11px 24px", fontWeight: "900", fontSize: "14px", textDecoration: "none" }}>
+                  Join Pro waitlist →
+                </a>
+              </div>
+            )}
+
             {/* Hero */}
             <div style={{ marginBottom: "48px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
                 <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#1D9E75", boxShadow: "0 0 10px #1D9E75" }}/>
                 <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em" }}>AI Match Analysis</span>
+                {analysesLeft > 0 && (
+                  <span style={{ fontSize: "10px", color: "#2a2a2a", letterSpacing: "0.08em" }}>
+                    · {analysesLeft} free {analysesLeft === 1 ? "analysis" : "analyses"} remaining
+                  </span>
+                )}
               </div>
               <h1 style={{ fontSize: "clamp(36px,8vw,64px)", fontWeight: "900", letterSpacing: "-0.035em", lineHeight: 0.95, margin: "0 0 20px" }}>
                 Your game<br />is leaking points.<br /><span style={{ color: "#1D9E75" }}>Find out where.</span>
@@ -308,37 +422,23 @@ export default function App() {
               onDragOver={e => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onDrop={onDrop}
-              onClick={() => fileRef.current.click()}
+              onClick={() => analysesLeft > 0 && fileRef.current.click()}
               style={{
-                border: `2px dashed ${dragging ? "#1D9E75" : "#1c1c1c"}`,
+                border: `2px dashed ${dragging ? "#1D9E75" : analysesLeft === 0 ? "#1a1a1a" : "#1c1c1c"}`,
                 borderRadius: "20px", padding: "64px 24px 56px", textAlign: "center",
-                cursor: "pointer", background: dragging ? "#071a12" : "#080808",
+                cursor: analysesLeft > 0 ? "pointer" : "not-allowed",
+                background: dragging ? "#071a12" : "#080808",
                 transition: "all 0.2s", position: "relative", overflow: "hidden",
+                opacity: analysesLeft === 0 ? 0.4 : 1,
               }}
             >
-              {/* Animated scanning lines - flashes through entire box */}
-              <div style={{
-                position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%",
-                background: "linear-gradient(90deg, transparent, rgba(29,158,117,0.06), rgba(29,158,117,0.15), rgba(29,158,117,0.06), transparent)",
-                animation: "courtScan 2.5s linear infinite",
-                pointerEvents: "none",
-              }}/>
-              <div style={{
-                position: "absolute", top: 0, left: 0, right: 0, height: "2px",
-                background: "linear-gradient(90deg, transparent, #1D9E75, transparent)",
-                animation: "courtScan 2.5s linear infinite",
-                opacity: 0.6,
-              }}/>
-              <div style={{
-                position: "absolute", bottom: 0, left: 0, right: 0, height: "1px",
-                background: "linear-gradient(90deg, transparent, #1D9E7544, transparent)",
-                animation: "courtScan 2.5s linear infinite 1.25s",
-                opacity: 0.4,
-              }}/>
-
+              {analysesLeft > 0 && <>
+                <div style={{ position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%", background: "linear-gradient(90deg, transparent, rgba(29,158,117,0.06), rgba(29,158,117,0.15), rgba(29,158,117,0.06), transparent)", animation: "courtScan 2.5s linear infinite", pointerEvents: "none" }}/>
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #1D9E75, transparent)", animation: "courtScan 2.5s linear infinite", opacity: 0.6 }}/>
+              </>}
               <div style={{ fontSize: "56px", marginBottom: "16px", lineHeight: 1 }}>🎾</div>
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "8px", letterSpacing: "-0.02em" }}>
-                Film don't lie. Neither does your technique.
+                Film doesn't lie. Neither does your technique.
               </div>
               <div style={{ color: "#2e2e2e", fontSize: "13px", marginBottom: "6px" }}>
                 Technique. Tactics. Patterns. All in one report.
@@ -346,14 +446,11 @@ export default function App() {
               <div style={{ color: "#1e1e1e", fontSize: "11px", marginBottom: "28px" }}>
                 MP4 or MOV · any file size · no account needed
               </div>
-              <div style={{
-                display: "inline-flex", alignItems: "center", gap: "8px",
-                background: "#1D9E75", color: "#060606", borderRadius: "10px",
-                padding: "13px 32px", fontWeight: "900", fontSize: "14px",
-                letterSpacing: "0.02em",
-              }}>
-                <span style={{ fontSize: "16px" }}>↑</span> Choose video
-              </div>
+              {analysesLeft > 0 && (
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "13px 32px", fontWeight: "900", fontSize: "14px", letterSpacing: "0.02em" }}>
+                  <span style={{ fontSize: "16px" }}>↑</span> Choose video
+                </div>
+              )}
             </div>
             <input ref={fileRef} type="file" accept="video/*" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
 
@@ -363,31 +460,33 @@ export default function App() {
               </div>
             )}
 
+            {/* Free beta urgency strip */}
+            {analysesLeft > 0 && (
+              <div style={{ marginTop: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "10px 16px", background: "#1D9E7508", border: "1px solid #1D9E7518", borderRadius: "10px" }}>
+                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
+                <span style={{ fontSize: "11px", color: "#1D9E75", letterSpacing: "0.06em" }}>
+                  Free during beta · {analysesLeft === 2 ? "2 analyses included" : "1 analysis remaining"} · No credit card
+                </span>
+              </div>
+            )}
+
             <CourtLine />
 
             {/* How to film */}
             <SectionLabel icon="🎥" color="#1D9E75">How to film for best results</SectionLabel>
-
-            {/* Technique vs Tactical choice */}
             <div style={{ background: "#080808", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "16px 18px", marginBottom: "12px" }}>
               <div style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Choose your focus before filming</div>
               <p style={{ margin: 0, fontSize: "13px", color: "#555", lineHeight: "1.7" }}>
                 One phone cannot perfectly capture everything at once. Decide what you want to improve — then film accordingly for the most accurate analysis.
               </p>
             </div>
-
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
-              <FilmCard emoji="🎾" title="For technique analysis"
-                body="Film from the SIDE at mid-court, zoomed in to show waist-up. This gives the AI a clear view of your swing shape, contact point, hip rotation, and follow-through on every shot." />
-              <FilmCard emoji="📷" title="For tactical analysis"
-                body="Film from BEHIND the baseline, wide angle showing the full court. Best for reading court positioning, recovery habits, net approach patterns, and rally tendencies." />
+              <FilmCard emoji="🎾" title="For technique analysis" body="Film from the SIDE at mid-court, zoomed in to show waist-up. This gives the AI a clear view of your swing shape, contact point, hip rotation, and follow-through on every shot." />
+              <FilmCard emoji="📷" title="For tactical analysis" body="Film from BEHIND the baseline, wide angle showing the full court. Best for reading court positioning, recovery habits, net approach patterns, and rally tendencies." />
             </div>
-
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "32px" }}>
-              <FilmCard emoji="📐" title="Camera height & angle"
-                body="Place phone at 1–1.5 metres high. Use a tripod, lean against a fence post, or ask someone to hold it steady. Slight downward angle. Keep the phone still — shaky video reduces accuracy." />
-              <FilmCard emoji="⏱️" title="Length & format"
-                body="10–20 minutes of real play. iPhone: Settings → Camera → Formats → Most Compatible (MP4). Android: standard video mode. No slow-mo, no portrait mode. Any file size works." />
+              <FilmCard emoji="📐" title="Camera height & angle" body="Place phone at 1–1.5 metres high. Use a tripod, lean against a fence post, or ask someone to hold it steady. Slight downward angle. Keep the phone still — shaky video reduces accuracy." />
+              <FilmCard emoji="⏱️" title="Length & format" body="10–20 minutes of real play. iPhone: Settings → Camera → Formats → Most Compatible (MP4). Android: standard video mode. No slow-mo, no portrait mode. Any file size works." />
             </div>
 
             <CourtLine />
@@ -410,13 +509,9 @@ export default function App() {
 
             {/* Trust line */}
             <div style={{ marginTop: "28px", textAlign: "center" }}>
-              <p style={{ margin: 0, fontSize: "12px", color: "#2a2a2a", lineHeight: "1.8" }}>
-                Made in Canada 🍁 by a Tennis Canada certified Club Pro
-              </p>
-              <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#1e1e1e", lineHeight: "1.6", fontStyle: "italic" }}>
-                who got tired of guessing what was wrong with his game.
-              </p>            </div>
-
+              <p style={{ margin: 0, fontSize: "12px", color: "#2a2a2a", lineHeight: "1.8" }}>Made in Canada 🍁 by a Tennis Canada certified Club Pro</p>
+              <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#1e1e1e", lineHeight: "1.6", fontStyle: "italic" }}>who got tired of guessing what was wrong with his game.</p>
+            </div>
           </div>
         )}
 
@@ -451,62 +546,37 @@ export default function App() {
               </div>
             )}
 
-            {/* Player ID field */}
             <div style={{ marginBottom: "10px" }}>
-              <div style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>
-                Which player should I analyze?
-              </div>
-              <input
-                value={playerId} onChange={e => setPlayerId(e.target.value)}
+              <div style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>Which player should I analyze?</div>
+              <input value={playerId} onChange={e => setPlayerId(e.target.value)}
                 placeholder="e.g. Red shirt, black shorts, far side of the court — leave blank if it's only you in the video"
-                style={{
-                  width: "100%", background: "#080808",
-                  border: "1px solid #1a1a1a", borderRadius: "12px",
-                  padding: "13px 16px", color: "#f0f0f0", fontSize: "14px",
-                  lineHeight: "1.5", outline: "none", transition: "border-color 0.2s",
-                }}
+                style={{ width: "100%", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "13px 16px", color: "#f0f0f0", fontSize: "14px", lineHeight: "1.5", outline: "none", transition: "border-color 0.2s" }}
                 onFocus={e => e.target.style.borderColor = "#1D9E75"}
-                onBlur={e => e.target.style.borderColor = "#1a1a1a"}
-              />
+                onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
             </div>
 
-            {/* Context field */}
             <div style={{ fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>
               Anything else I should know? <span style={{ color: "#2a2a2a" }}>(optional)</span>
             </div>
             <textarea value={context} onChange={e => setContext(e.target.value)}
               placeholder="e.g. My backhand keeps going wide under pressure. Playing against a big server. Focus on my serve and net approach."
-              style={{
-                width: "100%", minHeight: "80px", background: "#080808",
-                border: "1px solid #1a1a1a", borderRadius: "12px",
-                padding: "14px 16px", color: "#f0f0f0", fontSize: "14px",
-                lineHeight: "1.7", resize: "vertical", transition: "border-color 0.2s",
-              }}
+              style={{ width: "100%", minHeight: "80px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "14px 16px", color: "#f0f0f0", fontSize: "14px", lineHeight: "1.7", resize: "vertical", transition: "border-color 0.2s" }}
               onFocus={e => e.target.style.borderColor = "#1D9E75"}
               onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
 
             {error && (
-              <div style={{ marginTop: "12px", background: "#120808", border: "1px solid #2e1010", borderRadius: "10px", padding: "14px 18px", color: "#e05555", fontSize: "13px" }}>
-                ⚠ {error}
-              </div>
+              <div style={{ marginTop: "12px", background: "#120808", border: "1px solid #2e1010", borderRadius: "10px", padding: "14px 18px", color: "#e05555", fontSize: "13px" }}>⚠ {error}</div>
             )}
 
             <div style={{ display: "flex", gap: "10px", marginTop: "14px" }}>
-              <button onClick={reset} style={{
-                flex: 1, background: "none", border: "1px solid #1a1a1a", borderRadius: "10px",
-                color: "#3a3a3a", fontSize: "14px", padding: "14px", cursor: "pointer", transition: "all 0.2s",
-              }}
-                onMouseEnter={e => e.target.style.borderColor = "#333"}
-                onMouseLeave={e => e.target.style.borderColor = "#1a1a1a"}
-              >← Change video</button>
-              <button onClick={proceedToGate} style={{
-                flex: 3, background: "#1D9E75", border: "none", borderRadius: "10px",
-                color: "#060606", fontSize: "15px", fontWeight: "900", padding: "14px",
-                cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.2s",
-              }}
-                onMouseEnter={e => e.target.style.opacity = "0.88"}
-                onMouseLeave={e => e.target.style.opacity = "1"}
-              >
+              <button onClick={reset} style={{ flex: 1, background: "none", border: "1px solid #1a1a1a", borderRadius: "10px", color: "#3a3a3a", fontSize: "14px", padding: "14px", cursor: "pointer", transition: "all 0.2s" }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "#333"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = "#1a1a1a"}>
+                ← Change video
+              </button>
+              <button onClick={proceedToGate} style={{ flex: 3, background: "#1D9E75", border: "none", borderRadius: "10px", color: "#060606", fontSize: "15px", fontWeight: "900", padding: "14px", cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.2s" }}
+                onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+                onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
                 Get my coaching report →
               </button>
             </div>
@@ -521,46 +591,37 @@ export default function App() {
                 <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#1D9E75", boxShadow: "0 0 10px #1D9E75" }}/>
                 <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em" }}>Almost there</span>
               </div>
-              <h2 style={{ fontSize: "32px", fontWeight: "900", letterSpacing: "-0.025em", margin: "0 0 8px" }}>
-                Where should we send your report?
-              </h2>
+              <h2 style={{ fontSize: "32px", fontWeight: "900", letterSpacing: "-0.025em", margin: "0 0 8px" }}>Where should we send your report?</h2>
               <p style={{ color: "#3a3a3a", fontSize: "13px", margin: 0, lineHeight: "1.6" }}>
-                Your full coaching report will be emailed to you instantly so you can reference it on court. We respect your inbox — no spam, ever. Unsubscribe anytime with one click.
+                Your full coaching report will be emailed to you so you can reference it on court. No spam. Unsubscribe anytime.
               </p>
             </div>
 
-            {/* Fields */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {/* Free analyses counter on gate */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px", padding: "12px 16px", background: "#1D9E7508", border: "1px solid #1D9E7518", borderRadius: "10px" }}>
+              <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
+              <span style={{ fontSize: "11px", color: "#1D9E75" }}>
+                This is your <strong style={{ color: "#1D9E75" }}>analysis {analysesUsed + 1} of {MAX_FREE_ANALYSES}</strong> — free during beta
+              </span>
+            </div>
 
-              {/* First name */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               <div>
                 <div style={{ fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>First name</div>
                 <input value={firstName} onChange={e => setFirstName(e.target.value)}
                   placeholder="e.g. William"
-                  style={{
-                    width: "100%", background: "#080808", border: "1px solid #1a1a1a",
-                    borderRadius: "12px", padding: "14px 16px", color: "#f0f0f0",
-                    fontSize: "15px", outline: "none", transition: "border-color 0.2s",
-                  }}
+                  style={{ width: "100%", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "14px 16px", color: "#f0f0f0", fontSize: "15px", outline: "none", transition: "border-color 0.2s" }}
                   onFocus={e => e.target.style.borderColor = "#1D9E75"}
                   onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
               </div>
-
-              {/* Email */}
               <div>
                 <div style={{ fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>Email address</div>
                 <input value={email} onChange={e => setEmail(e.target.value)}
                   type="email" placeholder="e.g. you@gmail.com"
-                  style={{
-                    width: "100%", background: "#080808", border: "1px solid #1a1a1a",
-                    borderRadius: "12px", padding: "14px 16px", color: "#f0f0f0",
-                    fontSize: "15px", outline: "none", transition: "border-color 0.2s",
-                  }}
+                  style={{ width: "100%", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "14px 16px", color: "#f0f0f0", fontSize: "15px", outline: "none", transition: "border-color 0.2s" }}
                   onFocus={e => e.target.style.borderColor = "#1D9E75"}
                   onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
               </div>
-
-              {/* Playing level */}
               <div>
                 <div style={{ fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Your playing level</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px" }}>
@@ -572,8 +633,7 @@ export default function App() {
                     <button key={l.id} onClick={() => setLevel(l.id)} style={{
                       background: level === l.id ? "#1D9E75" : "#080808",
                       border: `1px solid ${level === l.id ? "#1D9E75" : "#1a1a1a"}`,
-                      borderRadius: "10px", padding: "14px 10px", cursor: "pointer",
-                      textAlign: "center", transition: "all 0.18s",
+                      borderRadius: "10px", padding: "14px 10px", cursor: "pointer", textAlign: "center", transition: "all 0.18s",
                     }}>
                       <div style={{ fontSize: "13px", fontWeight: "800", color: level === l.id ? "#060606" : "#888", marginBottom: "3px" }}>{l.label}</div>
                       <div style={{ fontSize: "10px", color: level === l.id ? "#333" : "#2a2a2a" }}>{l.sub}</div>
@@ -589,27 +649,20 @@ export default function App() {
               </div>
             )}
 
-            {/* Privacy note */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginTop: "16px", padding: "12px 14px", background: "#080808", border: "1px solid #111", borderRadius: "10px" }}>
               <span style={{ fontSize: "16px", flexShrink: 0 }}>🔒</span>
               <p style={{ margin: 0, fontSize: "12px", color: "#2e2e2e", lineHeight: "1.6" }}>
-                Your email is used only to send your coaching report. We will never share your data or send unsolicited emails. Every email includes a one-click unsubscribe link.
+                Your email is used only to send your coaching report. We will never share your data or send unsolicited emails.
               </p>
             </div>
 
             <div style={{ display: "flex", gap: "10px", marginTop: "14px" }}>
-              <button onClick={() => setStage("context")} style={{
-                flex: 1, background: "none", border: "1px solid #1a1a1a", borderRadius: "10px",
-                color: "#3a3a3a", fontSize: "14px", padding: "14px", cursor: "pointer",
-              }}>← Back</button>
-              <button onClick={proceedToAnalysis} style={{
-                flex: 3, background: "#1D9E75", border: "none", borderRadius: "10px",
-                color: "#060606", fontSize: "15px", fontWeight: "900", padding: "14px",
-                cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.2s",
-              }}
-                onMouseEnter={e => e.target.style.opacity = "0.88"}
-                onMouseLeave={e => e.target.style.opacity = "1"}
-              >
+              <button onClick={() => setStage("context")} style={{ flex: 1, background: "none", border: "1px solid #1a1a1a", borderRadius: "10px", color: "#3a3a3a", fontSize: "14px", padding: "14px", cursor: "pointer" }}>
+                ← Back
+              </button>
+              <button onClick={proceedToAnalysis} style={{ flex: 3, background: "#1D9E75", border: "none", borderRadius: "10px", color: "#060606", fontSize: "15px", fontWeight: "900", padding: "14px", cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.2s" }}
+                onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+                onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
                 Analyze my match →
               </button>
             </div>
@@ -621,84 +674,118 @@ export default function App() {
           <div style={{ animation: "fadeUp 0.3s ease", paddingTop: "10px" }}>
             <style>{`
               @keyframes barPulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
-              @keyframes scanLine { 0%{transform:translateX(-100%)} 100%{transform:translateX(100vw)} }
-              @keyframes ballBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+              @keyframes ballBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+              @keyframes factSlide { 0%{opacity:0;transform:translateY(8px)} 12%{opacity:1;transform:translateY(0)} 88%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-4px)} }
             `}</style>
 
-            {/* Animated tennis ball */}
+            {/* Bouncing ball */}
             <div style={{ textAlign: "center", marginBottom: "28px" }}>
               <div style={{ fontSize: "52px", display: "inline-block", animation: "ballBounce 1s ease-in-out infinite" }}>🎾</div>
             </div>
 
-            {/* Status message */}
+            {/* Phase + status */}
             <div style={{ textAlign: "center", marginBottom: "32px" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
                 <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.2s infinite" }}/>
                 <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em" }}>Analyzing</span>
               </div>
-              <h2 style={{ fontSize: "24px", fontWeight: "900", letterSpacing: "-0.02em", margin: "0 0 6px" }}>{statusMsg}</h2>
-              <p style={{ color: "#2a2a2a", fontSize: "13px", margin: 0 }}>Do not close this tab — your report is being built</p>
+              <h2 style={{ fontSize: "22px", fontWeight: "900", letterSpacing: "-0.02em", margin: "0 0 8px", minHeight: "32px" }}>
+                {statusMsg}
+              </h2>
+              {/* Frame counter */}
+              {framesTotal > 0 && pct < 60 && (
+                <div style={{ fontSize: "12px", color: "#2a2a2a", marginBottom: "4px" }}>
+                  Frame {framesDone} of {framesTotal} extracted
+                </div>
+              )}
+              {pct >= 60 && pct < 100 && (
+                <div style={{ fontSize: "12px", color: "#2a2a2a" }}>
+                  {framesTotal > 0 ? `${framesTotal} frames` : "Frames"} sent · Claude is reading your match
+                </div>
+              )}
+              <p style={{ color: "#1e1e1e", fontSize: "12px", margin: "6px 0 0" }}>Do not close this tab — your report is being built</p>
             </div>
 
             {/* Main progress bar */}
-            <div style={{ marginBottom: "32px" }}>
+            <div style={{ marginBottom: "28px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                <span style={{ fontSize: "11px", color: "#333", textTransform: "uppercase", letterSpacing: "0.1em" }}>Overall progress</span>
-                <span style={{ fontSize: "11px", color: "#1D9E75", fontWeight: "700" }}>{Math.round(pct)}%</span>
+                <span style={{ fontSize: "11px", color: "#2a2a2a", textTransform: "uppercase", letterSpacing: "0.1em" }}>Overall progress</span>
+                <span style={{ fontSize: "13px", color: "#1D9E75", fontWeight: "700" }}>{Math.round(pct)}%</span>
               </div>
-              <div style={{ background: "#0e0e0e", borderRadius: "6px", height: "8px", overflow: "hidden", position: "relative" }}>
+              <div style={{ background: "#0e0e0e", borderRadius: "8px", height: "10px", overflow: "hidden", position: "relative" }}>
                 <div style={{
-                  height: "100%", background: "linear-gradient(90deg, #1D9E75, #a8df00)",
-                  borderRadius: "6px", width: `${pct}%`, transition: "width 0.6s ease",
-                  boxShadow: "0 0 12px #1D9E7588", position: "relative",
-                }}/>
+                  height: "100%",
+                  background: pct === 100 ? "#1D9E75" : "linear-gradient(90deg, #1D9E75, #a8df00)",
+                  borderRadius: "8px", width: `${pct}%`,
+                  transition: "width 0.7s cubic-bezier(.4,0,.2,1)",
+                  boxShadow: pct > 0 && pct < 100 ? "0 0 14px #1D9E7566" : "none",
+                  position: "relative",
+                }}>
+                  {/* Shimmer on active bar */}
+                  {pct > 5 && pct < 98 && (
+                    <div style={{
+                      position: "absolute", top: 0, right: 0, width: "40px", height: "100%",
+                      background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)",
+                      borderRadius: "8px",
+                    }}/>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Individual analysis bars */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>
-              {[
-                { label: "Forehand mechanics", icon: "🎾", bar: Math.min(100, pct * 1.8), color: "#60a5fa", active: pct >= 10 },
-                { label: "Backhand mechanics", icon: "🎾", bar: Math.min(100, Math.max(0, (pct - 15) * 1.8)), color: "#60a5fa", active: pct >= 25 },
-                { label: "Serve & footwork", icon: "⚡", bar: Math.min(100, Math.max(0, (pct - 30) * 1.8)), color: "#f59e0b", active: pct >= 40 },
-                { label: "Tactical patterns", icon: "🔍", bar: Math.min(100, Math.max(0, (pct - 50) * 2)), color: "#f59e0b", active: pct >= 55 },
-                { label: "Building your report", icon: "✅", bar: Math.min(100, Math.max(0, (pct - 75) * 4)), color: "#a78bfa", active: pct >= 80 },
-              ].map((item, i) => (
-                <div key={i} style={{ opacity: item.active ? 1 : 0.2, transition: "opacity 0.5s ease" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ fontSize: "14px" }}>{item.icon}</span>
-                      <span style={{ fontSize: "12px", color: item.active ? "#888" : "#2a2a2a", letterSpacing: "0.02em" }}>{item.label}</span>
+            {/* Per-analysis bars */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "32px" }}>
+              {analysisBars.map((item, i) => {
+                const isActive = statusPhase >= item.activePhase;
+                const isDone = statusPhase >= item.donePhase;
+                const barPct = isDone ? 100 : isActive ? Math.min(95, ((pct - 60) / 37) * 100) : 0;
+                return (
+                  <div key={i} style={{ opacity: isActive ? 1 : 0.18, transition: "opacity 0.6s ease" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                      <span style={{ fontSize: "12px", color: isActive ? "#666" : "#222", letterSpacing: "0.02em" }}>{item.label}</span>
+                      {isDone
+                        ? <span style={{ fontSize: "10px", color: "#5bc85b", fontWeight: "700" }}>✓ done</span>
+                        : isActive
+                          ? <span style={{ fontSize: "10px", color: item.color, animation: "barPulse 1.5s infinite" }}>scanning…</span>
+                          : null
+                      }
                     </div>
-                    {item.active && item.bar < 100 && (
-                      <span style={{ fontSize: "10px", color: item.color, animation: "barPulse 1.5s infinite" }}>scanning…</span>
-                    )}
-                    {item.bar >= 100 && (
-                      <span style={{ fontSize: "10px", color: "#5bc85b", fontWeight: "700" }}>✓ done</span>
-                    )}
+                    <div style={{ background: "#0e0e0e", borderRadius: "4px", height: "3px", overflow: "hidden" }}>
+                      <div style={{
+                        height: "100%", background: item.color,
+                        borderRadius: "4px", width: `${barPct}%`,
+                        transition: "width 1s ease",
+                        boxShadow: barPct > 0 && !isDone ? `0 0 8px ${item.color}55` : "none",
+                      }}/>
+                    </div>
                   </div>
-                  <div style={{ background: "#0e0e0e", borderRadius: "4px", height: "4px", overflow: "hidden" }}>
-                    <div style={{
-                      height: "100%", background: item.color,
-                      borderRadius: "4px", width: `${item.bar}%`,
-                      transition: "width 0.8s ease",
-                      boxShadow: item.bar > 0 ? `0 0 8px ${item.color}66` : "none",
-                    }}/>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            {/* Fun tennis fact while waiting */}
-            <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "16px 18px", textAlign: "center" }}>
-              <div style={{ fontSize: "9px", color: "#2a2a2a", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>Did you know</div>
-              <p style={{ margin: 0, fontSize: "12px", color: "#2e2e2e", lineHeight: "1.7" }}>
-                {pct < 40
-                  ? "The average club player makes contact 15–20cm behind the ideal contact point on their forehand — the single most common mistake at 3.5–4.0 level."
-                  : pct < 75
-                  ? "Research shows 73% of club-level unforced errors come from just 2–3 recurring habits. Forty Fifteen is finding yours right now."
-                  : "Elite coaches spend 60% of film review time on positioning and recovery — not just stroke mechanics. Your tactical patterns are being read now."}
+            {/* Rotating fact card */}
+            <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "14px", padding: "20px 22px", minHeight: "100px", position: "relative", overflow: "hidden" }}>
+              <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
+                <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#1D9E75" }}/>
+                Did you know · {factIndex + 1}/{TENNIS_FACTS.length}
+              </div>
+              <p key={factIndex} style={{
+                margin: 0, fontSize: "13px", color: "#3a3a3a", lineHeight: "1.75",
+                animation: "factSlide 6s ease forwards",
+              }}>
+                {TENNIS_FACTS[factIndex]}
               </p>
+              {/* Progress dots */}
+              <div style={{ display: "flex", gap: "4px", marginTop: "14px" }}>
+                {TENNIS_FACTS.map((_, i) => (
+                  <div key={i} style={{
+                    width: i === factIndex ? "16px" : "4px", height: "4px",
+                    borderRadius: "2px",
+                    background: i === factIndex ? "#1D9E75" : "#1a1a1a",
+                    transition: "all 0.4s ease",
+                  }}/>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -717,32 +804,22 @@ export default function App() {
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
                   <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: lcolor, boxShadow: `0 0 10px ${lcolor}` }}/>
                   <span style={{ fontSize: "10px", color: lcolor, textTransform: "uppercase", letterSpacing: "0.2em" }}>
-                    {result.frames_analyzed || frameCount} frames · {fmt(duration)}
+                    {result.frames_analyzed || framesTotal} frames · {fmt(duration)}
                   </span>
                 </div>
-
-                {/* Level badge */}
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: lcolor + "14", border: `1px solid ${lcolor}30`, borderRadius: "8px", padding: "6px 16px", marginBottom: "20px" }}>
                   <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: lcolor }}/>
                   <span style={{ fontSize: "13px", fontWeight: "800", color: lcolor, letterSpacing: "0.04em" }}>{result.player_level}</span>
                 </div>
-
                 <p style={{ fontSize: "15px", color: "#888", lineHeight: "1.75", margin: "0 0 20px", maxWidth: "580px" }}>
                   {result.match_overview}
                 </p>
-
-                {/* Score arcs */}
                 <div style={{ display: "flex", gap: "28px", marginBottom: "20px" }}>
                   <ScoreArc score={tech.score || 5} label="Technique" color="#60a5fa" />
                   <ScoreArc score={strat.score || 5} label="Strategy" color="#f59e0b" />
                 </div>
-
-                {/* Coach verdict */}
                 {result.coach_verdict && (
-                  <div style={{
-                    background: "#080808", borderLeft: "3px solid #1D9E75",
-                    borderRadius: "0 10px 10px 0", padding: "16px 20px",
-                  }}>
+                  <div style={{ background: "#080808", borderLeft: "3px solid #1D9E75", borderRadius: "0 10px 10px 0", padding: "16px 20px" }}>
                     <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "6px" }}>Coach verdict</div>
                     <p style={{ margin: 0, fontSize: "14px", color: "#777", fontStyle: "italic", lineHeight: "1.65" }}>"{result.coach_verdict}"</p>
                   </div>
@@ -819,14 +896,11 @@ export default function App() {
                       <SectionLabel color="#5bc85b">What's working</SectionLabel>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                         {tech.strengths.map((s, i) => (
-                          <div key={i} style={{ background: "#0b180b", border: "1px solid #1a3a1a", borderRadius: "6px", padding: "7px 14px", fontSize: "13px", color: "#5bc85b", fontWeight: "600" }}>
-                            ✓ {s}
-                          </div>
+                          <div key={i} style={{ background: "#0b180b", border: "1px solid #1a3a1a", borderRadius: "6px", padding: "7px 14px", fontSize: "13px", color: "#5bc85b", fontWeight: "600" }}>✓ {s}</div>
                         ))}
                       </div>
                     </div>
                   )}
-
                   {tech.shot_breakdown && (
                     <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px" }}>
                       <SectionLabel icon="🎾" color="#60a5fa">Shot-by-shot breakdown</SectionLabel>
@@ -835,7 +909,6 @@ export default function App() {
                       ))}
                     </div>
                   )}
-
                   {tech.patterns?.length > 0 && (
                     <div>
                       <SectionLabel color="#1D9E75">Recurring patterns</SectionLabel>
@@ -872,9 +945,7 @@ export default function App() {
                       <SectionLabel color="#5bc85b">What's working</SectionLabel>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                         {strat.strengths.map((s, i) => (
-                          <div key={i} style={{ background: "#0b180b", border: "1px solid #1a3a1a", borderRadius: "6px", padding: "7px 14px", fontSize: "13px", color: "#5bc85b", fontWeight: "600" }}>
-                            ✓ {s}
-                          </div>
+                          <div key={i} style={{ background: "#0b180b", border: "1px solid #1a3a1a", borderRadius: "6px", padding: "7px 14px", fontSize: "13px", color: "#5bc85b", fontWeight: "600" }}>✓ {s}</div>
                         ))}
                       </div>
                     </div>
@@ -914,8 +985,6 @@ export default function App() {
                       </div>
                     )}
                   </div>
-
-                  {/* On-court cues */}
                   {result.priority_fixes?.some(p => p.on_court_cue) && (
                     <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px" }}>
                       <SectionLabel icon="💬" color="#1D9E75">On-court cues</SectionLabel>
@@ -938,8 +1007,6 @@ export default function App() {
                       </div>
                     </div>
                   )}
-
-                  {/* Drills */}
                   {[result.training_plan.drill_1, result.training_plan.drill_2].filter(Boolean).map((drill, i) => (
                     <Panel key={i} title={drill.name} badge accent="#a78bfa">
                       <div style={{ paddingTop: "14px" }}>
@@ -954,27 +1021,39 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── Beta banner + waitlist ── */}
+              {/* ── Beta banner ── */}
               <div style={{ marginTop: "32px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "24px 20px", textAlign: "center" }}>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1D9E7518", border: "1px solid #1D9E7530", borderRadius: "20px", padding: "4px 14px", marginBottom: "12px" }}>
                   <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
                   <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em" }}>Free Beta</span>
                 </div>
-                <p style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: "800", color: "#e0e0e0", letterSpacing: "-0.01em" }}>
-                  Forty Fifteen is free during beta.
-                </p>
+                {analysesLeft > 0 ? (
+                  <>
+                    <p style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: "800", color: "#e0e0e0", letterSpacing: "-0.01em" }}>
+                      Forty Fifteen is free during beta.
+                    </p>
+                    <p style={{ margin: "0 0 6px", fontSize: "13px", color: "#2a2a2a" }}>
+                      You have {analysesLeft} free {analysesLeft === 1 ? "analysis" : "analyses"} remaining.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: "800", color: "#e0e0e0", letterSpacing: "-0.01em" }}>
+                      You've used your 2 free analyses.
+                    </p>
+                    <p style={{ margin: "0 0 6px", fontSize: "13px", color: "#555" }}>
+                      Want more? Join the Pro waitlist for unlimited access.
+                    </p>
+                  </>
+                )}
                 <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#3a3a3a", lineHeight: "1.6" }}>
-                  Want Pro features — session history, progress tracking, and coach sharing? Join the waitlist for early access.
+                  Pro features: unlimited analyses, session history, progress tracking, and coach sharing.
                 </p>
-                <a
-                  href="mailto:coach@fortyfifteen.app?subject=Pro Waitlist&body=I want early access to Forty Fifteen Pro."
-                  style={{ display: "inline-block", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}
-                >
+                <a href="mailto:coach@fortyfifteen.app?subject=Pro Waitlist&body=I want early access to Forty Fifteen Pro."
+                  style={{ display: "inline-block", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}>
                   Join the Pro waitlist →
                 </a>
-                <p style={{ margin: "12px 0 0", fontSize: "11px", color: "#222" }}>
-                  No spam. Just one email when Pro launches.
-                </p>
+                <p style={{ margin: "12px 0 0", fontSize: "11px", color: "#222" }}>No spam. Just one email when Pro launches.</p>
               </div>
 
             </div>
