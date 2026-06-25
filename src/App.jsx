@@ -293,7 +293,18 @@ export default function App() {
       setPct(100);
       setStatusMsg("Your report is ready!");
 
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `Error ${res.status}`); }
+
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        if (e.error === "EMAIL_LIMIT_REACHED") {
+          if (aiTimer) clearInterval(aiTimer);
+          setStage("gate");
+          setGateError(e.message || "You have already used your 2 free analyses. Join the Pro waitlist.");
+          return;
+        }
+        throw new Error(e.message || e.error || `Error ${res.status}`);
+      }
+
 
       const newCount = analysesUsed + 1;
       setAnalysesUsed(newCount);
@@ -346,7 +357,7 @@ export default function App() {
         borderBottom: "1px solid #111", padding: "0 24px", height: "58px",
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "11px" }}>
+        <div onClick={reset} style={{ display: "flex", alignItems: "center", gap: "11px", cursor: "pointer" }}>
           <Logo size={36} />
           <span style={{ fontWeight: "900", fontSize: "17px", letterSpacing: "-0.03em" }}>
             forty<span style={{ color: "#1D9E75" }}>.</span><span style={{ color: "#1D9E75", fontWeight: "300" }}>fifteen</span>
