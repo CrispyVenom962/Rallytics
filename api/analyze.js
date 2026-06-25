@@ -494,6 +494,50 @@ Never use line breaks inside string values.
   "coach_verdict": "One direct honest sentence — the kind a real coach says after watching film. Not a compliment sandwich. The sentence that makes the player think that is exactly it."
 }`.trim();
 
+// ─── Airtable Email Gate ───────────────────────────────────────────────────────
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
+const AIRTABLE_TABLE = "Analyses";
+const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
+const MAX_FREE = 2;
+
+async function checkEmailUsage(email) {
+  if (!AIRTABLE_BASE_ID || !AIRTABLE_API_KEY) return { count: 0, recordId: null };
+  try {
+    const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}?filterByFormula=${encodeURIComponent(`{Email}="${email}"`)}`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` } });
+    const data = await r.json();
+    if (data.records && data.records.length > 0) {
+      const record = data.records[0];
+      return { count: record.fields.Count || 0, recordId: record.id };
+    }
+    return { count: 0, recordId: null };
+  } catch (e) {
+    console.error("Airtable check error:", e.message);
+    return { count: 0, recordId: null };
+  }
+}
+
+async function incrementEmailUsage(email, firstName, level, recordId, currentCount) {
+  if (!AIRTABLE_BASE_ID || !AIRTABLE_API_KEY) return;
+  try {
+    if (recordId) {
+      await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}/${recordId}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: { Count: currentCount + 1 } }),
+      });
+    } else {
+      await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: { Email: email, FirstName: firstName, Level: level, Count: 1 } }),
+      });
+    }
+  } catch (e) {
+    console.error("Airtable increment error:", e.message);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -504,6 +548,22 @@ export default async function handler(req, res) {
   if (!frames || !Array.isArray(frames) || frames.length === 0) {
     return res.status(400).json({ error: "No frames provided" });
   }
+
+  // ── Email usage gate ──
+  let emailRecordId = null;
+  let emailCount = 0;
+  if (email) {
+    const usage = await checkEmailUsage(email.toLowerCase().trim());
+    emailCount = usage.count;
+    emailRecordId = usage.recordId;
+    if (emailCount >= MAX_FREE) {
+      return res.status(403).json({
+        error: "EMAIL_LIMIT_REACHED",
+        message: `You have already used your ${MAX_FREE} free analyses. Join the Pro waitlist for unlimited access.`,
+      });
+    }
+  }
+
 
   const playerFocus = playerId
     ? `IMPORTANT: There are multiple players visible. Focus your ENTIRE analysis ONLY on the player matching this description: "${playerId}". Ignore all other players completely.`
@@ -574,10 +634,21 @@ export default async function handler(req, res) {
       }
     }
 
+
+    // Increment email usage in Airtable
+    await incrementEmailUsage(email?.toLowerCase().trim(), firstName, level, emailRecordId, emailCount);
+
     // Send email via Resend
     await sendResultsEmail({ firstName, email, level, result: parsed });
 
     return res.status(200).json(parsed);
+
+  } catch (err) {
+    console.error("Handler error:", err);
+    return res.status(500).json({ error: err.message || "Unexpected server error" });
+  }
+}
+
 
   } catch (err) {
     console.error("Handler error:", err);
