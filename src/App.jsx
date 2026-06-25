@@ -6,8 +6,6 @@ const FRAME_W = 640;
 const FRAME_H = 360;
 const FRAME_QUALITY = 0.72;
 const MAX_FRAMES = 40;
-const MAX_FREE_ANALYSES = 2;
-const STORAGE_KEY = "ff_analyses_used";
 
 const TENNIS_FACTS = [
   "60% of club coaches say late contact point is the single most damaging habit they see — it forces arm-only swings and kills consistency.",
@@ -177,7 +175,6 @@ export default function App() {
   const [statusMsg, setStatusMsg] = useState("");
   const [statusPhase, setStatusPhase] = useState(0);
   const [factIndex, setFactIndex] = useState(0);
-  const [analysesUsed, setAnalysesUsed] = useState(() => parseInt(localStorage.getItem(STORAGE_KEY) || "0"));
   // Email gate
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
@@ -188,7 +185,6 @@ export default function App() {
 
   const fmt = s => `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
   const estFrames = d => Math.min(MAX_FRAMES, Math.floor(Math.max(0, d - 4) / FRAME_INTERVAL) + 1);
-  const analysesLeft = Math.max(0, MAX_FREE_ANALYSES - analysesUsed);
 
   // Rotate facts every 6 seconds during analysis
   useEffect(() => {
@@ -306,9 +302,6 @@ export default function App() {
       }
 
 
-      const newCount = analysesUsed + 1;
-      setAnalysesUsed(newCount);
-      localStorage.setItem(STORAGE_KEY, String(newCount));
 
       setResult(await res.json());
       setStage("result");
@@ -364,15 +357,7 @@ export default function App() {
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          {/* Free analyses counter */}
-          {stage === "upload" && analysesLeft > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#1D9E7514", border: "1px solid #1D9E7525", borderRadius: "20px", padding: "4px 12px" }}>
-              <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75" }}/>
-              <span style={{ fontSize: "10px", color: "#1D9E75", letterSpacing: "0.08em" }}>
-                {analysesLeft} free {analysesLeft === 1 ? "analysis" : "analyses"} left
-              </span>
-            </div>
-          )}
+
           {!["upload", "working"].includes(stage) && (
             <button onClick={reset} style={{
               background: "none", border: "1px solid #1e1e1e", borderRadius: "8px",
@@ -394,31 +379,12 @@ export default function App() {
         {stage === "upload" && (
           <div style={{ animation: "fadeUp 0.4s ease" }}>
 
-            {/* Limit warning */}
-            {analysesLeft === 0 && (
-              <div style={{ marginBottom: "24px", background: "#120808", border: "1px solid #2e1010", borderRadius: "14px", padding: "20px 24px" }}>
-                <div style={{ fontSize: "10px", color: "#e05555", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "8px" }}>Free limit reached</div>
-                <p style={{ margin: "0 0 14px", fontSize: "15px", fontWeight: "700", color: "#e8e8e8" }}>You've used your 2 free analyses.</p>
-                <p style={{ margin: "0 0 16px", fontSize: "13px", color: "#555", lineHeight: "1.6" }}>
-                  Join the Pro waitlist for unlimited match analysis, session history, and progress tracking.
-                </p>
-                <a href="https://tally.so/r/RG2pGj"
-                  style={{ display: "inline-block", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "11px 24px", fontWeight: "900", fontSize: "14px", textDecoration: "none" }}>
-                  Join Pro waitlist →
-                </a>
-              </div>
-            )}
-
             {/* Hero */}
             <div style={{ marginBottom: "48px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
                 <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#1D9E75", boxShadow: "0 0 10px #1D9E75" }}/>
                 <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em" }}>AI Match Analysis</span>
-                {analysesLeft > 0 && (
-                  <span style={{ fontSize: "10px", color: "#2a2a2a", letterSpacing: "0.08em" }}>
-                    · {analysesLeft} free {analysesLeft === 1 ? "analysis" : "analyses"} remaining
-                  </span>
-                )}
+
               </div>
               <h1 style={{ fontSize: "clamp(36px,8vw,64px)", fontWeight: "900", letterSpacing: "-0.035em", lineHeight: 0.95, margin: "0 0 20px" }}>
                 Your game<br />is leaking points.<br /><span style={{ color: "#1D9E75" }}>Find out where.</span>
@@ -433,20 +399,17 @@ export default function App() {
               onDragOver={e => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onDrop={onDrop}
-              onClick={() => analysesLeft > 0 && fileRef.current.click()}
+              onClick={() => fileRef.current.click()}
               style={{
-                border: `2px dashed ${dragging ? "#1D9E75" : analysesLeft === 0 ? "#1a1a1a" : "#1c1c1c"}`,
+                border: `2px dashed ${dragging ? "#1D9E75" : "#1c1c1c"}`,
                 borderRadius: "20px", padding: "64px 24px 56px", textAlign: "center",
-                cursor: analysesLeft > 0 ? "pointer" : "not-allowed",
+                cursor: "pointer",
                 background: dragging ? "#071a12" : "#080808",
                 transition: "all 0.2s", position: "relative", overflow: "hidden",
-                opacity: analysesLeft === 0 ? 0.4 : 1,
               }}
             >
-              {analysesLeft > 0 && <>
-                <div style={{ position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%", background: "linear-gradient(90deg, transparent, rgba(29,158,117,0.06), rgba(29,158,117,0.15), rgba(29,158,117,0.06), transparent)", animation: "courtScan 2.5s linear infinite", pointerEvents: "none" }}/>
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #1D9E75, transparent)", animation: "courtScan 2.5s linear infinite", opacity: 0.6 }}/>
-              </>}
+              <div style={{ position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%", background: "linear-gradient(90deg, transparent, rgba(29,158,117,0.06), rgba(29,158,117,0.15), rgba(29,158,117,0.06), transparent)", animation: "courtScan 2.5s linear infinite", pointerEvents: "none" }}/>
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #1D9E75, transparent)", animation: "courtScan 2.5s linear infinite", opacity: 0.6 }}/>
               <div style={{ fontSize: "56px", marginBottom: "16px", lineHeight: 1 }}>🎾</div>
               <div style={{ fontSize: "20px", fontWeight: "800", marginBottom: "8px", letterSpacing: "-0.02em" }}>
                 Film doesn't lie. Neither does your technique.
@@ -457,11 +420,9 @@ export default function App() {
               <div style={{ color: "#1e1e1e", fontSize: "11px", marginBottom: "28px" }}>
                 MP4 or MOV · any file size · no account needed
               </div>
-              {analysesLeft > 0 && (
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "13px 32px", fontWeight: "900", fontSize: "14px", letterSpacing: "0.02em" }}>
-                  <span style={{ fontSize: "16px" }}>↑</span> Choose video
-                </div>
-              )}
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "13px 32px", fontWeight: "900", fontSize: "14px", letterSpacing: "0.02em" }}>
+                <span style={{ fontSize: "16px" }}>↑</span> Choose video
+              </div>
             </div>
             <input ref={fileRef} type="file" accept="video/*" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
 
@@ -472,14 +433,12 @@ export default function App() {
             )}
 
             {/* Free beta urgency strip */}
-            {analysesLeft > 0 && (
-              <div style={{ marginTop: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "10px 16px", background: "#1D9E7508", border: "1px solid #1D9E7518", borderRadius: "10px" }}>
-                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
-                <span style={{ fontSize: "11px", color: "#1D9E75", letterSpacing: "0.06em" }}>
-                  Free during beta · {analysesLeft === 2 ? "2 analyses included" : "1 analysis remaining"} · No credit card
-                </span>
-              </div>
-            )}
+            <div style={{ marginTop: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "10px 16px", background: "#1D9E7508", border: "1px solid #1D9E7518", borderRadius: "10px" }}>
+              <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
+              <span style={{ fontSize: "11px", color: "#1D9E75", letterSpacing: "0.06em" }}>
+                Free during beta · 2 analyses per email · No credit card
+              </span>
+            </div>
 
             <CourtLine />
 
@@ -612,7 +571,7 @@ export default function App() {
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px", padding: "12px 16px", background: "#1D9E7508", border: "1px solid #1D9E7518", borderRadius: "10px" }}>
               <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
               <span style={{ fontSize: "11px", color: "#1D9E75" }}>
-                This is your <strong style={{ color: "#1D9E75" }}>analysis {analysesUsed + 1} of {MAX_FREE_ANALYSES}</strong> — free during beta
+                Free during beta — <strong style={{ color: "#1D9E75" }}>2 analyses per email</strong> included
               </span>
             </div>
 
@@ -1038,25 +997,12 @@ export default function App() {
                   <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
                   <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em" }}>Free Beta</span>
                 </div>
-                {analysesLeft > 0 ? (
-                  <>
-                    <p style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: "800", color: "#e0e0e0", letterSpacing: "-0.01em" }}>
-                      Forty Fifteen is free during beta.
-                    </p>
-                    <p style={{ margin: "0 0 6px", fontSize: "13px", color: "#2a2a2a" }}>
-                      You have {analysesLeft} free {analysesLeft === 1 ? "analysis" : "analyses"} remaining.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: "800", color: "#e0e0e0", letterSpacing: "-0.01em" }}>
-                      You've used your 2 free analyses.
-                    </p>
-                    <p style={{ margin: "0 0 6px", fontSize: "13px", color: "#555" }}>
-                      Want more? Join the Pro waitlist for unlimited access.
-                    </p>
-                  </>
-                )}
+                <p style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: "800", color: "#e0e0e0", letterSpacing: "-0.01em" }}>
+                  Forty Fifteen is free during beta.
+                </p>
+                <p style={{ margin: "0 0 6px", fontSize: "13px", color: "#2a2a2a" }}>
+                  Each email gets 2 free analyses. Pro is coming with unlimited access.
+                </p>
                 <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#3a3a3a", lineHeight: "1.6" }}>
                   Pro features: unlimited analyses, session history, progress tracking, and coach sharing.
                 </p>
