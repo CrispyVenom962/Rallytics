@@ -575,7 +575,7 @@ export default async function handler(req, res) {
     }
 
     // Send email via Resend
-    sendResultsEmail({ firstName, email, level, result: parsed });
+    await sendResultsEmail({ firstName, email, level, result: parsed });
 
     return res.status(200).json(parsed);
 
