@@ -1006,7 +1006,7 @@ export default function App() {
                 <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#3a3a3a", lineHeight: "1.6" }}>
                   Pro features: unlimited analyses, session history, progress tracking, and coach sharing.
                 </p>
-                <a href="https://tally.so/r/RG2pGj"
+                <a href="https://tally.so/r/RG2pGj" target="_blank" rel="noopener noreferrer"
                   style={{ display: "inline-block", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}>
                   Join the Pro waitlist →
                 </a>
