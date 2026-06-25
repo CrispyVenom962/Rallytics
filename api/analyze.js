@@ -790,7 +790,7 @@ async function sendResultsEmail({ firstName, email, level, result }) {
 
   <!-- CTA -->
   <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;text-align:center;">
-    <a href="https://fortyfifteen.app" style="display:inline-block;background:#1D9E75;color:#060606;border-radius:10px;padding:13px 32px;font-weight:900;font-size:14px;text-decoration:none;letter-spacing:0.01em;">View full report at fortyfifteen.app</a>
+    <a href="https://fortyfifteen.app" style="display:inline-block;background:#1D9E75;color:#060606;border-radius:10px;padding:13px 32px;font-weight:900;font-size:14px;text-decoration:none;letter-spacing:0.01em;">Analyze another match →</a>
   </td></tr>
 
   <!-- Footer -->
