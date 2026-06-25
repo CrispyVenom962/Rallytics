@@ -670,7 +670,7 @@ export default function App() {
               )}
               {pct >= 60 && pct < 100 && (
                 <div style={{ fontSize: "12px", color: "#2a2a2a" }}>
-                  {framesTotal > 0 ? `${framesTotal} frames` : "Frames"} sent · Claude is reading your match
+                  {framesTotal > 0 ? `${framesTotal} frames` : "Frames"} sent · Your digital coach is studying the film…
                 </div>
               )}
               <p style={{ color: "#1e1e1e", fontSize: "12px", margin: "6px 0 0" }}>Do not close this tab — your report is being built</p>
