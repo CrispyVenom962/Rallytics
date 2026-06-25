@@ -689,76 +689,116 @@ async function sendResultsEmail({ firstName, email, level, result }) {
   }
 
   const fixesHtml = fixes.map(p => `
-    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #1e1e1e;">
-      <div style="min-width:26px;height:26px;background:${p.rank===1?"#1D9E75":"#1a1a1a"};color:${p.rank===1?"#060606":"#666"};border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;text-align:center;line-height:26px;">${p.rank}</div>
-      <div>
-        <div style="color:#e0e0e0;font-size:14px;font-weight:700;margin-bottom:4px;">${p.fix || ""}</div>
-        ${p.on_court_cue ? `<div style="color:#1D9E75;font-style:italic;font-size:12px;">Say on court: "${p.on_court_cue}"</div>` : ""}
-      </div>
-    </div>`).join("");
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+      <tr>
+        <td width="36" valign="top" style="padding-top:2px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:${p.rank===1?"#1D9E75":"#1e1e1e"};border:1px solid ${p.rank===1?"#1D9E75":"#2a2a2a"};text-align:center;line-height:32px;font-size:13px;font-weight:900;color:${p.rank===1?"#060606":"#555"};">${p.rank}</div>
+        </td>
+        <td valign="top" style="padding-left:12px;">
+          <div style="color:#e8e8e8;font-size:14px;font-weight:700;line-height:1.5;margin-bottom:6px;">${p.fix || ""}</div>
+          ${p.on_court_cue ? `<div style="background:#0a1a12;border-left:2px solid #1D9E75;padding:8px 12px;border-radius:0 6px 6px 0;margin-top:4px;"><span style="font-size:10px;color:#1D9E75;text-transform:uppercase;letter-spacing:0.1em;">Say on court: </span><span style="font-size:13px;color:#1D9E75;font-style:italic;">"${p.on_court_cue}"</span></div>` : ""}
+        </td>
+      </tr>
+    </table>
+    ${p.rank < fixes.length ? '<div style="height:1px;background:#1a1a1a;margin-bottom:12px;"></div>' : ''}`).join("");
 
   const html = `<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#060606;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0">
-<tr><td align="center" style="padding:40px 16px;">
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;">
-  <tr><td style="padding-bottom:28px;">
-    <span style="font-size:20px;font-weight:900;color:#fff;">forty<span style="color:#1D9E75;">.</span><span style="color:#1D9E75;font-weight:300;">fifteen</span></span>
-    <span style="font-size:11px;color:#444;margin-left:8px;">AI Match Analysis</span>
-  </td></tr>
-  <tr><td style="padding-bottom:24px;border-bottom:1px solid #141414;">
-    <h1 style="color:#fff;font-size:24px;font-weight:900;margin:0 0 8px;">Your coaching report is ready, ${firstName}.</h1>
-    <p style="color:#444;font-size:14px;margin:0;line-height:1.6;">Here is what your match video revealed. Take this to your next session.</p>
-  </td></tr>
-  <tr><td style="padding:24px 0 16px;">
+<body style="margin:0;padding:0;background:#111111;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#111111;">
+<tr><td align="center" style="padding:32px 16px 48px;">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+
+  <!-- Header -->
+  <tr><td style="background:#0a0a0a;border-radius:16px 16px 0 0;padding:24px 28px 20px;border-bottom:1px solid #1a1a1a;">
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>
-        <td width="48%" style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:16px;text-align:center;">
-          <div style="font-size:36px;font-weight:900;color:#60a5fa;">${tech.score || "-"}</div>
-          <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;">Technique /10</div>
-          ${tech.headline ? `<div style="font-size:11px;color:#555;margin-top:6px;">${tech.headline}</div>` : ""}
+        <td>
+          <span style="font-size:18px;font-weight:900;color:#ffffff;letter-spacing:-0.03em;">forty<span style="color:#1D9E75;">.</span><span style="color:#1D9E75;font-weight:300;">fifteen</span></span>
         </td>
-        <td width="4%"></td>
-        <td width="48%" style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:16px;text-align:center;">
-          <div style="font-size:36px;font-weight:900;color:#f59e0b;">${strat.score || "-"}</div>
-          <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;">Strategy /10</div>
-          ${strat.headline ? `<div style="font-size:11px;color:#555;margin-top:6px;">${strat.headline}</div>` : ""}
+        <td align="right">
+          <span style="font-size:10px;color:#333;text-transform:uppercase;letter-spacing:0.15em;">Match Analysis</span>
         </td>
       </tr>
     </table>
   </td></tr>
+
+  <!-- Hero -->
+  <tr><td style="background:#0a0a0a;padding:28px 28px 24px;border-bottom:1px solid #1a1a1a;">
+    <h1 style="color:#ffffff;font-size:26px;font-weight:900;margin:0 0 10px;line-height:1.2;letter-spacing:-0.02em;">Your coaching report is ready, ${firstName}.</h1>
+    <p style="color:#555;font-size:14px;margin:0;line-height:1.6;">Here is what your match video revealed. Take this to your next session.</p>
+  </td></tr>
+
+  <!-- Scores -->
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="48%" style="background:#111;border:1px solid #222;border-radius:12px;padding:18px 16px;text-align:center;">
+          <div style="font-size:42px;font-weight:900;color:#60a5fa;line-height:1;">${tech.score || "-"}</div>
+          <div style="font-size:9px;color:#444;text-transform:uppercase;letter-spacing:0.15em;margin-top:6px;">Technique /10</div>
+          ${tech.headline ? `<div style="font-size:11px;color:#3a3a3a;margin-top:8px;line-height:1.4;">${tech.headline}</div>` : ""}
+        </td>
+        <td width="4%"></td>
+        <td width="48%" style="background:#111;border:1px solid #222;border-radius:12px;padding:18px 16px;text-align:center;">
+          <div style="font-size:42px;font-weight:900;color:#f59e0b;line-height:1;">${strat.score || "-"}</div>
+          <div style="font-size:9px;color:#444;text-transform:uppercase;letter-spacing:0.15em;margin-top:6px;">Strategy /10</div>
+          ${strat.headline ? `<div style="font-size:11px;color:#3a3a3a;margin-top:8px;line-height:1.4;">${strat.headline}</div>` : ""}
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <!-- Coach verdict -->
   ${result.coach_verdict ? `
-  <tr><td style="padding-bottom:20px;">
-    <div style="background:#0a0a0a;border-left:3px solid #1D9E75;padding:14px 16px;border-radius:0 8px 8px 0;">
-      <div style="font-size:9px;color:#1D9E75;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px;">Coach verdict</div>
-      <p style="color:#777;font-style:italic;font-size:13px;margin:0;line-height:1.6;">"${result.coach_verdict}"</p>
-    </div>
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="3" style="background:#1D9E75;border-radius:2px;">&nbsp;</td>
+        <td style="padding-left:14px;">
+          <div style="font-size:9px;color:#1D9E75;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:8px;">Coach verdict</div>
+          <p style="color:#888;font-style:italic;font-size:14px;margin:0;line-height:1.65;">"${result.coach_verdict}"</p>
+        </td>
+      </tr>
+    </table>
   </td></tr>` : ""}
-  <tr><td style="padding-bottom:20px;">
-    <div style="font-size:10px;color:#1D9E75;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:12px;">Your top 3 fixes</div>
+
+  <!-- Top 3 fixes -->
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    <div style="font-size:9px;color:#1D9E75;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:16px;">Your top 3 fixes</div>
     ${fixesHtml}
   </td></tr>
+
+  <!-- Drill -->
   ${drill ? `
-  <tr><td style="padding-bottom:20px;">
-    <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:16px;">
-      <div style="font-size:9px;color:#a78bfa;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;">This week's drill</div>
-      <div style="font-size:15px;font-weight:800;color:#e0e0e0;margin-bottom:6px;">${drill.name}</div>
-      <p style="color:#888;font-size:13px;margin:0;line-height:1.6;">${drill.execution || ""}</p>
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    <div style="font-size:9px;color:#a78bfa;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:12px;">This week's drill</div>
+    <div style="background:#0e0e0e;border:1px solid #1e1e1e;border-radius:10px;padding:16px 18px;">
+      <div style="font-size:16px;font-weight:800;color:#e0e0e0;margin-bottom:10px;">${drill.name}</div>
+      <p style="color:#666;font-size:13px;margin:0;line-height:1.7;">${drill.execution || ""}</p>
     </div>
   </td></tr>` : ""}
+
+  <!-- Match rule -->
   ${result.training_plan?.match_focus ? `
-  <tr><td style="padding-bottom:28px;">
-    <div style="background:#0b1300;border:1px solid #1a2500;border-radius:10px;padding:14px 16px;">
-      <div style="font-size:9px;color:#1D9E75;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px;">Match rule this week</div>
-      <p style="color:#bbb;font-size:13px;margin:0;line-height:1.6;">${result.training_plan.match_focus}</p>
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    <div style="background:#091400;border:1px solid #162100;border-radius:10px;padding:16px 18px;">
+      <div style="font-size:9px;color:#1D9E75;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:8px;">Match rule this week</div>
+      <p style="color:#ccc;font-size:15px;font-weight:700;margin:0;line-height:1.5;">${result.training_plan.match_focus}</p>
     </div>
   </td></tr>` : ""}
-  <tr><td style="border-top:1px solid #111;padding-top:20px;">
-    <p style="color:#222;font-size:11px;margin:0 0 4px;">You received this because you analyzed a match on Forty Fifteen. We will never send spam.</p>
-    <p style="color:#222;font-size:11px;margin:0;">Made in Canada 🍁 by a Tennis Canada certified Club Pro · <a href="https://fortyfifteen.app" style="color:#333;">fortyfifteen.app</a></p>
+
+  <!-- CTA -->
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;text-align:center;">
+    <a href="https://fortyfifteen.app" style="display:inline-block;background:#1D9E75;color:#060606;border-radius:10px;padding:13px 32px;font-weight:900;font-size:14px;text-decoration:none;letter-spacing:0.01em;">View full report at fortyfifteen.app</a>
   </td></tr>
+
+  <!-- Footer -->
+  <tr><td style="background:#080808;border-radius:0 0 16px 16px;padding:20px 28px;text-align:center;">
+    <p style="color:#333;font-size:12px;margin:0 0 6px;line-height:1.6;">You received this because you analyzed a match on Forty Fifteen. We will never send spam.</p>
+    <p style="color:#2a2a2a;font-size:11px;margin:0;">Made in Canada 🍁 by a Tennis Canada certified Club Pro</p>
+  </td></tr>
+
 </table>
 </td></tr>
 </table>
