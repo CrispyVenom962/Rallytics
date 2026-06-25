@@ -681,7 +681,7 @@ async function sendResultsEmail({ firstName, email, level, result }) {
     </div>
   </td></tr>` : ""}
   <tr><td style="border-top:1px solid #111;padding-top:20px;">
-    <p style="color:#222;font-size:11px;margin:0 0 4px;">You received this because you analyzed a match on Rallytics. We will never send spam.</p>
+    <p style="color:#222;font-size:11px;margin:0 0 4px;">You received this because you analyzed a match on Forty Fifteen. We will never send spam.</p>
     <p style="color:#222;font-size:11px;margin:0;">Made in Canada 🍁 by a Tennis Canada certified Club Pro · <a href="https://fortyfifteen.app" style="color:#333;">fortyfifteen.app</a></p>
   </td></tr>
 </table>
