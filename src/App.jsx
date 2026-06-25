@@ -391,7 +391,7 @@ export default function App() {
                 <p style={{ margin: "0 0 16px", fontSize: "13px", color: "#555", lineHeight: "1.6" }}>
                   Join the Pro waitlist for unlimited match analysis, session history, and progress tracking.
                 </p>
-                <a href="mailto:coach@fortyfifteen.app?subject=Pro Waitlist&body=I want early access to Forty Fifteen Pro."
+                <a href="https://tally.so/r/RG2pGj"
                   style={{ display: "inline-block", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "11px 24px", fontWeight: "900", fontSize: "14px", textDecoration: "none" }}>
                   Join Pro waitlist →
                 </a>
@@ -700,7 +700,7 @@ export default function App() {
               )}
               {pct >= 60 && pct < 100 && (
                 <div style={{ fontSize: "12px", color: "#2a2a2a" }}>
-                  {framesTotal > 0 ? `${framesTotal} frames` : "Frames"} sent · AI tennis coaching brain engaged and is reading your match
+                  {framesTotal > 0 ? `${framesTotal} frames` : "Frames"} sent · Claude is reading your match
                 </div>
               )}
               <p style={{ color: "#1e1e1e", fontSize: "12px", margin: "6px 0 0" }}>Do not close this tab — your report is being built</p>
@@ -1049,7 +1049,7 @@ export default function App() {
                 <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#3a3a3a", lineHeight: "1.6" }}>
                   Pro features: unlimited analyses, session history, progress tracking, and coach sharing.
                 </p>
-                <a href="mailto:coach@fortyfifteen.app?subject=Pro Waitlist&body=I want early access to Forty Fifteen Pro."
+                <a href="https://tally.so/r/RG2pGj"
                   style={{ display: "inline-block", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}>
                   Join the Pro waitlist →
                 </a>
