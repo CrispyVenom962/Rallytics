@@ -1,11 +1,37 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
 const API_URL = "/api/analyze";
-const FRAME_INTERVAL = 30;
+
+// ── Scroll Fade-In Component ───────────────────────────────────────────────────
+function FadeIn({ children, delay = 0, style = {} }) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.12 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return (
+    <div ref={ref} style={{
+      opacity: visible ? 1 : 0,
+      transform: visible ? "translateY(0)" : "translateY(28px)",
+      transition: `opacity 0.65s ease ${delay}ms, transform 0.65s ease ${delay}ms`,
+      ...style,
+    }}>
+      {children}
+    </div>
+  );
+}
+const FRAME_INTERVAL = 5;
 const FRAME_W = 640;
 const FRAME_H = 360;
 const FRAME_QUALITY = 0.72;
-const MAX_FRAMES = 40;
+const MAX_FRAMES = 60;
 
 const TENNIS_FACTS = [
   "60% of club coaches say late contact point is the single most damaging habit they see — it forces arm-only swings and kills consistency.",
@@ -184,19 +210,6 @@ export default function App() {
   const factTimer = useRef(null);
   const wakeLock = useRef(null);
 
-  // Scroll reveal — fires whenever upload stage mounts
-  useEffect(() => {
-    if (stage !== "upload") return;
-    const observer = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("visible"); } }),
-      { threshold: 0.12 }
-    );
-    const timer = setTimeout(() => {
-      document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
-    }, 50);
-    return () => { clearTimeout(timer); observer.disconnect(); };
-  }, [stage]);
-
   const fmt = s => `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
   const estFrames = d => Math.min(MAX_FRAMES, Math.floor(Math.max(0, d - 4) / FRAME_INTERVAL) + 1);
 
@@ -215,6 +228,7 @@ export default function App() {
 
   const handleFile = f => {
     if (!f?.type.startsWith("video/")) { setError("Please upload a video file — MP4 or MOV works best."); return; }
+    if (f.size > 2 * 1024 * 1024 * 1024) { setError("That file is bigger than Nadal's forehand — try recording in 720p or trimming to 20 minutes and try again."); return; }
     setError(null); setVideoFile(f); setVideoUrl(URL.createObjectURL(f)); setStage("context");
   };
 
@@ -365,13 +379,6 @@ export default function App() {
         @keyframes courtScan { 0%{transform:translateX(-100%)} 100%{transform:translateX(400%)} }
         @keyframes factFade { 0%{opacity:0;transform:translateY(6px)} 15%{opacity:1;transform:translateY(0)} 85%{opacity:1} 100%{opacity:0} }
         @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-        @keyframes shimmerBar { 0%{opacity:1} 50%{opacity:0.5} 100%{opacity:1} }
-        .reveal { opacity:0; transform:translateY(28px); transition:opacity 0.65s cubic-bezier(.4,0,.2,1), transform 0.65s cubic-bezier(.4,0,.2,1); }
-        .reveal.visible { opacity:1; transform:translateY(0); }
-        .reveal-d1 { transition-delay:0.1s; }
-        .reveal-d2 { transition-delay:0.2s; }
-        .reveal-d3 { transition-delay:0.3s; }
-        @media (prefers-reduced-motion:reduce) { .reveal { opacity:1; transform:none; transition:none; } }
         ::placeholder { color: #282828; }
         ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #0a0a0a; } ::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
       `}</style>
@@ -410,31 +417,134 @@ export default function App() {
 
         {/* ══════════════════ UPLOAD ══════════════════ */}
         {stage === "upload" && (
-          <div style={{ animation: "fadeUp 0.5s ease" }}>
+          <div style={{ animation: "fadeUp 0.4s ease" }}>
+
+            {/* ── SPORT SELECTOR ── */}
+            <div style={{ marginBottom: "32px" }}>
+              <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "14px", textAlign: "center" }}>Select your sport</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+
+                {/* Tennis — active */}
+                <div style={{ background: "#0b150b", border: "2px solid #1D9E75", borderRadius: "14px", padding: "18px 10px 14px", textAlign: "center", cursor: "pointer", position: "relative" }}>
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                      <circle cx="20" cy="20" r="18" stroke="#1D9E75" strokeWidth="2" fill="none"/>
+                      <path d="M 6 20 Q 13 10 20 20 Q 27 30 34 20" stroke="#1D9E75" strokeWidth="1.5" fill="none"/>
+                      <path d="M 6 20 Q 13 30 20 20 Q 27 10 34 20" stroke="#1D9E75" strokeWidth="1.5" fill="none"/>
+                    </svg>
+                  </div>
+                  <div style={{ fontSize: "12px", fontWeight: "800", color: "#1D9E75" }}>Tennis</div>
+                  <div style={{ position: "absolute", top: "8px", right: "8px", background: "#1D9E75", borderRadius: "4px", padding: "2px 6px" }}>
+                    <span style={{ fontSize: "8px", color: "#060606", fontWeight: "900", letterSpacing: "0.08em" }}>ACTIVE</span>
+                  </div>
+                </div>
+
+                {/* Padel — coming soon */}
+                <div style={{ background: "#080808", border: "1px solid #141414", borderRadius: "14px", padding: "18px 10px 14px", textAlign: "center", opacity: 0.5, position: "relative", cursor: "not-allowed" }}>
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
+                    {/* Padel racket — rounded top, widest upper half, tapers to rounded point, throat triangle, short handle */}
+                    <svg width="32" height="48" viewBox="0 0 32 48" fill="none">
+                      {/* Head: gently curved top, wide upper half, tapers to rounded point */}
+                      <path d="M 16 2 C 9 2 2 7 2 14 C 2 21 5 27 16 33 C 27 27 30 21 30 14 C 30 7 23 2 16 2 Z" stroke="#555" strokeWidth="2" fill="none"/>
+                      {/* Hole pattern */}
+                      <circle cx="10" cy="8"  r="1.3" fill="#555"/>
+                      <circle cx="16" cy="7"  r="1.3" fill="#555"/>
+                      <circle cx="22" cy="8"  r="1.3" fill="#555"/>
+                      <circle cx="7"  cy="14" r="1.3" fill="#555"/>
+                      <circle cx="13" cy="14" r="1.3" fill="#555"/>
+                      <circle cx="19" cy="14" r="1.3" fill="#555"/>
+                      <circle cx="25" cy="14" r="1.3" fill="#555"/>
+                      <circle cx="10" cy="20" r="1.3" fill="#555"/>
+                      <circle cx="16" cy="20" r="1.3" fill="#555"/>
+                      <circle cx="22" cy="20" r="1.3" fill="#555"/>
+                      <circle cx="13" cy="26" r="1.3" fill="#555"/>
+                      <circle cx="19" cy="26" r="1.3" fill="#555"/>
+                      {/* Throat triangle */}
+                      <path d="M 12 33 L 12 36 L 16 34.5 L 20 36 L 20 33" stroke="#555" strokeWidth="1.5" fill="none" strokeLinejoin="round"/>
+                      {/* Short handle */}
+                      <rect x="13" y="36" width="6" height="9" rx="3" stroke="#555" strokeWidth="1.5" fill="none"/>
+                      <line x1="13" y1="41" x2="19" y2="41" stroke="#555" strokeWidth="0.8"/>
+                    </svg>
+                  </div>
+                  <div style={{ fontSize: "12px", fontWeight: "800", color: "#444" }}>Padel</div>
+                  <div style={{ position: "absolute", top: "8px", right: "8px", background: "#1a1a1a", borderRadius: "4px", padding: "2px 6px" }}>
+                    <span style={{ fontSize: "8px", color: "#555", fontWeight: "900", letterSpacing: "0.08em" }}>SOON</span>
+                  </div>
+                </div>
+
+                {/* Pickleball — coming soon */}
+                <div style={{ background: "#080808", border: "1px solid #141414", borderRadius: "14px", padding: "18px 10px 14px", textAlign: "center", opacity: 0.5, position: "relative", cursor: "not-allowed" }}>
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
+                    {/* Pickleball paddle — wide rectangular rounded head, solid face, throat neck, longer handle */}
+                    <svg width="32" height="48" viewBox="0 0 32 48" fill="none">
+                      {/* Wide rectangular head with very rounded corners */}
+                      <rect x="2" y="2" width="28" height="26" rx="8" stroke="#555" strokeWidth="2" fill="none"/>
+                      {/* Solid face — subtle texture lines */}
+                      <line x1="8"  y1="8"  x2="8"  y2="24" stroke="#444" strokeWidth="0.8" strokeLinecap="round"/>
+                      <line x1="13" y1="6"  x2="13" y2="25" stroke="#444" strokeWidth="0.8" strokeLinecap="round"/>
+                      <line x1="18" y1="6"  x2="18" y2="25" stroke="#444" strokeWidth="0.8" strokeLinecap="round"/>
+                      <line x1="23" y1="8"  x2="23" y2="24" stroke="#444" strokeWidth="0.8" strokeLinecap="round"/>
+                      {/* Throat — narrows from head to handle */}
+                      <path d="M 10 28 C 10 30 13 32 16 32 C 19 32 22 30 22 28" stroke="#555" strokeWidth="1.5" fill="none"/>
+                      <line x1="10" y1="28" x2="10" y2="32" stroke="#555" strokeWidth="1.5"/>
+                      <line x1="22" y1="28" x2="22" y2="32" stroke="#555" strokeWidth="1.5"/>
+                      {/* Handle — longer than padel */}
+                      <rect x="12" y="32" width="8" height="14" rx="4" stroke="#555" strokeWidth="1.5" fill="none"/>
+                      {/* Grip wrap lines */}
+                      <line x1="12" y1="37" x2="20" y2="37" stroke="#555" strokeWidth="0.8"/>
+                      <line x1="12" y1="41" x2="20" y2="41" stroke="#555" strokeWidth="0.8"/>
+                    </svg>
+                  </div>
+                  <div style={{ fontSize: "12px", fontWeight: "800", color: "#444" }}>Pickleball</div>
+                  <div style={{ position: "absolute", top: "8px", right: "8px", background: "#1a1a1a", borderRadius: "4px", padding: "2px 6px" }}>
+                    <span style={{ fontSize: "8px", color: "#555", fontWeight: "900", letterSpacing: "0.08em" }}>SOON</span>
+                  </div>
+                </div>
+
+              </div>
+              <div style={{ marginTop: "12px", textAlign: "center" }}>
+                <p style={{ margin: 0, fontSize: "11px", color: "#2a2a2a", lineHeight: "1.7" }}>
+                  The coaching engine is trained on peer-reviewed biomechanics research, ITF coaching science, and professional match data — and gets sharper with every analysis.
+                </p>
+              </div>
+            </div>
 
             {/* ── HERO ── */}
-            <div style={{ paddingTop: "24px", marginBottom: "48px" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "7px", background: "#1D9E7510", border: "1px solid #1D9E7528", borderRadius: "20px", padding: "5px 14px", marginBottom: "28px" }}>
+            <div style={{ marginBottom: "40px" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1D9E7512", border: "1px solid #1D9E7525", borderRadius: "20px", padding: "5px 14px", marginBottom: "20px" }}>
                 <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
-                <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", fontWeight: "600" }}>Free during beta</span>
+                <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.18em" }}>Free during beta</span>
               </div>
-              <h1 style={{ fontSize: "clamp(40px,10vw,72px)", fontWeight: "900", letterSpacing: "-0.04em", lineHeight: 0.9, margin: "0 0 28px", color: "#f5f5f5" }}>
-                Your game<br />is leaking points.<br />
-                <span style={{ color: "#1D9E75", fontStyle: "italic" }}>Find out where.</span>
+              <h1 style={{ fontSize: "clamp(38px,9vw,68px)", fontWeight: "900", letterSpacing: "-0.04em", lineHeight: 0.92, margin: "0 0 22px" }}>
+                Your game<br />is leaking points.<br /><span style={{ color: "#1D9E75" }}>Find out where.</span>
               </h1>
-              <p style={{ color: "#555", fontSize: "17px", lineHeight: "1.75", maxWidth: "420px", margin: "0 0 36px", fontWeight: "400" }}>
-                Upload your match video. Get a full AI coaching report in minutes — technique breakdowns, tactical patterns, drills, and on-court cues.
+              <p style={{ color: "#444", fontSize: "16px", lineHeight: "1.7", maxWidth: "400px", margin: "0 0 28px" }}>
+                Upload your match video and get a full AI coaching report in minutes — technique breakdowns, tactical patterns, drills, and on-court cues.
               </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+
+              {/* Social proof strip */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "8px" }}>
                 {[
-                  { icon: "🎾", text: "Tennis Canada certified" },
-                  { icon: "🧠", text: "AI coaching engine" },
-                  { icon: "📧", text: "Report emailed to you" },
-                  { icon: "🔒", text: "2 free analyses" },
+                  {
+                    text: "Tennis Canada certified",
+                    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#1D9E75" strokeWidth="1.2" fill="none"/><path d="M 2 7 Q 4.5 4 7 7 Q 9.5 10 12 7" stroke="#1D9E75" strokeWidth="1" fill="none"/><path d="M 2 7 Q 4.5 10 7 7 Q 9.5 4 12 7" stroke="#1D9E75" strokeWidth="1" fill="none"/></svg>
+                  },
+                  {
+                    text: "AI coaching engine",
+                    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="3" width="10" height="8" rx="2" stroke="#1D9E75" strokeWidth="1.2" fill="none"/><line x1="5" y1="3" x2="5" y2="1.5" stroke="#1D9E75" strokeWidth="1"/><line x1="9" y1="3" x2="9" y2="1.5" stroke="#1D9E75" strokeWidth="1"/><circle cx="5" cy="7" r="1" fill="#1D9E75"/><circle cx="9" cy="7" r="1" fill="#1D9E75"/><line x1="5" y1="7" x2="9" y2="7" stroke="#1D9E75" strokeWidth="0.8"/></svg>
+                  },
+                  {
+                    text: "Report emailed to you",
+                    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="8" rx="1.5" stroke="#1D9E75" strokeWidth="1.2" fill="none"/><path d="M 1 4 L 7 8 L 13 4" stroke="#1D9E75" strokeWidth="1" fill="none"/></svg>
+                  },
+                  {
+                    text: "No account needed",
+                    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="3" y="6" width="8" height="6" rx="1.5" stroke="#1D9E75" strokeWidth="1.2" fill="none"/><path d="M 4.5 6 V 4.5 A 2.5 2.5 0 0 1 9.5 4.5 V 6" stroke="#1D9E75" strokeWidth="1.2" fill="none"/><circle cx="7" cy="9" r="1" fill="#1D9E75"/></svg>
+                  },
                 ].map((b, i) => (
-                  <div key={i} style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#0e0e0e", border: "1px solid #222", borderRadius: "20px", padding: "5px 12px" }}>
-                    <span style={{ fontSize: "11px" }}>{b.icon}</span>
-                    <span style={{ fontSize: "11px", color: "#555", letterSpacing: "0.02em" }}>{b.text}</span>
+                  <div key={i} style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "20px", padding: "5px 12px" }}>
+                    {b.icon}
+                    <span style={{ fontSize: "11px", color: "#444", letterSpacing: "0.02em" }}>{b.text}</span>
                   </div>
                 ))}
               </div>
@@ -447,276 +557,377 @@ export default function App() {
               onDrop={onDrop}
               onClick={() => fileRef.current.click()}
               style={{
-                border: `1.5px solid ${dragging ? "#1D9E75" : "#1a1a1a"}`,
-                borderRadius: "20px", padding: "52px 24px 48px", textAlign: "center",
+                border: `2px dashed ${dragging ? "#1D9E75" : "#1c1c1c"}`,
+                borderRadius: "20px", padding: "48px 24px 44px", textAlign: "center",
                 cursor: "pointer",
                 background: dragging ? "#071a12" : "#080808",
                 transition: "all 0.2s", position: "relative", overflow: "hidden",
-                marginBottom: "12px",
               }}
             >
-              <div style={{ position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%", background: "linear-gradient(90deg, transparent, rgba(29,158,117,0.05), rgba(29,158,117,0.13), rgba(29,158,117,0.05), transparent)", animation: "courtScan 2.8s linear infinite", pointerEvents: "none" }}/>
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1.5px", background: "linear-gradient(90deg, transparent, #1D9E75, transparent)", animation: "courtScan 2.8s linear infinite", opacity: 0.7 }}/>
-              <div style={{ fontSize: "42px", marginBottom: "14px", lineHeight: 1 }}>🎾</div>
-              <div style={{ fontSize: "18px", fontWeight: "800", marginBottom: "6px", letterSpacing: "-0.02em", color: "#e8e8e8" }}>
+              <div style={{ position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%", background: "linear-gradient(90deg, transparent, rgba(29,158,117,0.06), rgba(29,158,117,0.15), rgba(29,158,117,0.06), transparent)", animation: "courtScan 2.5s linear infinite", pointerEvents: "none" }}/>
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #1D9E75, transparent)", animation: "courtScan 2.5s linear infinite", opacity: 0.6 }}/>
+              <div style={{ fontSize: "48px", marginBottom: "14px", lineHeight: 1 }}>🎾</div>
+              <div style={{ fontSize: "18px", fontWeight: "800", marginBottom: "6px", letterSpacing: "-0.02em", color: "#e0e0e0" }}>
                 The ball never lies. Find out what yours has been saying.
               </div>
-              <div style={{ color: "#555", fontSize: "13px", marginBottom: "24px" }}>
-                Drop your video here · or click to browse · MP4 or MOV · any length
+              <div style={{ color: "#2a2a2a", fontSize: "12px", marginBottom: "22px" }}>
+                Best results: 10–20 min · 720p quality · MP4 or MOV
               </div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "13px 32px", fontWeight: "900", fontSize: "14px", boxShadow: "0 0 30px rgba(29,158,117,0.25)" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "13px 32px", fontWeight: "900", fontSize: "14px", letterSpacing: "0.02em" }}>
                 <span>↑</span> Choose video
               </div>
             </div>
             <input ref={fileRef} type="file" accept="video/*" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
 
-            {error && (
-              <div style={{ marginBottom: "16px", background: "#120808", border: "1px solid #2e1010", borderRadius: "10px", padding: "14px 18px", color: "#e05555", fontSize: "13px" }}>
+            {error && error !== "ANALYSIS_ERROR" && (
+              <div style={{ marginTop: "14px", background: "#120808", border: "1px solid #2e1010", borderRadius: "10px", padding: "14px 18px", color: "#e05555", fontSize: "13px" }}>
                 ⚠ {error}
               </div>
             )}
 
-            <div style={{ textAlign: "center", marginBottom: "64px" }}>
-              <span style={{ fontSize: "11px", color: "#1e1e1e" }}>Free during beta · 2 analyses per email · No credit card required</span>
+            {/* ── BETA STRIP ── */}
+            <div style={{ marginTop: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "10px 16px", background: "#1D9E7508", border: "1px solid #1D9E7518", borderRadius: "10px" }}>
+              <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
+              <span style={{ fontSize: "11px", color: "#1D9E75", letterSpacing: "0.05em" }}>
+                Free during beta · 2 analyses per email · No credit card required
+              </span>
             </div>
 
-            {/* ── AI ANALYSIS SIMULATION ── */}
-            <div className="reveal" style={{ marginBottom: "64px" }}>
-              <div style={{ textAlign: "center", marginBottom: "8px" }}>
-                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.22em", fontWeight: "700", marginBottom: "12px" }}>What happens when you upload</div>
-                <h2 style={{ fontSize: "clamp(24px,5vw,36px)", fontWeight: "900", letterSpacing: "-0.03em", margin: "0 0 6px", color: "#e8e8e8" }}>
-                  Your AI coach studies the film.
-                </h2>
-                <p style={{ fontSize: "14px", color: "#2e2e2e", margin: "0 0 32px" }}>Every frame. Every pattern. Every habit costing you points.</p>
-              </div>
-
-              {/* Animated process steps */}
-              <div style={{ background: "#070707", border: "1px solid #141414", borderRadius: "16px", padding: "24px 20px", fontFamily: "'JetBrains Mono','Fira Code','Courier New',monospace" }}>
-                <div style={{ fontSize: "10px", color: "#222", letterSpacing: "0.1em", marginBottom: "20px" }}>ANALYSIS ENGINE — ACTIVE</div>
+            {/* ── MOCK REPORT PREVIEW ── */}
+            <div style={{ background: "#080808", border: "1px solid #1a1a1a", borderRadius: "16px", padding: "20px", marginTop: "20px", marginBottom: "32px", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #1D9E75, transparent)", opacity: 0.4 }}/>
+              <div style={{ fontSize: "9px", color: "#333", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "14px" }}>Example report preview</div>
+              {/* Score row */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
                 {[
-                  { label: "Extracting frames from video", done: true, color: "#1D9E75" },
-                  { label: "Reading forehand & backhand mechanics", done: true, color: "#1D9E75" },
-                  { label: "Analyzing serve & footwork patterns", done: true, color: "#1D9E75" },
-                  { label: "Cross-referencing tactical habits", active: true, color: "#60a5fa" },
-                  { label: "Writing your priority fixes", color: "#2a2a2a" },
-                  { label: "Building coaching report", color: "#2a2a2a" },
-                ].map((step, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "14px" }}>
-                    <div style={{ width: "16px", height: "16px", borderRadius: "50%", border: `1.5px solid ${step.done ? "#1D9E75" : step.active ? "#60a5fa" : "#1e1e1e"}`, background: step.done ? "#1D9E75" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.3s" }}>
-                      {step.done && <span style={{ fontSize: "8px", color: "#060606", fontWeight: "900" }}>✓</span>}
-                      {step.active && <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#60a5fa", animation: "pulse 1s infinite" }}/>}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                        <span style={{ fontSize: "12px", color: step.done ? "#555" : step.active ? "#c8d8f8" : "#222", letterSpacing: "0.02em" }}>{step.label}</span>
-                        {step.done && <span style={{ fontSize: "10px", color: "#1D9E75", flexShrink: 0 }}>done</span>}
-                        {step.active && <span style={{ fontSize: "10px", color: "#60a5fa", flexShrink: 0, animation: "pulse 1.2s infinite" }}>analyzing…</span>}
-                      </div>
-                      {(step.done || step.active) && (
-                        <div style={{ marginTop: "5px", height: "2px", background: "#0e0e0e", borderRadius: "1px", overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: step.done ? "100%" : "62%", background: step.done ? "#1D9E75" : "#60a5fa", borderRadius: "1px", transition: "width 1.5s ease", animation: step.active ? "shimmerBar 2s linear infinite" : "none" }}/>
-                        </div>
-                      )}
-                    </div>
+                  { label: "Technique", score: "6", color: "#60a5fa", sub: "Arm-Only Hitter" },
+                  { label: "Strategy", score: "5", color: "#f59e0b", sub: "Passive Baseliner" },
+                ].map((s, i) => (
+                  <div key={i} style={{ background: "#0e0e0e", border: "1px solid #1e1e1e", borderRadius: "10px", padding: "14px", textAlign: "center" }}>
+                    <div style={{ fontSize: "32px", fontWeight: "900", color: s.color, lineHeight: 1 }}>{s.score}</div>
+                    <div style={{ fontSize: "9px", color: "#333", textTransform: "uppercase", letterSpacing: "0.12em", margin: "4px 0" }}>{s.label} /10</div>
+                    <div style={{ fontSize: "10px", color: "#2a2a2a" }}>{s.sub}</div>
                   </div>
                 ))}
-                <div style={{ marginTop: "8px", paddingTop: "16px", borderTop: "1px solid #0e0e0e", display: "flex", alignItems: "center", gap: "10px" }}>
-                  <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
-                  <span style={{ fontSize: "11px", color: "#1D9E75", fontFamily: "inherit" }}>Report delivered to your inbox in 2–3 minutes</span>
+              </div>
+              {/* Coach verdict preview */}
+              <div style={{ background: "#0a0a0a", borderLeft: "2px solid #1D9E75", padding: "10px 14px", borderRadius: "0 8px 8px 0", marginBottom: "12px" }}>
+                <div style={{ fontSize: "8px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "4px" }}>Coach verdict</div>
+                <p style={{ margin: 0, fontSize: "12px", color: "#3a3a3a", fontStyle: "italic", lineHeight: "1.6" }}>"The arm is doing all the work while the body watches. Fix the unit turn first and everything downstream improves."</p>
+              </div>
+              {/* Top fixes preview */}
+              <div style={{ fontSize: "8px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Top 3 fixes</div>
+              {[
+                { rank: 1, fix: "Establish a complete unit turn before every swing", cue: "Shoulder to net post before I swing" },
+                { rank: 2, fix: "Begin recovery the instant the ball leaves your strings", cue: "Ball leaves strings, feet start moving" },
+              ].map((f, i) => (
+                <div key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "8px", opacity: i === 1 ? 0.5 : 1 }}>
+                  <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: i === 0 ? "#1D9E75" : "#141414", border: `1px solid ${i === 0 ? "#1D9E75" : "#222"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "900", color: i === 0 ? "#060606" : "#333", flexShrink: 0 }}>{f.rank}</div>
+                  <div>
+                    <div style={{ fontSize: "11px", color: "#555", marginBottom: "2px" }}>{f.fix}</div>
+                    <div style={{ fontSize: "10px", color: "#1D9E75", fontStyle: "italic" }}>"{f.cue}"</div>
+                  </div>
+                </div>
+              ))}
+              {/* Blur overlay at bottom */}
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60px", background: "linear-gradient(transparent, #080808)", borderRadius: "0 0 16px 16px" }}/>
+              <div style={{ position: "absolute", bottom: "10px", left: 0, right: 0, textAlign: "center" }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1D9E7518", border: "1px solid #1D9E7530", borderRadius: "20px", padding: "4px 14px" }}>
+                  <span style={{ fontSize: "10px", color: "#1D9E75" }}>Upload your video to unlock your real report</span>
                 </div>
               </div>
             </div>
 
-            {/* ── EXAMPLE REPORT PREVIEW ── */}
-            <div className="reveal" style={{ marginBottom: "64px" }}>
-              <div style={{ textAlign: "center", marginBottom: "32px" }}>
-                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.22em", fontWeight: "700", marginBottom: "12px" }}>Example report</div>
-                <h2 style={{ fontSize: "clamp(24px,5vw,36px)", fontWeight: "900", letterSpacing: "-0.03em", margin: 0, color: "#e8e8e8" }}>
-                  This is what you'll receive.
-                </h2>
-              </div>
 
-              <div style={{ background: "#080808", border: "1px solid #1a1a1a", borderRadius: "20px", padding: "24px", position: "relative", overflow: "hidden" }}>
-                {/* Top accent line */}
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, transparent 0%, #1D9E75 40%, #60a5fa 60%, transparent 100%)", opacity: 0.6 }}/>
 
-                {/* Example label */}
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1a1a1a", border: "1px solid #242424", borderRadius: "6px", padding: "3px 10px", marginBottom: "20px" }}>
-                  <span style={{ fontSize: "9px", color: "#444", textTransform: "uppercase", letterSpacing: "0.15em" }}>Example · not your report</span>
-                </div>
-
-                {/* Score cards */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "20px" }}>
-                  {[
-                    { label: "Technique", score: "6", color: "#60a5fa", sub: "Arm-Only Hitter" },
-                    { label: "Strategy", score: "5", color: "#f59e0b", sub: "Passive Baseliner" },
-                  ].map((s, i) => (
-                    <div key={i} style={{ background: "#0c0c0c", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "18px", textAlign: "center" }}>
-                      <div style={{ fontSize: "40px", fontWeight: "900", color: s.color, lineHeight: 1, letterSpacing: "-0.03em" }}>{s.score}</div>
-                      <div style={{ fontSize: "9px", color: "#2e2e2e", textTransform: "uppercase", letterSpacing: "0.15em", margin: "6px 0 4px" }}>{s.label} /10</div>
-                      <div style={{ fontSize: "11px", color: "#2a2a2a", fontWeight: "600" }}>{s.sub}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Coach verdict */}
-                <div style={{ background: "#0a0a0a", borderLeft: "2px solid #1D9E75", padding: "14px 16px", borderRadius: "0 10px 10px 0", marginBottom: "16px" }}>
-                  <div style={{ fontSize: "8px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>Coach verdict</div>
-                  <p style={{ margin: 0, fontSize: "13px", color: "#3a3a3a", fontStyle: "italic", lineHeight: "1.65" }}>"The arm is doing all the work while the body watches. Fix the unit turn first and everything downstream improves."</p>
-                </div>
-
-                {/* Priority fixes */}
-                <div style={{ fontSize: "8px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "12px" }}>Top 3 fixes</div>
-                {[
-                  { rank: 1, fix: "Establish a complete unit turn before every swing", cue: "Shoulder to net post before I swing" },
-                  { rank: 2, fix: "Begin recovery the instant the ball leaves your strings", cue: "Ball leaves strings, feet start moving" },
-                ].map((f, i) => (
-                  <div key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start", marginBottom: "10px", opacity: i === 1 ? 0.45 : 1 }}>
-                    <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: i === 0 ? "#1D9E75" : "#111", border: `1px solid ${i === 0 ? "#1D9E75" : "#1e1e1e"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "900", color: i === 0 ? "#060606" : "#2a2a2a", flexShrink: 0 }}>{f.rank}</div>
-                    <div>
-                      <div style={{ fontSize: "12px", color: "#444", marginBottom: "3px", lineHeight: "1.4" }}>{f.fix}</div>
-                      <div style={{ fontSize: "11px", color: "#1D9E75", fontStyle: "italic" }}>"{f.cue}"</div>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Fade + CTA overlay */}
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "80px", background: "linear-gradient(transparent, #080808)", borderRadius: "0 0 20px 20px" }}/>
-                <div style={{ position: "absolute", bottom: "14px", left: 0, right: 0, textAlign: "center" }}>
-                  <div
-                    onClick={() => fileRef.current.click()}
-                    style={{ display: "inline-flex", alignItems: "center", gap: "7px", background: "#1D9E75", color: "#060606", borderRadius: "20px", padding: "7px 18px", fontSize: "11px", fontWeight: "900", cursor: "pointer", letterSpacing: "0.04em" }}
-                  >
-                    ↑ Upload your video to unlock your real report
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* ── WHAT YOU GET ── */}
-            <div className="reveal" style={{ marginBottom: "64px" }}>
-              <div style={{ textAlign: "center", marginBottom: "32px" }}>
-                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.22em", fontWeight: "700", marginBottom: "12px" }}>What's inside</div>
-                <h2 style={{ fontSize: "clamp(24px,5vw,36px)", fontWeight: "900", letterSpacing: "-0.03em", margin: 0, color: "#e8e8e8" }}>
+            {/* ── FEATURE GRID ── */}
+            <FadeIn delay={0}>
+            <div style={{ marginTop: "48px" }}>
+              <div style={{ textAlign: "center", marginBottom: "28px" }}>
+                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px" }}>What you get</div>
+                <h2 style={{ fontSize: "clamp(22px,5vw,32px)", fontWeight: "900", letterSpacing: "-0.03em", margin: 0 }}>
                   See your game the way<br />your coach does.
                 </h2>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                {[
-                  { label: "Biomechanics", headline: "Contact point, swing path, kinetic chain — broken down per shot type.", accent: "#60a5fa" },
-                  { label: "Tactical patterns", headline: "The positioning and recovery habits costing you games every week.", accent: "#f59e0b" },
-                  { label: "Priority fixes", headline: "Top 3 root-cause fixes ranked by impact. Fix one thing, fix five.", accent: "#1D9E75" },
-                  { label: "Training plan", headline: "Two drills and a match rule simple enough to hold in your head mid-point.", accent: "#a78bfa" },
-                ].map((f, i) => (
-                  <div key={i} style={{ background: "#080808", border: "1px solid #111", borderRadius: "14px", padding: "22px 18px", position: "relative", overflow: "hidden" }}>
-                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: `linear-gradient(90deg, ${f.accent}60, transparent)` }}/>
-                    <div style={{ fontSize: "10px", color: f.accent, textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: "700", marginBottom: "10px" }}>{f.label}</div>
-                    <div style={{ fontSize: "13px", color: "#3a3a3a", lineHeight: "1.65" }}>{f.headline}</div>
-                  </div>
-                ))}
+
+                {/* Biomechanics */}
+                <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "20px 16px" }}>
+                  <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+                    <circle cx="22" cy="40" r="2.5" fill="#1D9E75" opacity="0.5"/>
+                    <line x1="22" y1="40" x2="22" y2="30" stroke="#1D9E75" strokeWidth="1.5" opacity="0.5"/>
+                    <circle cx="22" cy="30" r="2.5" fill="#1D9E75" opacity="0.65"/>
+                    <line x1="22" y1="30" x2="22" y2="20" stroke="#1D9E75" strokeWidth="1.5" opacity="0.65"/>
+                    <circle cx="22" cy="20" r="2.5" fill="#1D9E75" opacity="0.8"/>
+                    <line x1="22" y1="20" x2="32" y2="13" stroke="#1D9E75" strokeWidth="1.5" opacity="0.8"/>
+                    <circle cx="32" cy="13" r="2.5" fill="#1D9E75" opacity="0.9"/>
+                    <ellipse cx="38" cy="8" rx="5" ry="7" fill="none" stroke="#1D9E75" strokeWidth="1.8"/>
+                    <circle cx="22" cy="14" r="4" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.4"/>
+                  </svg>
+                  <div style={{ fontSize: "13px", fontWeight: "800", color: "#ddd", margin: "12px 0 8px", letterSpacing: "-0.01em" }}>Biomechanics breakdown</div>
+                  <div style={{ fontSize: "11px", color: "#555", lineHeight: "1.7" }}>Contact point, unit turn, swing path, follow-through — per shot type, with the kinetic chain explained.</div>
+                </div>
+
+                {/* Tactical patterns */}
+                <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "20px 16px" }}>
+                  <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+                    <rect x="4" y="4" width="36" height="36" rx="2" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.3"/>
+                    <line x1="4" y1="22" x2="40" y2="22" stroke="#1D9E75" strokeWidth="1.5" opacity="0.5"/>
+                    <line x1="22" y1="11" x2="22" y2="22" stroke="#1D9E75" strokeWidth="0.7" opacity="0.25"/>
+                    <line x1="22" y1="22" x2="22" y2="33" stroke="#1D9E75" strokeWidth="0.7" opacity="0.25"/>
+                    <line x1="4" y1="11" x2="40" y2="11" stroke="#1D9E75" strokeWidth="0.7" opacity="0.25"/>
+                    <line x1="4" y1="33" x2="40" y2="33" stroke="#1D9E75" strokeWidth="0.7" opacity="0.25"/>
+                    <line x1="36" y1="30" x2="10" y2="10" stroke="#1D9E75" strokeWidth="1.5" opacity="0.8"/>
+                    <polygon points="10,10 16,12 12,16" fill="#1D9E75" opacity="0.8"/>
+                    <line x1="8" y1="12" x2="34" y2="30" stroke="#1D9E75" strokeWidth="1" strokeDasharray="3,2" opacity="0.5"/>
+                    <polygon points="34,30 28,28 32,24" fill="#1D9E75" opacity="0.5"/>
+                  </svg>
+                  <div style={{ fontSize: "13px", fontWeight: "800", color: "#ddd", margin: "12px 0 8px", letterSpacing: "-0.01em" }}>Tactical patterns</div>
+                  <div style={{ fontSize: "11px", color: "#555", lineHeight: "1.7" }}>Court positioning, recovery habits, short ball response — the patterns costing you games every match.</div>
+                </div>
+
+                {/* Priority fixes */}
+                <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "20px 16px" }}>
+                  <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+                    <circle cx="22" cy="22" r="18" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.25"/>
+                    <circle cx="22" cy="22" r="12" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.45"/>
+                    <circle cx="22" cy="22" r="6" fill="none" stroke="#1D9E75" strokeWidth="1.4" opacity="0.7"/>
+                    <circle cx="22" cy="22" r="2.5" fill="#1D9E75"/>
+                    <line x1="38" y1="6" x2="26" y2="18" stroke="#1D9E75" strokeWidth="1.8"/>
+                    <polygon points="26,18 30,12 34,16" fill="#1D9E75"/>
+                  </svg>
+                  <div style={{ fontSize: "13px", fontWeight: "800", color: "#ddd", margin: "12px 0 8px", letterSpacing: "-0.01em" }}>Priority fixes</div>
+                  <div style={{ fontSize: "11px", color: "#555", lineHeight: "1.7" }}>Your top 3 root-cause fixes ranked by impact. Fix the upstream fault and multiple problems resolve.</div>
+                </div>
+
+                {/* Training plan */}
+                <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "20px 16px" }}>
+                  <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+                    <rect x="8" y="10" width="28" height="32" rx="3" fill="none" stroke="#1D9E75" strokeWidth="1.4" opacity="0.6"/>
+                    <rect x="16" y="6" width="12" height="8" rx="2" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.6"/>
+                    <line x1="14" y1="22" x2="30" y2="22" stroke="#1D9E75" strokeWidth="1" opacity="0.3"/>
+                    <polyline points="14,22 17,25 22,19" fill="none" stroke="#1D9E75" strokeWidth="1.4" opacity="0.9"/>
+                    <line x1="14" y1="30" x2="30" y2="30" stroke="#1D9E75" strokeWidth="1" opacity="0.3"/>
+                    <polyline points="14,30 17,33 22,27" fill="none" stroke="#1D9E75" strokeWidth="1.4" opacity="0.6"/>
+                    <line x1="14" y1="38" x2="28" y2="38" stroke="#1D9E75" strokeWidth="1" opacity="0.2"/>
+                    <circle cx="15" cy="38" r="1.5" fill="none" stroke="#1D9E75" strokeWidth="1" opacity="0.3"/>
+                  </svg>
+                  <div style={{ fontSize: "13px", fontWeight: "800", color: "#ddd", margin: "12px 0 8px", letterSpacing: "-0.01em" }}>Training plan</div>
+                  <div style={{ fontSize: "11px", color: "#555", lineHeight: "1.7" }}>Two specific drills plus a match rule simple enough to hold in your head during a point.</div>
+                </div>
+
               </div>
             </div>
+            </FadeIn>
 
             {/* ── HOW IT WORKS ── */}
-            <div className="reveal" style={{ marginBottom: "64px" }}>
-              <div style={{ textAlign: "center", marginBottom: "32px" }}>
-                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.22em", fontWeight: "700", marginBottom: "12px" }}>How it works</div>
-                <h2 style={{ fontSize: "clamp(24px,5vw,36px)", fontWeight: "900", letterSpacing: "-0.03em", margin: 0, color: "#e8e8e8" }}>Three steps.</h2>
+            <FadeIn delay={0}>
+            <div style={{ marginTop: "48px" }}>
+              <div style={{ textAlign: "center", marginBottom: "28px" }}>
+                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px" }}>How it works</div>
+                <h2 style={{ fontSize: "clamp(22px,5vw,32px)", fontWeight: "900", letterSpacing: "-0.03em", margin: 0 }}>Three steps to your report.</h2>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                 {[
-                  { n: "1", h: "Upload your match video", b: "Any length, any file size. MP4 or MOV from your phone. The coaching engine samples one frame every 30 seconds.", color: "#1D9E75" },
-                  { n: "2", h: "AI analyzes your game", b: "Biomechanics, recurring patterns, tactical habits — cross-referenced against club-level benchmarks. Takes 2–3 minutes.", color: "#60a5fa" },
-                  { n: "3", h: "Get your full report", b: "Technique scores, priority fixes, drills, on-court cues — on screen instantly and emailed to you.", color: "#a78bfa" },
+                  { n: "01", h: "Upload your match video", b: "Any length, any file size. MP4 or MOV from your phone. The coaching engine samples one frame every 30 seconds across the full match.", color: "#1D9E75" },
+                  { n: "02", h: "AI analyzes your game", b: "The coaching engine reads biomechanics, identifies recurring patterns, and cross-references against club-level benchmarks. Takes 2–3 minutes.", color: "#60a5fa" },
+                  { n: "03", h: "Get your full report", b: "Technique scores, top fixes, drills, on-court cues — displayed instantly and emailed to you so you can reference it on court.", color: "#a78bfa" },
                 ].map((s, i) => (
-                  <div key={i} style={{ display: "flex", gap: "20px", padding: "22px 20px", background: "#080808", border: "1px solid #0e0e0e", borderRadius: "14px", marginBottom: "4px", alignItems: "flex-start" }}>
-                    <div style={{ width: "36px", height: "36px", borderRadius: "50%", border: `1px solid ${s.color}30`, background: `${s.color}10`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ fontSize: "15px", fontWeight: "900", color: s.color }}>{s.n}</span>
-                    </div>
+                  <div key={i} style={{ display: "flex", gap: "16px", padding: "20px", background: "#080808", border: "1px solid #111", borderRadius: "14px", marginBottom: "8px" }}>
+                    <div style={{ fontSize: "32px", fontWeight: "900", color: s.color, opacity: 0.3, lineHeight: 1, flexShrink: 0, width: "36px" }}>{s.n}</div>
                     <div>
-                      <div style={{ fontSize: "15px", fontWeight: "800", color: "#d8d8d8", marginBottom: "6px", letterSpacing: "-0.01em" }}>{s.h}</div>
-                      <div style={{ fontSize: "13px", color: "#2e2e2e", lineHeight: "1.7" }}>{s.b}</div>
+                      <div style={{ fontSize: "14px", fontWeight: "800", color: "#ddd", marginBottom: "6px" }}>{s.h}</div>
+                      <div style={{ fontSize: "12px", color: "#333", lineHeight: "1.7" }}>{s.b}</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+            </FadeIn>
 
             {/* ── FILMING GUIDE ── */}
-            <div className="reveal" style={{ marginBottom: "64px" }}>
-              <div style={{ textAlign: "center", marginBottom: "32px" }}>
-                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.22em", fontWeight: "700", marginBottom: "12px" }}>Before you film</div>
-                <h2 style={{ fontSize: "clamp(24px,5vw,36px)", fontWeight: "900", letterSpacing: "-0.03em", margin: 0, color: "#e8e8e8" }}>How to film for best results.</h2>
+            <FadeIn delay={0}>
+            <div style={{ marginTop: "48px" }}>
+              <div style={{ textAlign: "center", marginBottom: "28px" }}>
+                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px" }}>Before you film</div>
+                <h2 style={{ fontSize: "clamp(22px,5vw,32px)", fontWeight: "900", letterSpacing: "-0.03em", margin: 0 }}>How to film for best results.</h2>
               </div>
-              <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "14px", padding: "18px 20px", marginBottom: "10px" }}>
-                <div style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Decide what you want to improve first</div>
-                <p style={{ margin: 0, fontSize: "13px", color: "#333", lineHeight: "1.7" }}>One phone can't capture everything perfectly. Pick your focus — technique or tactics — then film accordingly for the sharpest analysis.</p>
+              {/* Technique card */}
+              <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "18px", marginBottom: "10px", display: "flex", gap: "16px", alignItems: "flex-start" }}>
+                <div style={{ flexShrink: 0 }}>
+                  <svg width="90" height="140" viewBox="0 0 100 150" fill="none">
+                    <rect x="18" y="8" width="64" height="118" rx="2" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.35"/>
+                    <line x1="18" y1="67" x2="82" y2="67" stroke="#1D9E75" strokeWidth="1.8" opacity="0.7"/>
+                    <line x1="18" y1="28" x2="82" y2="28" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
+                    <line x1="18" y1="106" x2="82" y2="106" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
+                    <line x1="50" y1="28" x2="50" y2="67" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
+                    <line x1="50" y1="67" x2="50" y2="106" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
+                    <circle cx="50" cy="92" r="4" fill="#fff" opacity="0.85"/>
+                    <rect x="1" y="60" width="13" height="9" rx="2" fill="#1D9E75" opacity="0.9"/>
+                    <circle cx="14" cy="64" r="2.5" fill="#1D9E75"/>
+                    <line x1="14" y1="64" x2="50" y2="80" stroke="#1D9E75" strokeWidth="0.8" strokeDasharray="3,2" opacity="0.4"/>
+                    <line x1="14" y1="64" x2="50" y2="106" stroke="#1D9E75" strokeWidth="0.8" strokeDasharray="3,2" opacity="0.4"/>
+                    <text x="50" y="142" fontFamily="Inter,sans-serif" fontSize="7" fill="#1D9E75" textAnchor="middle" opacity="0.55">SIDE · MID-COURT</text>
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>For technique</div>
+                  <div style={{ fontSize: "13px", fontWeight: "800", color: "#e0e0e0", marginBottom: "6px" }}>Film from the side</div>
+                  <p style={{ margin: 0, fontSize: "11px", color: "#444", lineHeight: "1.7" }}>Position at mid-court, zoomed in to show waist-up. Captures swing shape, contact point, hip rotation, and follow-through on every shot.</p>
+                </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
-                <FilmCard emoji="🎾" title="For technique" body="Film from the SIDE at mid-court, zoomed in to show waist-up. Clear view of swing shape, contact point, and follow-through." />
-                <FilmCard emoji="📷" title="For tactics" body="Film from BEHIND the baseline, wide angle showing the full court. Best for positioning, recovery, and net approach patterns." />
+
+              {/* Tactics card */}
+              <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "18px", marginBottom: "10px", display: "flex", gap: "16px", alignItems: "flex-start" }}>
+                <div style={{ flexShrink: 0 }}>
+                  <svg width="90" height="140" viewBox="0 0 100 150" fill="none">
+                    <rect x="18" y="8" width="64" height="100" rx="2" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.35"/>
+                    <line x1="18" y1="58" x2="82" y2="58" stroke="#1D9E75" strokeWidth="1.8" opacity="0.7"/>
+                    <line x1="18" y1="25" x2="82" y2="25" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
+                    <line x1="18" y1="91" x2="82" y2="91" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
+                    <line x1="50" y1="25" x2="50" y2="58" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
+                    <line x1="50" y1="58" x2="50" y2="91" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
+                    <circle cx="50" cy="80" r="4" fill="#fff" opacity="0.85"/>
+                    <rect x="40" y="118" width="20" height="12" rx="2" fill="#1D9E75" opacity="0.9"/>
+                    <circle cx="50" cy="130" r="3" fill="#1D9E75"/>
+                    <line x1="50" y1="118" x2="18" y2="8" stroke="#1D9E75" strokeWidth="0.8" strokeDasharray="3,2" opacity="0.3"/>
+                    <line x1="50" y1="118" x2="82" y2="8" stroke="#1D9E75" strokeWidth="0.8" strokeDasharray="3,2" opacity="0.3"/>
+                    <text x="50" y="146" fontFamily="Inter,sans-serif" fontSize="7" fill="#1D9E75" textAnchor="middle" opacity="0.55">BEHIND BASELINE</text>
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>For tactics</div>
+                  <div style={{ fontSize: "13px", fontWeight: "800", color: "#e0e0e0", marginBottom: "6px" }}>Film from behind</div>
+                  <p style={{ margin: 0, fontSize: "11px", color: "#444", lineHeight: "1.7" }}>Stand behind the baseline, wide angle showing the full court. Best for court positioning, recovery habits, and net approach patterns.</p>
+                </div>
               </div>
+
+              {/* Bottom row */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <FilmCard emoji="📐" title="Camera position" body="1–1.5 metres high, slight downward angle. Use a tripod or lean against a fence. Keep it steady — shaky video reduces accuracy." />
-                <FilmCard emoji="⏱️" title="Length & format" body="10–20 minutes of real play. iPhone: Settings → Camera → Most Compatible. Android: standard video. No slow-mo or portrait mode." />
+                <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "16px" }}>
+                  <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Camera</div>
+                  <svg width="80" height="58" viewBox="0 0 80 58" fill="none">
+                    <rect x="30" y="4" width="14" height="22" rx="3" fill="none" stroke="#1D9E75" strokeWidth="1.4" opacity="0.8"/>
+                    <line x1="37" y1="15" x2="68" y2="34" stroke="#1D9E75" strokeWidth="1" strokeDasharray="3,2" opacity="0.5"/>
+                    <polygon points="68,34 62,30 65,40" fill="#1D9E75" opacity="0.5"/>
+                    <line x1="37" y1="26" x2="37" y2="44" stroke="#444" strokeWidth="1.5"/>
+                    <line x1="37" y1="44" x2="25" y2="54" stroke="#444" strokeWidth="1"/>
+                    <line x1="37" y1="44" x2="49" y2="54" stroke="#444" strokeWidth="1"/>
+                    <line x1="10" y1="4" x2="10" y2="26" stroke="#222" strokeWidth="1"/>
+                    <line x1="7" y1="4" x2="13" y2="4" stroke="#222" strokeWidth="1"/>
+                    <line x1="7" y1="26" x2="13" y2="26" stroke="#222" strokeWidth="1"/>
+                    <text x="1" y="17" fontFamily="Inter,sans-serif" fontSize="6" fill="#333">1.5m</text>
+                  </svg>
+                  <div style={{ fontSize: "12px", fontWeight: "800", color: "#e0e0e0", margin: "8px 0 4px" }}>Camera position</div>
+                  <p style={{ margin: 0, fontSize: "10px", color: "#444", lineHeight: "1.65" }}>1–1.5m high, slight downward angle. Tripod or fence. Keep it steady.</p>
+                </div>
+                <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "16px" }}>
+                  <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Format</div>
+                  <svg width="80" height="58" viewBox="0 0 80 58" fill="none">
+                    <rect x="28" y="2" width="24" height="38" rx="4" fill="none" stroke="#1D9E75" strokeWidth="1.4" opacity="0.7"/>
+                    <rect x="31" y="6" width="18" height="26" rx="1" fill="#0a0a0a" stroke="#1D9E75" strokeWidth="0.5" opacity="0.5"/>
+                    <circle cx="40" cy="19" r="7" fill="none" stroke="#1D9E75" strokeWidth="1" opacity="0.7"/>
+                    <line x1="40" y1="19" x2="40" y2="13" stroke="#1D9E75" strokeWidth="1.2" opacity="0.9"/>
+                    <line x1="40" y1="19" x2="45" y2="19" stroke="#1D9E75" strokeWidth="1.2" opacity="0.9"/>
+                  </svg>
+                  <div style={{ fontSize: "12px", fontWeight: "800", color: "#e0e0e0", margin: "8px 0 4px" }}>Length & format</div>
+                  <p style={{ margin: 0, fontSize: "10px", color: "#444", lineHeight: "1.65" }}>10–20 min match play. 720p or 1080p MP4/MOV. No slow-mo.</p>
+                </div>
               </div>
             </div>
+            </FadeIn>
 
-            {/* ── SECOND CTA ── */}
-            <div className="reveal" style={{ marginBottom: "64px", background: "#070707", border: "1px solid #141414", borderRadius: "20px", padding: "40px 28px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, transparent, #1D9E75, transparent)", opacity: 0.5 }}/>
-              <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "300px", height: "200px", background: "radial-gradient(ellipse, rgba(29,158,117,0.06) 0%, transparent 70%)", pointerEvents: "none" }}/>
-              <h2 style={{ fontSize: "clamp(26px,6vw,42px)", fontWeight: "900", letterSpacing: "-0.04em", margin: "0 0 14px", color: "#f0f0f0", lineHeight: 1.05 }}>
-                Ready to stop guessing<br />what's wrong?
-              </h2>
-              <p style={{ color: "#2e2e2e", fontSize: "15px", lineHeight: "1.7", margin: "0 0 28px" }}>
-                Upload your match. Your AI coach will have a full report waiting in minutes.
-              </p>
-              <div
-                onClick={() => fileRef.current.click()}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: "10px",
-                  background: "#1D9E75", color: "#060606", borderRadius: "12px",
-                  padding: "16px 36px", fontWeight: "900", fontSize: "15px",
-                  cursor: "pointer", letterSpacing: "0.01em",
-                  boxShadow: "0 0 50px rgba(29,158,117,0.25)", transition: "all 0.2s",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 0 60px rgba(29,158,117,0.4)"; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 0 50px rgba(29,158,117,0.25)"; }}
-              >
-                <span style={{ fontSize: "18px" }}>↑</span>
-                Upload your match video
-              </div>
-              <div style={{ marginTop: "14px", fontSize: "11px", color: "#1e1e1e" }}>Free during beta · 2 analyses per email · No credit card</div>
-            </div>
-
-            {/* ── PRO WAITLIST ── */}
-            <div className="reveal" style={{ marginBottom: "48px", background: "#0a0a0a", border: "1px solid #222", borderRadius: "16px", padding: "28px 24px", textAlign: "center" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1D9E7518", border: "1px solid #1D9E7540", borderRadius: "20px", padding: "4px 14px", marginBottom: "16px" }}>
+            {/* ── PRO WAITLIST SECTION ── */}
+            <FadeIn delay={0}>
+            <div style={{ marginTop: "48px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "16px", padding: "28px 24px", textAlign: "center" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1D9E7518", border: "1px solid #1D9E7530", borderRadius: "20px", padding: "4px 14px", marginBottom: "16px" }}>
                 <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
                 <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em" }}>Coming soon</span>
               </div>
-              <h3 style={{ fontSize: "20px", fontWeight: "900", letterSpacing: "-0.025em", margin: "0 0 10px", color: "#d8d8d8" }}>
+              <h3 style={{ fontSize: "22px", fontWeight: "900", letterSpacing: "-0.02em", margin: "0 0 10px", color: "#e8e8e8" }}>
                 Forty Fifteen gets smarter every match.
               </h3>
-              <p style={{ margin: "0 0 20px", fontSize: "13px", color: "#444", lineHeight: "1.75", maxWidth: "380px", marginLeft: "auto", marginRight: "auto" }}>
-                Unlimited analyses, session history, progress tracking, coach sharing, and first access to every new capability as it launches.
+              <p style={{ margin: "0 0 8px", fontSize: "14px", color: "#444", lineHeight: "1.7", maxWidth: "420px", marginLeft: "auto", marginRight: "auto" }}>
+                Every analysis sharpens the coaching engine — pattern recognition improves, benchmarks get more accurate, and new tactical frameworks get added continuously.
               </p>
+              <p style={{ margin: "0 0 8px", fontSize: "13px", color: "#333", lineHeight: "1.7", maxWidth: "420px", marginLeft: "auto", marginRight: "auto" }}>
+                The brain behind Forty Fifteen is continuously trained on the best coaching science available — peer-reviewed biomechanics, ITF coaching publications, professional match pattern data, and real-world coaching methodology from certified professionals.
+              </p>
+              <p style={{ margin: "0 0 8px", fontSize: "13px", color: "#2a2a2a", lineHeight: "1.7" }}>
+                Pro members get unlimited analyses, session history, progress tracking, coach sharing, and first access to every new capability as it launches.
+              </p>
+              <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
+                {/* Tennis pill */}
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#1D9E7518", border: "1px solid #1D9E7530", borderRadius: "20px", padding: "6px 14px" }}>
+                  <svg width="16" height="16" viewBox="0 0 40 40" fill="none">
+                    <circle cx="20" cy="20" r="18" stroke="#1D9E75" strokeWidth="2" fill="none"/>
+                    <path d="M 6 20 Q 13 10 20 20 Q 27 30 34 20" stroke="#1D9E75" strokeWidth="1.5" fill="none"/>
+                    <path d="M 6 20 Q 13 30 20 20 Q 27 10 34 20" stroke="#1D9E75" strokeWidth="1.5" fill="none"/>
+                  </svg>
+                  <span style={{ fontSize: "11px", color: "#1D9E75" }}>Tennis</span>
+                </div>
+                {/* Padel pill */}
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "20px", padding: "6px 14px" }}>
+                  <svg width="12" height="16" viewBox="0 0 32 48" fill="none">
+                    <path d="M 16 2 C 9 2 2 7 2 14 C 2 21 5 27 16 33 C 27 27 30 21 30 14 C 30 7 23 2 16 2 Z" stroke="#444" strokeWidth="2" fill="none"/>
+                    <circle cx="10" cy="8"  r="1.3" fill="#444"/>
+                    <circle cx="16" cy="7"  r="1.3" fill="#444"/>
+                    <circle cx="22" cy="8"  r="1.3" fill="#444"/>
+                    <circle cx="13" cy="14" r="1.3" fill="#444"/>
+                    <circle cx="19" cy="14" r="1.3" fill="#444"/>
+                    <circle cx="13" cy="20" r="1.3" fill="#444"/>
+                    <circle cx="19" cy="20" r="1.3" fill="#444"/>
+                    <path d="M 12 33 L 12 36 L 16 34.5 L 20 36 L 20 33" stroke="#444" strokeWidth="1.5" fill="none"/>
+                    <rect x="13" y="36" width="6" height="9" rx="3" stroke="#444" strokeWidth="1.5" fill="none"/>
+                  </svg>
+                  <span style={{ fontSize: "11px", color: "#333" }}>Padel</span>
+                  <span style={{ fontSize: "9px", color: "#2a2a2a" }}>soon</span>
+                </div>
+                {/* Pickleball pill */}
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "20px", padding: "6px 14px" }}>
+                  <svg width="11" height="16" viewBox="0 0 32 48" fill="none">
+                    <rect x="2" y="2" width="28" height="26" rx="8" stroke="#444" strokeWidth="2" fill="none"/>
+                    <line x1="8"  y1="8"  x2="8"  y2="24" stroke="#333" strokeWidth="0.8" strokeLinecap="round"/>
+                    <line x1="13" y1="6"  x2="13" y2="25" stroke="#333" strokeWidth="0.8" strokeLinecap="round"/>
+                    <line x1="18" y1="6"  x2="18" y2="25" stroke="#333" strokeWidth="0.8" strokeLinecap="round"/>
+                    <line x1="23" y1="8"  x2="23" y2="24" stroke="#333" strokeWidth="0.8" strokeLinecap="round"/>
+                    <path d="M 10 28 C 10 30 13 32 16 32 C 19 32 22 30 22 28" stroke="#444" strokeWidth="1.5" fill="none"/>
+                    <line x1="10" y1="28" x2="10" y2="32" stroke="#444" strokeWidth="1.5"/>
+                    <line x1="22" y1="28" x2="22" y2="32" stroke="#444" strokeWidth="1.5"/>
+                    <rect x="12" y="32" width="8" height="14" rx="4" stroke="#444" strokeWidth="1.5" fill="none"/>
+                  </svg>
+                  <span style={{ fontSize: "11px", color: "#333" }}>Pickleball</span>
+                  <span style={{ fontSize: "9px", color: "#2a2a2a" }}>soon</span>
+                </div>
+              </div>
               <a href="https://tally.so/r/RG2pGj" target="_blank" rel="noopener noreferrer"
-                style={{ display: "inline-block", background: "transparent", color: "#1D9E75", border: "1px solid #1D9E7560", borderRadius: "10px", padding: "11px 24px", fontWeight: "800", fontSize: "13px", textDecoration: "none", letterSpacing: "0.02em" }}>
+                style={{ display: "inline-block", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "13px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}>
                 Join the Pro waitlist →
               </a>
-              <p style={{ margin: "10px 0 0", fontSize: "11px", color: "#333" }}>Early members get founding pricing. No spam.</p>
-            </div>
-
-            {/* ── TRUST FOOTER ── */}
-            <div style={{ textAlign: "center", paddingBottom: "16px" }}>
-              <p style={{ margin: 0, fontSize: "12px", color: "#444", lineHeight: "2" }}>
-                Made in Canada 🍁 by a Tennis Canada certified Club Pro<br />
-                <span style={{ fontStyle: "italic", color: "#333" }}>who got tired of guessing what was wrong with his game.</span>
+              <p style={{ margin: "12px 0 0", fontSize: "11px", color: "#1e1e1e" }}>
+                Early members get founding pricing. No spam. One email when Pro launches.
               </p>
             </div>
+            </FadeIn>
 
+            {/* ── TRUST FOOTER ── */}
+            <FadeIn delay={0}>
+            <div style={{ marginTop: "32px", textAlign: "center", paddingBottom: "16px" }}>
+              <p style={{ margin: 0, fontSize: "12px", color: "#222", lineHeight: "1.9" }}>
+                Made in Canada 🍁 by a Tennis Canada certified Club Pro<br />
+                <span style={{ fontStyle: "italic", color: "#1a1a1a" }}>who got tired of guessing what was wrong with his game.</span>
+              </p>
+              <p style={{ margin: "16px 0 0", fontSize: "12px", color: "#1e1e1e", lineHeight: "1.8" }}>
+                Got a question? Even Federer asked his coach things.{" "}
+                <a href="mailto:coach@fortyfifteen.app" style={{ color: "#1D9E75", textDecoration: "none", borderBottom: "1px solid #1D9E7540" }}>
+                  coach@fortyfifteen.app
+                </a>
+              </p>
+              <p style={{ margin: "12px 0 0", fontSize: "10px", color: "#141414", lineHeight: "1.6", letterSpacing: "0.04em" }}>
+                © {new Date().getFullYear()} Forty Fifteen. All rights reserved.
+              </p>
+            </div>
+            </FadeIn>
           </div>
         )}
 
