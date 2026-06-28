@@ -173,16 +173,6 @@ All shot_distribution count fields must be integers not strings.
   "player_level": "Beginner | Developing | Intermediate | Advanced Club | High Performance",
   "surface_detected": "Clay | Hard | Grass | Unknown",
   "frames_analyzed": ${frameCount},
-  "shot_log": [
-    {
-      "frame_index": 1,
-      "shot_type": "use exact taxonomy label from the list above",
-      "confidence": "high | possible | unclear | unknown",
-      "court_position": "baseline | midcourt | net | behind_baseline | wide | unknown",
-      "grip_estimate": "continental | eastern | semi_western | western | eastern_backhand | two_handed | unknown",
-      "key_observation": "One sentence on the most important biomechanical observation in this frame"
-    }
-  ],
   "shot_distribution": {
     "serves_detected": 0,
     "forehand_groundstrokes": 0,
@@ -477,7 +467,7 @@ export default async function handler(req, res) {
   const content = [
     {
       type: "text",
-      text: `${playerFocus}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} match. For each frame, classify the shot type using the exact taxonomy in your instructions. Use confidence prefixes (possible, unclear) where visual evidence is partial.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
+      text: `${playerFocus}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} match. Use the shot classification taxonomy in your instructions to identify shot types across all frames and populate shot_distribution and shot_breakdown accurately. Apply the full coaching brain to produce a complete report.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
     },
     ...frames.map((base64) => ({
       type: "image",
@@ -495,7 +485,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 10000,
+        max_tokens: 16000,
         system: SYSTEM_PROMPT(frames.length, durationLabel || "unknown-length"),
         messages: [{ role: "user", content }],
       }),
