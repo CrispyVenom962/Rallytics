@@ -253,6 +253,7 @@ export default function App() {
   const [email, setEmail] = useState("");
   const [level, setLevel] = useState("");
   const [gateError, setGateError] = useState("");
+  const [sessionType, setSessionType] = useState("match");
   const fileRef = useRef();
   const factTimer = useRef(null);
   const wakeLock = useRef(null);
@@ -361,7 +362,7 @@ export default function App() {
           frames: frames.map(f => f.base64),
           context: context.trim(), playerId: playerId.trim(),
           frameCount: frames.length, durationLabel: dLabel,
-          firstName: firstName.trim(), email: email.trim(), level,
+          firstName: firstName.trim(), email: email.trim(), level, sessionType,
         }),
       });
 
@@ -394,7 +395,7 @@ export default function App() {
   const reset = () => {
     setStage("upload"); setVideoFile(null); setVideoUrl(null); setContext(""); setPlayerId("");
     setResult(null); setError(null); setPct(0); setFramesDone(0); setFramesTotal(0);
-    setDuration(0); setTab("technique"); setFirstName(""); setEmail(""); setLevel(""); setGateError("");
+    setDuration(0); setTab("technique"); setFirstName(""); setEmail(""); setLevel(""); setGateError(""); setSessionType("match");
   };
 
   const lc = l => !l ? "#888" : l.includes("Beginner") ? "#5bc85b" : l.includes("Developing") ? "#a3e635" : l.includes("Intermediate") ? "#f5c842" : "#f97316";
@@ -563,6 +564,37 @@ export default function App() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* ── SESSION TYPE SELECTOR ── */}
+            <div style={{ marginBottom: "24px" }}>
+              <div style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "12px" }}>What type of video is this?</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                {[
+                  { id: "match", label: "Match", sub: "Point play vs opponent", icon: "⚔️" },
+                  { id: "drilling", label: "Drilling", sub: "Practice or ball machine", icon: "🎯" },
+                  { id: "lesson", label: "Lesson", sub: "Coach feeding balls", icon: "🎓" },
+                ].map(s => (
+                  <button key={s.id} onClick={() => setSessionType(s.id)} style={{
+                    background: sessionType === s.id ? "#3b82f614" : "#080808",
+                    border: `1px solid ${sessionType === s.id ? "#3b82f6" : "#141414"}`,
+                    borderRadius: "12px", padding: "14px 8px", cursor: "pointer", textAlign: "center", transition: "all 0.18s",
+                  }}>
+                    <div style={{ fontSize: "20px", marginBottom: "6px" }}>{s.icon}</div>
+                    <div style={{ fontSize: "12px", fontWeight: "800", color: sessionType === s.id ? "#3b82f6" : "#555", marginBottom: "3px" }}>{s.label}</div>
+                    <div style={{ fontSize: "9px", color: sessionType === s.id ? "#3b82f680" : "#2a2a2a", lineHeight: "1.4" }}>{s.sub}</div>
+                  </button>
+                ))}
+              </div>
+              {sessionType !== "match" && (
+                <div style={{ marginTop: "10px", padding: "10px 14px", background: "#3b82f608", border: "1px solid #3b82f618", borderRadius: "8px" }}>
+                  <span style={{ fontSize: "11px", color: "#3b82f6" }}>
+                    {sessionType === "drilling"
+                      ? "Drilling mode: report focuses on shot mechanics only. Court position is read from the video, not assumed."
+                      : "Lesson mode: report focuses on technique only. Coach-feed context is acknowledged throughout."}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* ── DROP ZONE ── */}
