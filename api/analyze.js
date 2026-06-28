@@ -5,10 +5,45 @@
 
 export const maxDuration = 120;
 
-const SYSTEM_PROMPT = (frameCount, durationLabel) => `
+const SESSION_CONTEXT = (sessionType) => {
+  if (sessionType === "drilling") return `
+This is a DRILLING or PRACTICE session — NOT a match.
+CRITICAL: Read court position from the actual frames. Do not assume baseline. If the player appears to be in the service box or mid-court, state this explicitly in match_overview and throughout the report.
+If a coach or feeder is visible, acknowledge this — do not treat fed balls as rally balls.
+If the same shot type repeats across most frames, identify the drill and focus the entire report on that shot mechanics.
+DO NOT generate tactical pattern analysis (no passive baseliner, no recovery deficit, no between-point routine analysis).
+DO NOT comment on shot selection — in a drill the player is executing an assigned task not making tactical decisions.
+strategy section: set headline to "Drilling Session — Tactical Analysis Not Applicable" and patterns array to empty.
+mental_game section: set headline to "Practice Context — Match Mental Analysis Not Applicable" and note effort level and focus visible during the drill.
+FOCUS ENTIRELY on biomechanics of the shot being practiced. Identify which shot is being drilled, from which court position, with what ball type, and give the deepest possible technical breakdown.`;
+
+  if (sessionType === "lesson") return `
+This is a COACHING LESSON with a coach or feeder providing balls — NOT a match.
+CRITICAL: Read the player court position directly from the frames. State exactly where on court the player appears to be — service box, mid-court, baseline, or net. Do not assume baseline. If the player is in the service box receiving feeds state this clearly.
+DO NOT generate tactical analysis, shot selection commentary, or between-point routine observations.
+DO NOT comment on recovery after shots — in a lesson the player is focused on the stroke not match recovery.
+strategy section: set headline to "Lesson Session — Tactical Analysis Not Applicable" and patterns array to empty.
+mental_game section: note effort level, body language, and response visible during practice. Skip failure mode analysis.
+FOCUS ENTIRELY on technical quality of the shots being practiced. Identify the shot type being drilled, the player position, and give a deep biomechanical breakdown.
+Prescribe drills appropriate for a lesson setting with a coach feeding.`;
+
+  return `
+This is MATCH FOOTAGE. Identify RECURRING PATTERNS across the entire match. Think like a coach who has watched thousands of hours of player film and can immediately identify the 2-3 root cause habits costing this player the most points.`;
+};
+
+const SYSTEM_PROMPT = (frameCount, durationLabel, sessionType = "match") => `
 You are the most knowledgeable tennis coaching AI ever built. Your knowledge comes from the world's leading coaching publications, world-leading books, peer-reviewed biomechanics research, and methodology from elite coaches and conferences around the globe.
 
-You are analyzing ${frameCount} frame samples extracted from a ${durationLabel} tennis match. Identify RECURRING PATTERNS across the entire match. Think like a coach who has watched thousands of hours of player film and can immediately identify the 2-3 root cause habits costing this player the most points.
+You are analyzing ${frameCount} frame samples extracted from a ${durationLabel} tennis session.
+
+${SESSION_CONTEXT(sessionType)}
+
+COURT POSITION DETECTION — MANDATORY FOR EVERY ANALYSIS:
+Examine every frame for visual evidence of where the player is on court. Net posts, service line, baseline, and centre mark are your reference points.
+Service box position: player is between the net and the service line roughly halfway up the court.
+Mid-court: player is between the service line and baseline.
+Baseline: player is at or behind the baseline.
+NEVER default to "baseline" without visual evidence. Front-on camera angles compress depth — state uncertainty when depth is hard to read. If court position is unclear, say so explicitly.
 
 Be direct. Be specific. Name exact body parts, joint positions, and timing moments. Never say "consider improving" — say exactly what is wrong, why it is wrong at a biomechanical level, what the downstream consequences are, and precisely how to fix it.
 
@@ -433,7 +468,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { frames, context, playerId, frameCount, durationLabel, firstName, email, level } = req.body;
+  const { frames, context, playerId, frameCount, durationLabel, firstName, email, level, sessionType } = req.body;
 
   if (!frames || !Array.isArray(frames) || frames.length === 0) {
     return res.status(400).json({ error: "No frames provided" });
@@ -467,7 +502,7 @@ export default async function handler(req, res) {
   const content = [
     {
       type: "text",
-      text: `${playerFocus}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} match. Use the shot classification taxonomy in your instructions to identify shot types across all frames and populate shot_distribution and shot_breakdown accurately. Apply the full coaching brain to produce a complete report.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
+      text: `${playerFocus}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${sessionType === "match" ? "match" : sessionType === "drilling" ? "drilling session" : "lesson"}. Use the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
     },
     ...frames.map((base64) => ({
       type: "image",
@@ -486,7 +521,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: 16000,
-        system: SYSTEM_PROMPT(frames.length, durationLabel || "unknown-length"),
+        system: SYSTEM_PROMPT(frames.length, durationLabel || "unknown-length", sessionType || "match"),
         messages: [{ role: "user", content }],
       }),
     });
