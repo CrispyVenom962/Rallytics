@@ -932,7 +932,7 @@ export default function App() {
             <FadeIn delay={0}>
               <div style={{ marginTop: "32px", textAlign: "center", paddingBottom: "16px" }}>
                 <p style={{ margin: 0, fontSize: "12px", color: "#555", lineHeight: "1.9" }}>
-                  Made in Canada 🍁 by a Tennis Canada NCCP certified Club Pro<br />
+                  Made in Canada 🍁 by a Tennis Canada certified Club Pro<br />
                   <span style={{ fontStyle: "italic", color: "#555" }}>who got tired of guessing what was wrong with his game.</span>
                 </p>
                 <p style={{ margin: "16px 0 0", fontSize: "12px", color: "#555", lineHeight: "1.8" }}>
