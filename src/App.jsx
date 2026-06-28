@@ -100,7 +100,7 @@ const ScoreArc = ({ score, label, color }) => {
 };
 
 // ── Court Line Divider ─────────────────────────────────────────────────────────
-const CourtLine = ({ color = "#1D9E75" }) => (
+const CourtLine = ({ color = "#3b82f6" }) => (
   <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "6px 0" }}>
     <div style={{ flex: 1, height: "1px", background: "#1a1a1a" }}/>
     <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: color, boxShadow: `0 0 8px ${color}` }}/>
@@ -109,7 +109,7 @@ const CourtLine = ({ color = "#1D9E75" }) => (
 );
 
 // ── Section Label ──────────────────────────────────────────────────────────────
-const SectionLabel = ({ children, color = "#1D9E75", icon }) => (
+const SectionLabel = ({ children, color = "#3b82f6", icon }) => (
   <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
     {icon && <span style={{ fontSize: "22px" }}>{icon}</span>}
     <span style={{ fontSize: "10px", color, textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: "700" }}>{children}</span>
@@ -117,7 +117,7 @@ const SectionLabel = ({ children, color = "#1D9E75", icon }) => (
 );
 
 // ── Expand Panel ───────────────────────────────────────────────────────────────
-const Panel = ({ title, badge, accent = "#1D9E75", children }) => {
+const Panel = ({ title, badge, accent = "#3b82f6", children }) => {
   const [open, setOpen] = useState(false);
   return (
     <div style={{ borderRadius: "12px", overflow: "hidden", border: `1px solid ${open ? accent + "30" : "#1a1a1a"}`, transition: "border-color 0.2s" }}>
@@ -153,7 +153,7 @@ const Panel = ({ title, badge, accent = "#1D9E75", children }) => {
 // ── Info Block ─────────────────────────────────────────────────────────────────
 const Block = ({ label, value, glow }) => (
   <div style={{
-    background: glow ? "#0b150b" : "#0e0e0e",
+    background: glow ? "#080e1f" : "#0e0e0e",
     border: `1px solid ${glow ? "#1e3d1e" : "#181818"}`,
     borderRadius: "8px", padding: "12px 14px", marginBottom: "8px",
   }}>
@@ -163,16 +163,32 @@ const Block = ({ label, value, glow }) => (
 );
 
 // ── Logo SVG ───────────────────────────────────────────────────────────────────
-const Logo = ({ size = 36 }) => (
-  <svg width={size} height={size} viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="80" cy="80" r="52" fill="none" stroke="#1D9E75" strokeWidth="3"/>
-    <circle cx="80" cy="80" r="38" fill="#1D9E75"/>
-    <path d="M 52 58 A 32 32 0 0 1 108 58" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round"/>
-    <line x1="52" y1="102" x2="108" y2="102" stroke="#ffffff" strokeWidth="2" strokeLinecap="round"/>
-    <line x1="80" y1="58" x2="80" y2="102" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round"/>
-    <circle cx="96" cy="72" r="5" fill="#ffffff"/>
-  </svg>
-);
+const Logo = ({ size = 36 }) => {
+  const h = size * (68/56);
+  return (
+    <svg width={size} height={h} viewBox="0 0 56 68" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Blue court mark — real ITF proportions */}
+      <rect x="0" y="0" width="56" height="68" rx="10" fill="#3b82f6"/>
+      {/* Outer court boundary */}
+      <rect x="5" y="5" width="46" height="58" fill="none" stroke="white" strokeWidth="1.2"/>
+      {/* Left singles line (alley) */}
+      <line x1="11" y1="5"  x2="11" y2="63" stroke="white" strokeWidth="0.8"/>
+      {/* Right singles line (alley) */}
+      <line x1="45" y1="5"  x2="45" y2="63" stroke="white" strokeWidth="0.8"/>
+      {/* NET — bold */}
+      <line x1="5"  y1="34" x2="51" y2="34" stroke="white" strokeWidth="2"/>
+      {/* Service line top */}
+      <line x1="11" y1="18" x2="45" y2="18" stroke="white" strokeWidth="0.8"/>
+      {/* Service line bottom */}
+      <line x1="11" y1="50" x2="45" y2="50" stroke="white" strokeWidth="0.8"/>
+      {/* Centre service line */}
+      <line x1="28" y1="18" x2="28" y2="50" stroke="white" strokeWidth="0.8"/>
+      {/* Centre marks at baselines */}
+      <line x1="28" y1="5"  x2="28" y2="9"  stroke="white" strokeWidth="0.8"/>
+      <line x1="28" y1="59" x2="28" y2="63" stroke="white" strokeWidth="0.8"/>
+    </svg>
+  );
+};
 
 // ── Main App ───────────────────────────────────────────────────────────────────
 export default function App() {
@@ -354,12 +370,14 @@ export default function App() {
       <style>{`
         * { box-sizing: border-box; }
         textarea:focus { outline: none; }
-        button:focus-visible { outline: 2px solid #1D9E75; outline-offset: 2px; }
+        button:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
         @keyframes courtScan { 0%{transform:translateX(-100%)} 100%{transform:translateX(400%)} }
         @keyframes factFade { 0%{opacity:0;transform:translateY(6px)} 15%{opacity:1;transform:translateY(0)} 85%{opacity:1} 100%{opacity:0} }
         @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+        @keyframes ballSpin { 0%{transform:rotateY(0deg) rotateX(15deg)} 100%{transform:rotateY(360deg) rotateX(15deg)} }
+        @keyframes ballFloat { 0%,100%{transform:translateY(0) rotateY(0deg) rotateX(15deg)} 50%{transform:translateY(-6px) rotateY(180deg) rotateX(15deg)} }
         ::placeholder { color: #282828; }
         ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #0a0a0a; } ::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
       `}</style>
@@ -372,9 +390,9 @@ export default function App() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div onClick={reset} style={{ display: "flex", alignItems: "center", gap: "11px", cursor: "pointer" }}>
-          <Logo size={36} />
+          <Logo size={32} />
           <span style={{ fontWeight: "900", fontSize: "17px", letterSpacing: "-0.03em" }}>
-            forty<span style={{ color: "#1D9E75" }}>.</span><span style={{ color: "#1D9E75", fontWeight: "300" }}>fifteen</span>
+            <span style={{ color: "#c8e63c" }}>forty</span><span style={{ color: "#3b82f6" }}>.</span><span style={{ color: "#3b82f6", fontWeight: "300" }}>fifteen</span>
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -384,7 +402,7 @@ export default function App() {
               color: "#555", fontSize: "12px", padding: "7px 16px", cursor: "pointer",
               letterSpacing: "0.04em", transition: "border-color 0.2s, color 0.2s",
             }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "#1D9E75"; e.currentTarget.style.color = "#1D9E75"; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "#3b82f6"; e.currentTarget.style.color = "#3b82f6"; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e1e"; e.currentTarget.style.color = "#555"; }}
             >
               ← New match
@@ -401,20 +419,38 @@ export default function App() {
 
             {/* ── SPORT SELECTOR ── */}
             <div style={{ marginBottom: "32px" }}>
-              <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "14px", textAlign: "center" }}>Select your sport</div>
+              <div style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "14px", textAlign: "center" }}>Select your sport</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
 
                 {/* Tennis — active */}
-                <div style={{ background: "#0b150b", border: "2px solid #1D9E75", borderRadius: "14px", padding: "18px 10px 14px", textAlign: "center", cursor: "pointer", position: "relative" }}>
+                <div style={{ background: "#080e1f", border: "2px solid #3b82f6", borderRadius: "14px", padding: "18px 10px 14px", textAlign: "center", cursor: "pointer", position: "relative" }}>
                   <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                      <circle cx="20" cy="20" r="18" stroke="#1D9E75" strokeWidth="2" fill="none"/>
-                      <path d="M 6 20 Q 13 10 20 20 Q 27 30 34 20" stroke="#1D9E75" strokeWidth="1.5" fill="none"/>
-                      <path d="M 6 20 Q 13 30 20 20 Q 27 10 34 20" stroke="#1D9E75" strokeWidth="1.5" fill="none"/>
+                    <svg width="28" height="48" viewBox="0 0 28 48" fill="none">
+                      {/* Tennis racquet — oval head, strings, throat, handle — same style as padel/pickleball */}
+                      {/* Oval head */}
+                      <ellipse cx="14" cy="15" rx="11" ry="13" stroke="#3b82f6" strokeWidth="1.8" fill="none"/>
+                      {/* Vertical strings */}
+                      <line x1="8"  y1="4"  x2="8"  y2="26" stroke="#3b82f6" strokeWidth="0.7" strokeLinecap="round" opacity="0.8"/>
+                      <line x1="11" y1="2.5" x2="11" y2="27" stroke="#3b82f6" strokeWidth="0.7" strokeLinecap="round" opacity="0.8"/>
+                      <line x1="14" y1="2"  x2="14" y2="28" stroke="#3b82f6" strokeWidth="0.7" strokeLinecap="round" opacity="0.8"/>
+                      <line x1="17" y1="2.5" x2="17" y2="27" stroke="#3b82f6" strokeWidth="0.7" strokeLinecap="round" opacity="0.8"/>
+                      <line x1="20" y1="4"  x2="20" y2="26" stroke="#3b82f6" strokeWidth="0.7" strokeLinecap="round" opacity="0.8"/>
+                      {/* Horizontal strings */}
+                      <line x1="4"  y1="9"  x2="24" y2="9"  stroke="#3b82f6" strokeWidth="0.7" strokeLinecap="round" opacity="0.8"/>
+                      <line x1="3"  y1="13" x2="25" y2="13" stroke="#3b82f6" strokeWidth="0.7" strokeLinecap="round" opacity="0.8"/>
+                      <line x1="3"  y1="17" x2="25" y2="17" stroke="#3b82f6" strokeWidth="0.7" strokeLinecap="round" opacity="0.8"/>
+                      <line x1="4"  y1="21" x2="24" y2="21" stroke="#3b82f6" strokeWidth="0.7" strokeLinecap="round" opacity="0.8"/>
+                      {/* Throat — V shape narrowing to handle */}
+                      <path d="M 9 28 L 9 32 L 14 30.5 L 19 32 L 19 28" stroke="#3b82f6" strokeWidth="1.5" fill="none" strokeLinejoin="round"/>
+                      {/* Handle */}
+                      <rect x="11" y="32" width="6" height="14" rx="3" stroke="#3b82f6" strokeWidth="1.5" fill="none"/>
+                      {/* Grip wrap lines */}
+                      <line x1="11" y1="37" x2="17" y2="37" stroke="#3b82f6" strokeWidth="0.8" opacity="0.6"/>
+                      <line x1="11" y1="41" x2="17" y2="41" stroke="#3b82f6" strokeWidth="0.8" opacity="0.6"/>
                     </svg>
                   </div>
-                  <div style={{ fontSize: "12px", fontWeight: "800", color: "#1D9E75" }}>Tennis</div>
-                  <div style={{ position: "absolute", top: "8px", right: "8px", background: "#1D9E75", borderRadius: "4px", padding: "2px 6px" }}>
+                  <div style={{ fontSize: "12px", fontWeight: "800", color: "#3b82f6" }}>Tennis</div>
+                  <div style={{ position: "absolute", top: "8px", right: "8px", background: "#3b82f6", borderRadius: "4px", padding: "2px 6px" }}>
                     <span style={{ fontSize: "8px", color: "#060606", fontWeight: "900", letterSpacing: "0.08em" }}>ACTIVE</span>
                   </div>
                 </div>
@@ -422,23 +458,27 @@ export default function App() {
                 {/* Padel — coming soon */}
                 <div style={{ background: "#080808", border: "1px solid #141414", borderRadius: "14px", padding: "18px 10px 14px", textAlign: "center", opacity: 0.5, position: "relative", cursor: "not-allowed" }}>
                   <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
-                    <svg width="32" height="48" viewBox="0 0 32 48" fill="none">
-                      <path d="M 16 2 C 9 2 2 7 2 14 C 2 21 5 27 16 33 C 27 27 30 21 30 14 C 30 7 23 2 16 2 Z" stroke="#555" strokeWidth="2" fill="none"/>
-                      <circle cx="10" cy="8"  r="1.3" fill="#555"/>
-                      <circle cx="16" cy="7"  r="1.3" fill="#555"/>
-                      <circle cx="22" cy="8"  r="1.3" fill="#555"/>
-                      <circle cx="7"  cy="14" r="1.3" fill="#555"/>
-                      <circle cx="13" cy="14" r="1.3" fill="#555"/>
-                      <circle cx="19" cy="14" r="1.3" fill="#555"/>
-                      <circle cx="25" cy="14" r="1.3" fill="#555"/>
-                      <circle cx="10" cy="20" r="1.3" fill="#555"/>
-                      <circle cx="16" cy="20" r="1.3" fill="#555"/>
-                      <circle cx="22" cy="20" r="1.3" fill="#555"/>
-                      <circle cx="13" cy="26" r="1.3" fill="#555"/>
-                      <circle cx="19" cy="26" r="1.3" fill="#555"/>
-                      <path d="M 12 33 L 12 36 L 16 34.5 L 20 36 L 20 33" stroke="#555" strokeWidth="1.5" fill="none" strokeLinejoin="round"/>
-                      <rect x="13" y="36" width="6" height="9" rx="3" stroke="#555" strokeWidth="1.5" fill="none"/>
-                      <line x1="13" y1="41" x2="19" y2="41" stroke="#555" strokeWidth="0.8"/>
+                    <svg width="28" height="48" viewBox="0 0 28 48" fill="none">
+                      {/* Padel racquet — round/teardrop head with holes, short handle */}
+                      <path d="M 14 2 C 7 2 2 7 2 14 C 2 22 6 28 14 33 C 22 28 26 22 26 14 C 26 7 21 2 14 2 Z" stroke="#444" strokeWidth="1.8" fill="none"/>
+                      {/* Holes in face */}
+                      <circle cx="8"  cy="8"  r="1.4" fill="#444"/>
+                      <circle cx="14" cy="6"  r="1.4" fill="#444"/>
+                      <circle cx="20" cy="8"  r="1.4" fill="#444"/>
+                      <circle cx="6"  cy="14" r="1.4" fill="#444"/>
+                      <circle cx="12" cy="13" r="1.4" fill="#444"/>
+                      <circle cx="18" cy="13" r="1.4" fill="#444"/>
+                      <circle cx="22" cy="15" r="1.4" fill="#444"/>
+                      <circle cx="8"  cy="19" r="1.4" fill="#444"/>
+                      <circle cx="14" cy="19" r="1.4" fill="#444"/>
+                      <circle cx="20" cy="19" r="1.4" fill="#444"/>
+                      <circle cx="11" cy="25" r="1.4" fill="#444"/>
+                      <circle cx="17" cy="25" r="1.4" fill="#444"/>
+                      {/* Throat */}
+                      <path d="M 10 33 L 10 36 L 14 34.5 L 18 36 L 18 33" stroke="#444" strokeWidth="1.5" fill="none" strokeLinejoin="round"/>
+                      {/* Short handle */}
+                      <rect x="11" y="36" width="6" height="10" rx="3" stroke="#444" strokeWidth="1.5" fill="none"/>
+                      <line x1="11" y1="41" x2="17" y2="41" stroke="#444" strokeWidth="0.8"/>
                     </svg>
                   </div>
                   <div style={{ fontSize: "12px", fontWeight: "800", color: "#444" }}>Padel</div>
@@ -450,18 +490,17 @@ export default function App() {
                 {/* Pickleball — coming soon */}
                 <div style={{ background: "#080808", border: "1px solid #141414", borderRadius: "14px", padding: "18px 10px 14px", textAlign: "center", opacity: 0.5, position: "relative", cursor: "not-allowed" }}>
                   <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
-                    <svg width="32" height="48" viewBox="0 0 32 48" fill="none">
-                      <rect x="2" y="2" width="28" height="26" rx="8" stroke="#555" strokeWidth="2" fill="none"/>
-                      <line x1="8"  y1="8"  x2="8"  y2="24" stroke="#444" strokeWidth="0.8" strokeLinecap="round"/>
-                      <line x1="13" y1="6"  x2="13" y2="25" stroke="#444" strokeWidth="0.8" strokeLinecap="round"/>
-                      <line x1="18" y1="6"  x2="18" y2="25" stroke="#444" strokeWidth="0.8" strokeLinecap="round"/>
-                      <line x1="23" y1="8"  x2="23" y2="24" stroke="#444" strokeWidth="0.8" strokeLinecap="round"/>
-                      <path d="M 10 28 C 10 30 13 32 16 32 C 19 32 22 30 22 28" stroke="#555" strokeWidth="1.5" fill="none"/>
-                      <line x1="10" y1="28" x2="10" y2="32" stroke="#555" strokeWidth="1.5"/>
-                      <line x1="22" y1="28" x2="22" y2="32" stroke="#555" strokeWidth="1.5"/>
-                      <rect x="12" y="32" width="8" height="14" rx="4" stroke="#555" strokeWidth="1.5" fill="none"/>
-                      <line x1="12" y1="37" x2="20" y2="37" stroke="#555" strokeWidth="0.8"/>
-                      <line x1="12" y1="41" x2="20" y2="41" stroke="#555" strokeWidth="0.8"/>
+                    <svg width="28" height="48" viewBox="0 0 28 48" fill="none">
+                      {/* Pickleball paddle — solid face, NO strings */}
+                      <rect x="2" y="2" width="24" height="22" rx="7" stroke="#444" strokeWidth="1.8" fill="none"/>
+                      {/* Throat — narrows to handle */}
+                      <path d="M 8 24 C 8 27 11 29 14 29 C 17 29 20 27 20 24" stroke="#444" strokeWidth="1.5" fill="none"/>
+                      <line x1="8"  y1="24" x2="8"  y2="29" stroke="#444" strokeWidth="1.5"/>
+                      <line x1="20" y1="24" x2="20" y2="29" stroke="#444" strokeWidth="1.5"/>
+                      {/* Longer handle */}
+                      <rect x="10" y="29" width="8" height="17" rx="4" stroke="#444" strokeWidth="1.5" fill="none"/>
+                      <line x1="10" y1="35" x2="18" y2="35" stroke="#444" strokeWidth="0.8"/>
+                      <line x1="10" y1="40" x2="18" y2="40" stroke="#444" strokeWidth="0.8"/>
                     </svg>
                   </div>
                   <div style={{ fontSize: "12px", fontWeight: "800", color: "#444" }}>Pickleball</div>
@@ -473,44 +512,44 @@ export default function App() {
               </div>
               <div style={{ marginTop: "12px", textAlign: "center" }}>
                 <p style={{ margin: 0, fontSize: "11px", color: "#3a3a3a", lineHeight: "1.7" }}>
-                  Built on a continuously growing library of peer-reviewed sports science, elite coaching publications, biomechanics research, and curated match data — sourced from the world's leading tennis institutions and updated regularly so every report is sharper than the last.
+                  Continuously trained on elite coaching publications, world-leading books, biomechanics research, and methodology from leading coaches and conferences around the world — the engine keeps learning and every report gets sharper.
                 </p>
               </div>
             </div>
 
             {/* ── HERO ── */}
             <div style={{ marginBottom: "40px" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1D9E7512", border: "1px solid #1D9E7525", borderRadius: "20px", padding: "5px 14px", marginBottom: "20px" }}>
-                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
-                <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.18em" }}>Free during beta</span>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#3b82f612", border: "1px solid #3b82f625", borderRadius: "20px", padding: "5px 14px", marginBottom: "20px" }}>
+                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#3b82f6", animation: "pulse 1.5s infinite" }}/>
+                <span style={{ fontSize: "10px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.18em" }}>Free during beta</span>
               </div>
-              <h1 style={{ fontSize: "clamp(38px,9vw,68px)", fontWeight: "900", letterSpacing: "-0.04em", lineHeight: 0.92, margin: "0 0 22px" }}>
-                Your game<br />is leaking points.<br /><span style={{ color: "#1D9E75" }}>Find out where.</span>
+              <h1 style={{ fontSize: "clamp(38px,9vw,68px)", fontWeight: "900", letterSpacing: "-0.04em", lineHeight: 0.92, margin: "0 0 22px", color: "#c8e63c" }}>
+                Your game<br />is leaking points.<br />Find out where.
               </h1>
               <p style={{ color: "#444", fontSize: "16px", lineHeight: "1.7", maxWidth: "400px", margin: "0 0 28px" }}>
-                Upload your match. Walk away knowing more about your game than you ever have — technique, tactics, mental game, and a training plan.
+                Upload your match. Start seeing your game the way a coach does — technique, tactics, mental game, and a training plan.
               </p>
 
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "8px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
                 {[
                   {
-                    text: "Tennis Canada certified",
-                    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#1D9E75" strokeWidth="1.2" fill="none"/><path d="M 2 7 Q 4.5 4 7 7 Q 9.5 10 12 7" stroke="#1D9E75" strokeWidth="1" fill="none"/><path d="M 2 7 Q 4.5 10 7 7 Q 9.5 4 12 7" stroke="#1D9E75" strokeWidth="1" fill="none"/></svg>
+                    text: "Coach-built, science-backed",
+                    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#3b82f6" strokeWidth="1.2" fill="none"/><path d="M 2 7 Q 4.5 4 7 7 Q 9.5 10 12 7" stroke="#3b82f6" strokeWidth="1" fill="none"/><path d="M 2 7 Q 4.5 10 7 7 Q 9.5 4 12 7" stroke="#3b82f6" strokeWidth="1" fill="none"/></svg>
                   },
                   {
                     text: "Elite coaching methodology",
-                    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="3" width="10" height="8" rx="2" stroke="#1D9E75" strokeWidth="1.2" fill="none"/><line x1="5" y1="3" x2="5" y2="1.5" stroke="#1D9E75" strokeWidth="1"/><line x1="9" y1="3" x2="9" y2="1.5" stroke="#1D9E75" strokeWidth="1"/><circle cx="5" cy="7" r="1" fill="#1D9E75"/><circle cx="9" cy="7" r="1" fill="#1D9E75"/><line x1="5" y1="7" x2="9" y2="7" stroke="#1D9E75" strokeWidth="0.8"/></svg>
+                    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="3" width="10" height="8" rx="2" stroke="#3b82f6" strokeWidth="1.2" fill="none"/><line x1="5" y1="3" x2="5" y2="1.5" stroke="#3b82f6" strokeWidth="1"/><line x1="9" y1="3" x2="9" y2="1.5" stroke="#3b82f6" strokeWidth="1"/><circle cx="5" cy="7" r="1" fill="#3b82f6"/><circle cx="9" cy="7" r="1" fill="#3b82f6"/><line x1="5" y1="7" x2="9" y2="7" stroke="#3b82f6" strokeWidth="0.8"/></svg>
                   },
                   {
                     text: "Report emailed to you",
-                    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="8" rx="1.5" stroke="#1D9E75" strokeWidth="1.2" fill="none"/><path d="M 1 4 L 7 8 L 13 4" stroke="#1D9E75" strokeWidth="1" fill="none"/></svg>
+                    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="8" rx="1.5" stroke="#3b82f6" strokeWidth="1.2" fill="none"/><path d="M 1 4 L 7 8 L 13 4" stroke="#3b82f6" strokeWidth="1" fill="none"/></svg>
                   },
                   {
                     text: "No account needed",
-                    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="3" y="6" width="8" height="6" rx="1.5" stroke="#1D9E75" strokeWidth="1.2" fill="none"/><path d="M 4.5 6 V 4.5 A 2.5 2.5 0 0 1 9.5 4.5 V 6" stroke="#1D9E75" strokeWidth="1.2" fill="none"/><circle cx="7" cy="9" r="1" fill="#1D9E75"/></svg>
+                    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="3" y="6" width="8" height="6" rx="1.5" stroke="#3b82f6" strokeWidth="1.2" fill="none"/><path d="M 4.5 6 V 4.5 A 2.5 2.5 0 0 1 9.5 4.5 V 6" stroke="#3b82f6" strokeWidth="1.2" fill="none"/><circle cx="7" cy="9" r="1" fill="#3b82f6"/></svg>
                   },
                 ].map((b, i) => (
-                  <div key={i} style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "20px", padding: "5px 12px" }}>
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "20px", padding: "5px 12px" }}>
                     {b.icon}
                     <span style={{ fontSize: "11px", color: "#444", letterSpacing: "0.02em" }}>{b.text}</span>
                   </div>
@@ -525,23 +564,23 @@ export default function App() {
               onDrop={onDrop}
               onClick={() => fileRef.current.click()}
               style={{
-                border: `2px dashed ${dragging ? "#1D9E75" : "#1c1c1c"}`,
+                border: `2px dashed ${dragging ? "#3b82f6" : "#1c1c1c"}`,
                 borderRadius: "20px", padding: "48px 24px 44px", textAlign: "center",
                 cursor: "pointer",
-                background: dragging ? "#071a12" : "#080808",
+                background: dragging ? "#07101f" : "#080808",
                 transition: "all 0.2s", position: "relative", overflow: "hidden",
               }}
             >
               <div style={{ position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%", background: "linear-gradient(90deg, transparent, rgba(29,158,117,0.06), rgba(29,158,117,0.15), rgba(29,158,117,0.06), transparent)", animation: "courtScan 2.5s linear infinite", pointerEvents: "none" }}/>
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #1D9E75, transparent)", animation: "courtScan 2.5s linear infinite", opacity: 0.6 }}/>
-              <div style={{ fontSize: "48px", marginBottom: "14px", lineHeight: 1 }}>🎾</div>
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #3b82f6, transparent)", animation: "courtScan 2.5s linear infinite", opacity: 0.6 }}/>
+              <div style={{ fontSize: "56px", marginBottom: "14px", lineHeight: 1 }}>🎾</div>
               <div style={{ fontSize: "18px", fontWeight: "800", marginBottom: "6px", letterSpacing: "-0.02em", color: "#e0e0e0" }}>
                 The ball never lies. Start understanding what yours has been saying.
               </div>
               <div style={{ color: "#2a2a2a", fontSize: "12px", marginBottom: "22px" }}>
                 Best results: 10–20 min · 720p or higher · MP4 or MOV
               </div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "13px 32px", fontWeight: "900", fontSize: "14px", letterSpacing: "0.02em" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#c8e63c", color: "#060606", borderRadius: "10px", padding: "13px 32px", fontWeight: "900", fontSize: "14px", letterSpacing: "0.02em" }}>
                 <span>↑</span> Choose video
               </div>
             </div>
@@ -554,16 +593,16 @@ export default function App() {
             )}
 
             {/* ── BETA STRIP ── */}
-            <div style={{ marginTop: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "10px 16px", background: "#1D9E7508", border: "1px solid #1D9E7518", borderRadius: "10px" }}>
-              <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
-              <span style={{ fontSize: "11px", color: "#1D9E75", letterSpacing: "0.05em" }}>
+            <div style={{ marginTop: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "10px 16px", background: "#3b82f608", border: "1px solid #3b82f618", borderRadius: "10px" }}>
+              <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#3b82f6", animation: "pulse 1.5s infinite" }}/>
+              <span style={{ fontSize: "11px", color: "#3b82f6", letterSpacing: "0.05em" }}>
                 Free during beta · 2 analyses per email · No credit card required
               </span>
             </div>
 
             {/* ── MOCK REPORT PREVIEW ── */}
             <div style={{ background: "#080808", border: "1px solid #1a1a1a", borderRadius: "16px", padding: "20px 20px 80px", marginTop: "20px", marginBottom: "32px", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #1D9E75, transparent)", opacity: 0.4 }}/>
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #3b82f6, transparent)", opacity: 0.4 }}/>
               <div style={{ fontSize: "9px", color: "#333", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "14px" }}>Example report preview</div>
               {/* Score row */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
@@ -579,21 +618,21 @@ export default function App() {
                 ))}
               </div>
               {/* Coach verdict preview */}
-              <div style={{ background: "#0a0a0a", borderLeft: "2px solid #1D9E75", padding: "10px 14px", borderRadius: "0 8px 8px 0", marginBottom: "12px" }}>
-                <div style={{ fontSize: "8px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "4px" }}>Coach verdict</div>
+              <div style={{ background: "#0a0a0a", borderLeft: "2px solid #3b82f6", padding: "10px 14px", borderRadius: "0 8px 8px 0", marginBottom: "12px" }}>
+                <div style={{ fontSize: "8px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "4px" }}>Coach verdict</div>
                 <p style={{ margin: 0, fontSize: "12px", color: "#3a3a3a", fontStyle: "italic", lineHeight: "1.6" }}>"The arm is doing all the work while the body watches. Fix the unit turn first and everything downstream improves."</p>
               </div>
               {/* Top fixes preview */}
-              <div style={{ fontSize: "8px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Top 3 fixes</div>
+              <div style={{ fontSize: "8px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Top 3 fixes</div>
               {[
                 { rank: 1, fix: "Establish a complete unit turn before every swing", cue: "Shoulder to net post before I swing" },
                 { rank: 2, fix: "Begin recovery the instant the ball leaves your strings", cue: "Ball leaves strings, feet start moving" },
               ].map((f, i) => (
                 <div key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "8px", opacity: i === 1 ? 0.5 : 1 }}>
-                  <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: i === 0 ? "#1D9E75" : "#141414", border: `1px solid ${i === 0 ? "#1D9E75" : "#222"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "900", color: i === 0 ? "#060606" : "#333", flexShrink: 0 }}>{f.rank}</div>
+                  <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: i === 0 ? "#3b82f6" : "#141414", border: `1px solid ${i === 0 ? "#3b82f6" : "#222"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "900", color: i === 0 ? "#060606" : "#333", flexShrink: 0 }}>{f.rank}</div>
                   <div>
                     <div style={{ fontSize: "11px", color: "#555", marginBottom: "2px" }}>{f.fix}</div>
-                    <div style={{ fontSize: "10px", color: "#1D9E75", fontStyle: "italic" }}>"{f.cue}"</div>
+                    <div style={{ fontSize: "10px", color: "#3b82f6", fontStyle: "italic" }}>"{f.cue}"</div>
                   </div>
                 </div>
               ))}
@@ -601,8 +640,8 @@ export default function App() {
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "120px", background: "linear-gradient(transparent, #080808)", borderRadius: "0 0 16px 16px" }}/>
               {/* FIX 1: Button pushed down with more bottom spacing */}
               <div style={{ position: "absolute", bottom: "22px", left: 0, right: 0, textAlign: "center" }}>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1D9E7518", border: "1px solid #1D9E7530", borderRadius: "20px", padding: "6px 16px" }}>
-                  <span style={{ fontSize: "10px", color: "#1D9E75" }}>Upload your video to unlock your real report</span>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#3b82f618", border: "1px solid #3b82f630", borderRadius: "20px", padding: "6px 16px" }}>
+                  <span style={{ fontSize: "10px", color: "#3b82f6" }}>Upload your video to unlock your real report</span>
                 </div>
               </div>
             </div>
@@ -611,7 +650,7 @@ export default function App() {
             <FadeIn delay={0}>
             <div style={{ marginTop: "48px" }}>
               <div style={{ textAlign: "center", marginBottom: "28px" }}>
-                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px" }}>What you get</div>
+                <div style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px" }}>What you get</div>
                 <h2 style={{ fontSize: "clamp(22px,5vw,32px)", fontWeight: "900", letterSpacing: "-0.03em", margin: 0 }}>
                   The coaching report<br />your game has been missing.
                 </h2>
@@ -619,57 +658,57 @@ export default function App() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "20px 16px" }}>
                   <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-                    <circle cx="22" cy="40" r="2.5" fill="#1D9E75" opacity="0.5"/>
-                    <line x1="22" y1="40" x2="22" y2="30" stroke="#1D9E75" strokeWidth="1.5" opacity="0.5"/>
-                    <circle cx="22" cy="30" r="2.5" fill="#1D9E75" opacity="0.65"/>
-                    <line x1="22" y1="30" x2="22" y2="20" stroke="#1D9E75" strokeWidth="1.5" opacity="0.65"/>
-                    <circle cx="22" cy="20" r="2.5" fill="#1D9E75" opacity="0.8"/>
-                    <line x1="22" y1="20" x2="32" y2="13" stroke="#1D9E75" strokeWidth="1.5" opacity="0.8"/>
-                    <circle cx="32" cy="13" r="2.5" fill="#1D9E75" opacity="0.9"/>
-                    <ellipse cx="38" cy="8" rx="5" ry="7" fill="none" stroke="#1D9E75" strokeWidth="1.8"/>
-                    <circle cx="22" cy="14" r="4" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.4"/>
+                    <circle cx="22" cy="40" r="2.5" fill="#3b82f6" opacity="0.5"/>
+                    <line x1="22" y1="40" x2="22" y2="30" stroke="#3b82f6" strokeWidth="1.5" opacity="0.5"/>
+                    <circle cx="22" cy="30" r="2.5" fill="#3b82f6" opacity="0.65"/>
+                    <line x1="22" y1="30" x2="22" y2="20" stroke="#3b82f6" strokeWidth="1.5" opacity="0.65"/>
+                    <circle cx="22" cy="20" r="2.5" fill="#3b82f6" opacity="0.8"/>
+                    <line x1="22" y1="20" x2="32" y2="13" stroke="#3b82f6" strokeWidth="1.5" opacity="0.8"/>
+                    <circle cx="32" cy="13" r="2.5" fill="#3b82f6" opacity="0.9"/>
+                    <ellipse cx="38" cy="8" rx="5" ry="7" fill="none" stroke="#3b82f6" strokeWidth="1.8"/>
+                    <circle cx="22" cy="14" r="4" fill="none" stroke="#3b82f6" strokeWidth="1.2" opacity="0.4"/>
                   </svg>
                   <div style={{ fontSize: "13px", fontWeight: "800", color: "#ddd", margin: "12px 0 8px", letterSpacing: "-0.01em" }}>Biomechanics breakdown</div>
                   <div style={{ fontSize: "11px", color: "#555", lineHeight: "1.7" }}>Contact point, unit turn, swing path, follow-through — per shot type, with the kinetic chain explained.</div>
                 </div>
                 <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "20px 16px" }}>
                   <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-                    <rect x="4" y="4" width="36" height="36" rx="2" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.3"/>
-                    <line x1="4" y1="22" x2="40" y2="22" stroke="#1D9E75" strokeWidth="1.5" opacity="0.5"/>
-                    <line x1="22" y1="11" x2="22" y2="22" stroke="#1D9E75" strokeWidth="0.7" opacity="0.25"/>
-                    <line x1="22" y1="22" x2="22" y2="33" stroke="#1D9E75" strokeWidth="0.7" opacity="0.25"/>
-                    <line x1="4" y1="11" x2="40" y2="11" stroke="#1D9E75" strokeWidth="0.7" opacity="0.25"/>
-                    <line x1="4" y1="33" x2="40" y2="33" stroke="#1D9E75" strokeWidth="0.7" opacity="0.25"/>
-                    <line x1="36" y1="30" x2="10" y2="10" stroke="#1D9E75" strokeWidth="1.5" opacity="0.8"/>
-                    <polygon points="10,10 16,12 12,16" fill="#1D9E75" opacity="0.8"/>
-                    <line x1="8" y1="12" x2="34" y2="30" stroke="#1D9E75" strokeWidth="1" strokeDasharray="3,2" opacity="0.5"/>
-                    <polygon points="34,30 28,28 32,24" fill="#1D9E75" opacity="0.5"/>
+                    <rect x="4" y="4" width="36" height="36" rx="2" fill="none" stroke="#3b82f6" strokeWidth="1.2" opacity="0.3"/>
+                    <line x1="4" y1="22" x2="40" y2="22" stroke="#3b82f6" strokeWidth="1.5" opacity="0.5"/>
+                    <line x1="22" y1="11" x2="22" y2="22" stroke="#3b82f6" strokeWidth="0.7" opacity="0.25"/>
+                    <line x1="22" y1="22" x2="22" y2="33" stroke="#3b82f6" strokeWidth="0.7" opacity="0.25"/>
+                    <line x1="4" y1="11" x2="40" y2="11" stroke="#3b82f6" strokeWidth="0.7" opacity="0.25"/>
+                    <line x1="4" y1="33" x2="40" y2="33" stroke="#3b82f6" strokeWidth="0.7" opacity="0.25"/>
+                    <line x1="36" y1="30" x2="10" y2="10" stroke="#3b82f6" strokeWidth="1.5" opacity="0.8"/>
+                    <polygon points="10,10 16,12 12,16" fill="#3b82f6" opacity="0.8"/>
+                    <line x1="8" y1="12" x2="34" y2="30" stroke="#3b82f6" strokeWidth="1" strokeDasharray="3,2" opacity="0.5"/>
+                    <polygon points="34,30 28,28 32,24" fill="#3b82f6" opacity="0.5"/>
                   </svg>
                   <div style={{ fontSize: "13px", fontWeight: "800", color: "#ddd", margin: "12px 0 8px", letterSpacing: "-0.01em" }}>Tactical patterns</div>
                   <div style={{ fontSize: "11px", color: "#555", lineHeight: "1.7" }}>Court positioning, recovery habits, short ball response — the patterns costing you games every match.</div>
                 </div>
                 <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "20px 16px" }}>
                   <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-                    <circle cx="22" cy="22" r="18" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.25"/>
-                    <circle cx="22" cy="22" r="12" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.45"/>
-                    <circle cx="22" cy="22" r="6" fill="none" stroke="#1D9E75" strokeWidth="1.4" opacity="0.7"/>
-                    <circle cx="22" cy="22" r="2.5" fill="#1D9E75"/>
-                    <line x1="38" y1="6" x2="26" y2="18" stroke="#1D9E75" strokeWidth="1.8"/>
-                    <polygon points="26,18 30,12 34,16" fill="#1D9E75"/>
+                    <circle cx="22" cy="22" r="18" fill="none" stroke="#3b82f6" strokeWidth="1.2" opacity="0.25"/>
+                    <circle cx="22" cy="22" r="12" fill="none" stroke="#3b82f6" strokeWidth="1.2" opacity="0.45"/>
+                    <circle cx="22" cy="22" r="6" fill="none" stroke="#3b82f6" strokeWidth="1.4" opacity="0.7"/>
+                    <circle cx="22" cy="22" r="2.5" fill="#3b82f6"/>
+                    <line x1="38" y1="6" x2="26" y2="18" stroke="#3b82f6" strokeWidth="1.8"/>
+                    <polygon points="26,18 30,12 34,16" fill="#3b82f6"/>
                   </svg>
                   <div style={{ fontSize: "13px", fontWeight: "800", color: "#ddd", margin: "12px 0 8px", letterSpacing: "-0.01em" }}>Priority fixes</div>
                   <div style={{ fontSize: "11px", color: "#555", lineHeight: "1.7" }}>Your top 3 root-cause fixes ranked by impact. Fix the upstream fault and multiple problems resolve.</div>
                 </div>
                 <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "20px 16px" }}>
                   <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-                    <rect x="8" y="10" width="28" height="32" rx="3" fill="none" stroke="#1D9E75" strokeWidth="1.4" opacity="0.6"/>
-                    <rect x="16" y="6" width="12" height="8" rx="2" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.6"/>
-                    <line x1="14" y1="22" x2="30" y2="22" stroke="#1D9E75" strokeWidth="1" opacity="0.3"/>
-                    <polyline points="14,22 17,25 22,19" fill="none" stroke="#1D9E75" strokeWidth="1.4" opacity="0.9"/>
-                    <line x1="14" y1="30" x2="30" y2="30" stroke="#1D9E75" strokeWidth="1" opacity="0.3"/>
-                    <polyline points="14,30 17,33 22,27" fill="none" stroke="#1D9E75" strokeWidth="1.4" opacity="0.6"/>
-                    <line x1="14" y1="38" x2="28" y2="38" stroke="#1D9E75" strokeWidth="1" opacity="0.2"/>
-                    <circle cx="15" cy="38" r="1.5" fill="none" stroke="#1D9E75" strokeWidth="1" opacity="0.3"/>
+                    <rect x="8" y="10" width="28" height="32" rx="3" fill="none" stroke="#3b82f6" strokeWidth="1.4" opacity="0.6"/>
+                    <rect x="16" y="6" width="12" height="8" rx="2" fill="none" stroke="#3b82f6" strokeWidth="1.2" opacity="0.6"/>
+                    <line x1="14" y1="22" x2="30" y2="22" stroke="#3b82f6" strokeWidth="1" opacity="0.3"/>
+                    <polyline points="14,22 17,25 22,19" fill="none" stroke="#3b82f6" strokeWidth="1.4" opacity="0.9"/>
+                    <line x1="14" y1="30" x2="30" y2="30" stroke="#3b82f6" strokeWidth="1" opacity="0.3"/>
+                    <polyline points="14,30 17,33 22,27" fill="none" stroke="#3b82f6" strokeWidth="1.4" opacity="0.6"/>
+                    <line x1="14" y1="38" x2="28" y2="38" stroke="#3b82f6" strokeWidth="1" opacity="0.2"/>
+                    <circle cx="15" cy="38" r="1.5" fill="none" stroke="#3b82f6" strokeWidth="1" opacity="0.3"/>
                   </svg>
                   <div style={{ fontSize: "13px", fontWeight: "800", color: "#ddd", margin: "12px 0 8px", letterSpacing: "-0.01em" }}>Training plan</div>
                   <div style={{ fontSize: "11px", color: "#555", lineHeight: "1.7" }}>Two specific drills plus a match rule simple enough to hold in your head during a point.</div>
@@ -682,12 +721,12 @@ export default function App() {
             <FadeIn delay={0}>
             <div style={{ marginTop: "48px" }}>
               <div style={{ textAlign: "center", marginBottom: "28px" }}>
-                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px" }}>How it works</div>
+                <div style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px" }}>How it works</div>
                 <h2 style={{ fontSize: "clamp(22px,5vw,32px)", fontWeight: "900", letterSpacing: "-0.03em", margin: 0 }}>Three steps to your report.</h2>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                 {[
-                  { n: "01", h: "Upload your match", b: "Up to 2GB. MP4 or MOV from your phone. The coaching engine samples one frame every 30 seconds across the full match.", color: "#1D9E75" },
+                  { n: "01", h: "Upload your match", b: "Up to 2GB. MP4 or MOV from your phone. We break your match down frame by frame — analyzing movement, technique, and patterns from start to finish.", color: "#3b82f6" },
                   { n: "02", h: "We analyze your match", b: "The engine reads your biomechanics, identifies recurring patterns, and cross-references against club-level benchmarks. Takes 2–3 minutes.", color: "#60a5fa" },
                   { n: "03", h: "Get your full report", b: "Technique scores, top fixes, drills, and on-court cues — displayed instantly and emailed so you can reference it on court.", color: "#a78bfa" },
                 ].map((s, i) => (
@@ -707,28 +746,28 @@ export default function App() {
             <FadeIn delay={0}>
             <div style={{ marginTop: "48px" }}>
               <div style={{ textAlign: "center", marginBottom: "28px" }}>
-                <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px" }}>Before you film</div>
+                <div style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px" }}>Before you film</div>
                 <h2 style={{ fontSize: "clamp(22px,5vw,32px)", fontWeight: "900", letterSpacing: "-0.03em", margin: 0 }}>How to film for best results.</h2>
               </div>
               <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "18px", marginBottom: "10px", display: "flex", gap: "16px", alignItems: "flex-start" }}>
                 <div style={{ flexShrink: 0 }}>
                   <svg width="90" height="140" viewBox="0 0 100 150" fill="none">
-                    <rect x="18" y="8" width="64" height="118" rx="2" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.35"/>
-                    <line x1="18" y1="67" x2="82" y2="67" stroke="#1D9E75" strokeWidth="1.8" opacity="0.7"/>
-                    <line x1="18" y1="28" x2="82" y2="28" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
-                    <line x1="18" y1="106" x2="82" y2="106" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
-                    <line x1="50" y1="28" x2="50" y2="67" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
-                    <line x1="50" y1="67" x2="50" y2="106" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
+                    <rect x="18" y="8" width="64" height="118" rx="2" fill="none" stroke="#3b82f6" strokeWidth="1.2" opacity="0.35"/>
+                    <line x1="18" y1="67" x2="82" y2="67" stroke="#3b82f6" strokeWidth="1.8" opacity="0.7"/>
+                    <line x1="18" y1="28" x2="82" y2="28" stroke="#3b82f6" strokeWidth="0.7" opacity="0.3"/>
+                    <line x1="18" y1="106" x2="82" y2="106" stroke="#3b82f6" strokeWidth="0.7" opacity="0.3"/>
+                    <line x1="50" y1="28" x2="50" y2="67" stroke="#3b82f6" strokeWidth="0.7" opacity="0.3"/>
+                    <line x1="50" y1="67" x2="50" y2="106" stroke="#3b82f6" strokeWidth="0.7" opacity="0.3"/>
                     <circle cx="50" cy="92" r="4" fill="#fff" opacity="0.85"/>
-                    <rect x="1" y="60" width="13" height="9" rx="2" fill="#1D9E75" opacity="0.9"/>
-                    <circle cx="14" cy="64" r="2.5" fill="#1D9E75"/>
-                    <line x1="14" y1="64" x2="50" y2="80" stroke="#1D9E75" strokeWidth="0.8" strokeDasharray="3,2" opacity="0.4"/>
-                    <line x1="14" y1="64" x2="50" y2="106" stroke="#1D9E75" strokeWidth="0.8" strokeDasharray="3,2" opacity="0.4"/>
-                    <text x="50" y="142" fontFamily="Inter,sans-serif" fontSize="7" fill="#1D9E75" textAnchor="middle" opacity="0.55">SIDE · MID-COURT</text>
+                    <rect x="1" y="60" width="13" height="9" rx="2" fill="#3b82f6" opacity="0.9"/>
+                    <circle cx="14" cy="64" r="2.5" fill="#3b82f6"/>
+                    <line x1="14" y1="64" x2="50" y2="80" stroke="#3b82f6" strokeWidth="0.8" strokeDasharray="3,2" opacity="0.4"/>
+                    <line x1="14" y1="64" x2="50" y2="106" stroke="#3b82f6" strokeWidth="0.8" strokeDasharray="3,2" opacity="0.4"/>
+                    <text x="50" y="142" fontFamily="Inter,sans-serif" fontSize="7" fill="#3b82f6" textAnchor="middle" opacity="0.55">SIDE · MID-COURT</text>
                   </svg>
                 </div>
                 <div>
-                  <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>For technique</div>
+                  <div style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>For technique</div>
                   <div style={{ fontSize: "13px", fontWeight: "800", color: "#e0e0e0", marginBottom: "6px" }}>Film from the side</div>
                   <p style={{ margin: 0, fontSize: "11px", color: "#444", lineHeight: "1.7" }}>Position at mid-court, zoomed in to show waist-up. Captures swing shape, contact point, hip rotation, and follow-through on every shot.</p>
                 </div>
@@ -736,33 +775,33 @@ export default function App() {
               <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "18px", marginBottom: "10px", display: "flex", gap: "16px", alignItems: "flex-start" }}>
                 <div style={{ flexShrink: 0 }}>
                   <svg width="90" height="140" viewBox="0 0 100 150" fill="none">
-                    <rect x="18" y="8" width="64" height="100" rx="2" fill="none" stroke="#1D9E75" strokeWidth="1.2" opacity="0.35"/>
-                    <line x1="18" y1="58" x2="82" y2="58" stroke="#1D9E75" strokeWidth="1.8" opacity="0.7"/>
-                    <line x1="18" y1="25" x2="82" y2="25" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
-                    <line x1="18" y1="91" x2="82" y2="91" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
-                    <line x1="50" y1="25" x2="50" y2="58" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
-                    <line x1="50" y1="58" x2="50" y2="91" stroke="#1D9E75" strokeWidth="0.7" opacity="0.3"/>
+                    <rect x="18" y="8" width="64" height="100" rx="2" fill="none" stroke="#3b82f6" strokeWidth="1.2" opacity="0.35"/>
+                    <line x1="18" y1="58" x2="82" y2="58" stroke="#3b82f6" strokeWidth="1.8" opacity="0.7"/>
+                    <line x1="18" y1="25" x2="82" y2="25" stroke="#3b82f6" strokeWidth="0.7" opacity="0.3"/>
+                    <line x1="18" y1="91" x2="82" y2="91" stroke="#3b82f6" strokeWidth="0.7" opacity="0.3"/>
+                    <line x1="50" y1="25" x2="50" y2="58" stroke="#3b82f6" strokeWidth="0.7" opacity="0.3"/>
+                    <line x1="50" y1="58" x2="50" y2="91" stroke="#3b82f6" strokeWidth="0.7" opacity="0.3"/>
                     <circle cx="50" cy="80" r="4" fill="#fff" opacity="0.85"/>
-                    <rect x="40" y="118" width="20" height="12" rx="2" fill="#1D9E75" opacity="0.9"/>
-                    <circle cx="50" cy="130" r="3" fill="#1D9E75"/>
-                    <line x1="50" y1="118" x2="18" y2="8" stroke="#1D9E75" strokeWidth="0.8" strokeDasharray="3,2" opacity="0.3"/>
-                    <line x1="50" y1="118" x2="82" y2="8" stroke="#1D9E75" strokeWidth="0.8" strokeDasharray="3,2" opacity="0.3"/>
-                    <text x="50" y="146" fontFamily="Inter,sans-serif" fontSize="7" fill="#1D9E75" textAnchor="middle" opacity="0.55">BEHIND BASELINE</text>
+                    <rect x="40" y="118" width="20" height="12" rx="2" fill="#3b82f6" opacity="0.9"/>
+                    <circle cx="50" cy="130" r="3" fill="#3b82f6"/>
+                    <line x1="50" y1="118" x2="18" y2="8" stroke="#3b82f6" strokeWidth="0.8" strokeDasharray="3,2" opacity="0.3"/>
+                    <line x1="50" y1="118" x2="82" y2="8" stroke="#3b82f6" strokeWidth="0.8" strokeDasharray="3,2" opacity="0.3"/>
+                    <text x="50" y="146" fontFamily="Inter,sans-serif" fontSize="7" fill="#3b82f6" textAnchor="middle" opacity="0.55">BEHIND BASELINE</text>
                   </svg>
                 </div>
                 <div>
-                  <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>For tactics</div>
+                  <div style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>For tactics</div>
                   <div style={{ fontSize: "13px", fontWeight: "800", color: "#e0e0e0", marginBottom: "6px" }}>Film from behind</div>
                   <p style={{ margin: 0, fontSize: "11px", color: "#444", lineHeight: "1.7" }}>Stand behind the baseline, wide angle showing the full court. Best for court positioning, recovery habits, and net approach patterns.</p>
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "16px" }}>
-                  <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Camera</div>
+                  <div style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Camera</div>
                   <svg width="80" height="58" viewBox="0 0 80 58" fill="none">
-                    <rect x="30" y="4" width="14" height="22" rx="3" fill="none" stroke="#1D9E75" strokeWidth="1.4" opacity="0.8"/>
-                    <line x1="37" y1="15" x2="68" y2="34" stroke="#1D9E75" strokeWidth="1" strokeDasharray="3,2" opacity="0.5"/>
-                    <polygon points="68,34 62,30 65,40" fill="#1D9E75" opacity="0.5"/>
+                    <rect x="30" y="4" width="14" height="22" rx="3" fill="none" stroke="#3b82f6" strokeWidth="1.4" opacity="0.8"/>
+                    <line x1="37" y1="15" x2="68" y2="34" stroke="#3b82f6" strokeWidth="1" strokeDasharray="3,2" opacity="0.5"/>
+                    <polygon points="68,34 62,30 65,40" fill="#3b82f6" opacity="0.5"/>
                     <line x1="37" y1="26" x2="37" y2="44" stroke="#444" strokeWidth="1.5"/>
                     <line x1="37" y1="44" x2="25" y2="54" stroke="#444" strokeWidth="1"/>
                     <line x1="37" y1="44" x2="49" y2="54" stroke="#444" strokeWidth="1"/>
@@ -775,13 +814,13 @@ export default function App() {
                   <p style={{ margin: 0, fontSize: "10px", color: "#444", lineHeight: "1.65" }}>1–1.5m high, slight downward angle. Tripod or fence. Keep it steady.</p>
                 </div>
                 <div style={{ background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "16px" }}>
-                  <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Format</div>
+                  <div style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Format</div>
                   <svg width="80" height="58" viewBox="0 0 80 58" fill="none">
-                    <rect x="28" y="2" width="24" height="38" rx="4" fill="none" stroke="#1D9E75" strokeWidth="1.4" opacity="0.7"/>
-                    <rect x="31" y="6" width="18" height="26" rx="1" fill="#0a0a0a" stroke="#1D9E75" strokeWidth="0.5" opacity="0.5"/>
-                    <circle cx="40" cy="19" r="7" fill="none" stroke="#1D9E75" strokeWidth="1" opacity="0.7"/>
-                    <line x1="40" y1="19" x2="40" y2="13" stroke="#1D9E75" strokeWidth="1.2" opacity="0.9"/>
-                    <line x1="40" y1="19" x2="45" y2="19" stroke="#1D9E75" strokeWidth="1.2" opacity="0.9"/>
+                    <rect x="28" y="2" width="24" height="38" rx="4" fill="none" stroke="#3b82f6" strokeWidth="1.4" opacity="0.7"/>
+                    <rect x="31" y="6" width="18" height="26" rx="1" fill="#0a0a0a" stroke="#3b82f6" strokeWidth="0.5" opacity="0.5"/>
+                    <circle cx="40" cy="19" r="7" fill="none" stroke="#3b82f6" strokeWidth="1" opacity="0.7"/>
+                    <line x1="40" y1="19" x2="40" y2="13" stroke="#3b82f6" strokeWidth="1.2" opacity="0.9"/>
+                    <line x1="40" y1="19" x2="45" y2="19" stroke="#3b82f6" strokeWidth="1.2" opacity="0.9"/>
                   </svg>
                   <div style={{ fontSize: "12px", fontWeight: "800", color: "#e0e0e0", margin: "8px 0 4px" }}>Length & format</div>
                   <p style={{ margin: 0, fontSize: "10px", color: "#444", lineHeight: "1.65" }}>10–20 min match play. 720p or 1080p MP4/MOV. No slow-mo.</p>
@@ -793,30 +832,30 @@ export default function App() {
             {/* ── PRO WAITLIST SECTION ── */}
             <FadeIn delay={0}>
             <div style={{ marginTop: "48px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "16px", padding: "28px 24px", textAlign: "center" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1D9E7518", border: "1px solid #1D9E7530", borderRadius: "20px", padding: "4px 14px", marginBottom: "16px" }}>
-                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
-                <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em" }}>Coming soon</span>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#3b82f618", border: "1px solid #3b82f630", borderRadius: "20px", padding: "4px 14px", marginBottom: "16px" }}>
+                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#3b82f6", animation: "pulse 1.5s infinite" }}/>
+                <span style={{ fontSize: "10px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.15em" }}>Coming soon</span>
               </div>
               <h3 style={{ fontSize: "22px", fontWeight: "900", letterSpacing: "-0.02em", margin: "0 0 10px", color: "#e8e8e8" }}>
                 Grounded in decades of tennis science. Getting sharper with every match.
               </h3>
               <p style={{ margin: "0 0 8px", fontSize: "14px", color: "#444", lineHeight: "1.7", maxWidth: "420px", marginLeft: "auto", marginRight: "auto" }}>
-                Forty Fifteen is built on over 25 years of ITF World Coaches Conference research, peer-reviewed biomechanics studies, and methodology used to certify elite coaches in 80+ countries. The knowledge base grows continuously — new publications, new research, new coaching frameworks.
+                Built on a continuously expanding library of elite coaching science — peer-reviewed biomechanics studies, coaching publications, and methodology from leading coaches and conferences around the globe. The knowledge base grows with every source we add.
               </p>
               <p style={{ margin: "0 0 8px", fontSize: "13px", color: "#333", lineHeight: "1.7", maxWidth: "420px", marginLeft: "auto", marginRight: "auto" }}>
-                Every report draws from the same scientific foundation used by coaches at the professional level — and as the research base expands, so does the depth of every analysis.
+                As the research base expands, so does the depth of every analysis — more sources, sharper pattern recognition, better reports.
               </p>
               <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#2a2a2a", lineHeight: "1.6" }}>
                 Pro members get unlimited analyses, session history, progress tracking, coach sharing, and first access to every new capability as it launches.
               </p>
               <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#1D9E7518", border: "1px solid #1D9E7530", borderRadius: "20px", padding: "6px 14px" }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#3b82f618", border: "1px solid #3b82f630", borderRadius: "20px", padding: "6px 14px" }}>
                   <svg width="16" height="16" viewBox="0 0 40 40" fill="none">
-                    <circle cx="20" cy="20" r="18" stroke="#1D9E75" strokeWidth="2" fill="none"/>
-                    <path d="M 6 20 Q 13 10 20 20 Q 27 30 34 20" stroke="#1D9E75" strokeWidth="1.5" fill="none"/>
-                    <path d="M 6 20 Q 13 30 20 20 Q 27 10 34 20" stroke="#1D9E75" strokeWidth="1.5" fill="none"/>
+                    <circle cx="20" cy="20" r="18" stroke="#3b82f6" strokeWidth="2" fill="none"/>
+                    <path d="M 6 20 Q 13 10 20 20 Q 27 30 34 20" stroke="#3b82f6" strokeWidth="1.5" fill="none"/>
+                    <path d="M 6 20 Q 13 30 20 20 Q 27 10 34 20" stroke="#3b82f6" strokeWidth="1.5" fill="none"/>
                   </svg>
-                  <span style={{ fontSize: "11px", color: "#1D9E75" }}>Tennis</span>
+                  <span style={{ fontSize: "11px", color: "#3b82f6" }}>Tennis</span>
                 </div>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: "20px", padding: "6px 14px" }}>
                   <span style={{ fontSize: "11px", color: "#333" }}>Padel</span>
@@ -828,7 +867,7 @@ export default function App() {
                 </div>
               </div>
               <a href="https://tally.so/r/RG2pGj" target="_blank" rel="noopener noreferrer"
-                style={{ display: "inline-block", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "13px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}>
+                style={{ display: "inline-block", background: "#c8e63c", color: "#060606", borderRadius: "10px", padding: "13px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}>
                 Join the Pro waitlist →
               </a>
               <p style={{ margin: "12px 0 0", fontSize: "11px", color: "#1e1e1e" }}>
@@ -842,12 +881,12 @@ export default function App() {
             <FadeIn delay={0}>
             <div style={{ marginTop: "32px", textAlign: "center", paddingBottom: "16px" }}>
               <p style={{ margin: 0, fontSize: "12px", color: "#555", lineHeight: "1.9" }}>
-                Made in Canada 🍁 by a Tennis Canada certified Club Pro<br />
+                Made in Canada 🍁 by a certified tennis coach<br />
                 <span style={{ fontStyle: "italic", color: "#3a3a3a" }}>who got tired of guessing what was wrong with his game.</span>
               </p>
               <p style={{ margin: "16px 0 0", fontSize: "12px", color: "#555", lineHeight: "1.8" }}>
                 Got a question? Even Federer asked his coach things.{" "}
-                <a href="mailto:coach@fortyfifteen.app" style={{ color: "#1D9E75", textDecoration: "none", borderBottom: "1px solid #1D9E7540" }}>
+                <a href="mailto:coach@fortyfifteen.app" style={{ color: "#3b82f6", textDecoration: "none", borderBottom: "1px solid #3b82f640" }}>
                   coach@fortyfifteen.app
                 </a>
               </p>
@@ -884,18 +923,18 @@ export default function App() {
                 ].map(s => (
                   <div key={s.l} style={{ background: "#080808", border: "1px solid #141414", borderRadius: "10px", padding: "12px 14px" }}>
                     <div style={{ fontSize: "9px", color: "#2e2e2e", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "4px" }}>{s.l}</div>
-                    <div style={{ fontWeight: "900", fontSize: "18px", color: "#1D9E75", letterSpacing: "-0.02em" }}>{s.v}</div>
+                    <div style={{ fontWeight: "900", fontSize: "18px", color: "#3b82f6", letterSpacing: "-0.02em" }}>{s.v}</div>
                   </div>
                 ))}
               </div>
             )}
 
             <div style={{ marginBottom: "10px" }}>
-              <div style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>Which player should I analyze?</div>
+              <div style={{ fontSize: "10px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>Which player should I analyze?</div>
               <input value={playerId} onChange={e => setPlayerId(e.target.value)}
                 placeholder="e.g. Red shirt, black shorts, far side of the court — leave blank if it's only you in the video"
                 style={{ width: "100%", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "13px 16px", color: "#f0f0f0", fontSize: "14px", lineHeight: "1.5", outline: "none", transition: "border-color 0.2s" }}
-                onFocus={e => e.target.style.borderColor = "#1D9E75"}
+                onFocus={e => e.target.style.borderColor = "#3b82f6"}
                 onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
             </div>
 
@@ -905,7 +944,7 @@ export default function App() {
             <textarea value={context} onChange={e => setContext(e.target.value)}
               placeholder="e.g. My backhand keeps going wide under pressure. Playing against a big server. Focus on my serve and net approach."
               style={{ width: "100%", minHeight: "80px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "14px 16px", color: "#f0f0f0", fontSize: "14px", lineHeight: "1.7", resize: "vertical", transition: "border-color 0.2s" }}
-              onFocus={e => e.target.style.borderColor = "#1D9E75"}
+              onFocus={e => e.target.style.borderColor = "#3b82f6"}
               onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
 
             {error && (
@@ -919,7 +958,7 @@ export default function App() {
                 </p>
                 <p style={{ margin: 0, fontSize: "12px", color: "#333", lineHeight: "1.6" }}>
                   If this keeps happening, reach out at{" "}
-                  <a href="mailto:coach@fortyfifteen.app" style={{ color: "#1D9E75", textDecoration: "none" }}>coach@fortyfifteen.app</a>
+                  <a href="mailto:coach@fortyfifteen.app" style={{ color: "#3b82f6", textDecoration: "none" }}>coach@fortyfifteen.app</a>
                   {" "}and we'll sort it out.
                 </p>
               </div>
@@ -931,7 +970,7 @@ export default function App() {
                 onMouseLeave={e => e.currentTarget.style.borderColor = "#1a1a1a"}>
                 ← Change video
               </button>
-              <button onClick={proceedToGate} style={{ flex: 3, background: "#1D9E75", border: "none", borderRadius: "10px", color: "#060606", fontSize: "15px", fontWeight: "900", padding: "14px", cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.2s" }}
+              <button onClick={proceedToGate} style={{ flex: 3, background: "#c8e63c", border: "none", borderRadius: "10px", color: "#060606", fontSize: "15px", fontWeight: "900", padding: "14px", cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.2s" }}
                 onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
                 onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
                 Get my coaching report →
@@ -945,8 +984,8 @@ export default function App() {
           <div style={{ animation: "fadeUp 0.3s ease" }}>
             <div style={{ marginBottom: "28px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#1D9E75", boxShadow: "0 0 10px #1D9E75" }}/>
-                <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em" }}>Almost there</span>
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#3b82f6", boxShadow: "0 0 10px #3b82f6" }}/>
+                <span style={{ fontSize: "10px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.2em" }}>Almost there</span>
               </div>
               <h2 style={{ fontSize: "32px", fontWeight: "900", letterSpacing: "-0.025em", margin: "0 0 8px" }}>Where should we send your report?</h2>
               <p style={{ color: "#3a3a3a", fontSize: "13px", margin: 0, lineHeight: "1.6" }}>
@@ -954,10 +993,10 @@ export default function App() {
               </p>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px", padding: "12px 16px", background: "#1D9E7508", border: "1px solid #1D9E7518", borderRadius: "10px" }}>
-              <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
-              <span style={{ fontSize: "11px", color: "#1D9E75" }}>
-                Free during beta — <strong style={{ color: "#1D9E75" }}>2 analyses per email</strong> included
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px", padding: "12px 16px", background: "#3b82f608", border: "1px solid #3b82f618", borderRadius: "10px" }}>
+              <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#3b82f6", animation: "pulse 1.5s infinite" }}/>
+              <span style={{ fontSize: "11px", color: "#3b82f6" }}>
+                Free during beta — <strong style={{ color: "#3b82f6" }}>2 analyses per email</strong> included
               </span>
             </div>
 
@@ -967,7 +1006,7 @@ export default function App() {
                 <input value={firstName} onChange={e => setFirstName(e.target.value)}
                   placeholder="e.g. William"
                   style={{ width: "100%", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "14px 16px", color: "#f0f0f0", fontSize: "15px", outline: "none", transition: "border-color 0.2s" }}
-                  onFocus={e => e.target.style.borderColor = "#1D9E75"}
+                  onFocus={e => e.target.style.borderColor = "#3b82f6"}
                   onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
               </div>
               <div>
@@ -975,7 +1014,7 @@ export default function App() {
                 <input value={email} onChange={e => setEmail(e.target.value)}
                   type="email" placeholder="e.g. you@gmail.com"
                   style={{ width: "100%", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "14px 16px", color: "#f0f0f0", fontSize: "15px", outline: "none", transition: "border-color 0.2s" }}
-                  onFocus={e => e.target.style.borderColor = "#1D9E75"}
+                  onFocus={e => e.target.style.borderColor = "#3b82f6"}
                   onBlur={e => e.target.style.borderColor = "#1a1a1a"} />
               </div>
               <div>
@@ -987,8 +1026,8 @@ export default function App() {
                     { id: "advanced", label: "Advanced", sub: "Competitive / tournament" },
                   ].map(l => (
                     <button key={l.id} onClick={() => setLevel(l.id)} style={{
-                      background: level === l.id ? "#1D9E75" : "#080808",
-                      border: `1px solid ${level === l.id ? "#1D9E75" : "#1a1a1a"}`,
+                      background: level === l.id ? "#3b82f6" : "#080808",
+                      border: `1px solid ${level === l.id ? "#3b82f6" : "#1a1a1a"}`,
                       borderRadius: "10px", padding: "14px 10px", cursor: "pointer", textAlign: "center", transition: "all 0.18s",
                     }}>
                       <div style={{ fontSize: "13px", fontWeight: "800", color: level === l.id ? "#060606" : "#888", marginBottom: "3px" }}>{l.label}</div>
@@ -1016,7 +1055,7 @@ export default function App() {
               <button onClick={() => setStage("context")} style={{ flex: 1, background: "none", border: "1px solid #1a1a1a", borderRadius: "10px", color: "#3a3a3a", fontSize: "14px", padding: "14px", cursor: "pointer" }}>
                 ← Back
               </button>
-              <button onClick={proceedToAnalysis} style={{ flex: 3, background: "#1D9E75", border: "none", borderRadius: "10px", color: "#060606", fontSize: "15px", fontWeight: "900", padding: "14px", cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.2s" }}
+              <button onClick={proceedToAnalysis} style={{ flex: 3, background: "#c8e63c", border: "none", borderRadius: "10px", color: "#060606", fontSize: "15px", fontWeight: "900", padding: "14px", cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.2s" }}
                 onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
                 onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
                 Analyze my match →
@@ -1040,8 +1079,8 @@ export default function App() {
 
             <div style={{ textAlign: "center", marginBottom: "32px" }}>
               <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.2s infinite" }}/>
-                <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em" }}>Analyzing</span>
+                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#3b82f6", animation: "pulse 1.2s infinite" }}/>
+                <span style={{ fontSize: "10px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.2em" }}>Analyzing</span>
               </div>
               <h2 style={{ fontSize: "22px", fontWeight: "900", letterSpacing: "-0.02em", margin: "0 0 8px", minHeight: "32px" }}>
                 {statusMsg}
@@ -1066,15 +1105,15 @@ export default function App() {
             <div style={{ marginBottom: "28px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                 <span style={{ fontSize: "11px", color: "#2a2a2a", textTransform: "uppercase", letterSpacing: "0.1em" }}>Overall progress</span>
-                <span style={{ fontSize: "13px", color: "#1D9E75", fontWeight: "700" }}>{Math.round(pct)}%</span>
+                <span style={{ fontSize: "13px", color: "#3b82f6", fontWeight: "700" }}>{Math.round(pct)}%</span>
               </div>
               <div style={{ background: "#0e0e0e", borderRadius: "8px", height: "10px", overflow: "hidden", position: "relative" }}>
                 <div style={{
                   height: "100%",
-                  background: pct === 100 ? "#1D9E75" : "linear-gradient(90deg, #1D9E75, #a8df00)",
+                  background: pct === 100 ? "#3b82f6" : "linear-gradient(90deg, #3b82f6, #a8df00)",
                   borderRadius: "8px", width: `${pct}%`,
                   transition: "width 0.7s cubic-bezier(.4,0,.2,1)",
-                  boxShadow: pct > 0 && pct < 100 ? "0 0 14px #1D9E7566" : "none",
+                  boxShadow: pct > 0 && pct < 100 ? "0 0 14px #3b82f666" : "none",
                   position: "relative",
                 }}>
                   {pct > 5 && pct < 98 && (
@@ -1118,8 +1157,8 @@ export default function App() {
             </div>
 
             <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "14px", padding: "20px 22px", minHeight: "100px", position: "relative", overflow: "hidden" }}>
-              <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-                <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#1D9E75" }}/>
+              <div style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
+                <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#3b82f6" }}/>
                 Did you know · {factIndex + 1}/{TENNIS_FACTS.length}
               </div>
               <p key={factIndex} style={{
@@ -1133,7 +1172,7 @@ export default function App() {
                   <div key={i} style={{
                     width: i === factIndex ? "16px" : "4px", height: "4px",
                     borderRadius: "2px",
-                    background: i === factIndex ? "#1D9E75" : "#1a1a1a",
+                    background: i === factIndex ? "#3b82f6" : "#1a1a1a",
                     transition: "all 0.4s ease",
                   }}/>
                 ))}
@@ -1169,8 +1208,8 @@ export default function App() {
                   <ScoreArc score={strat.score || 5} label="Strategy" color="#f59e0b" />
                 </div>
                 {result.coach_verdict && (
-                  <div style={{ background: "#080808", borderLeft: "3px solid #1D9E75", borderRadius: "0 10px 10px 0", padding: "16px 20px" }}>
-                    <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "6px" }}>Coach verdict</div>
+                  <div style={{ background: "#080808", borderLeft: "3px solid #3b82f6", borderRadius: "0 10px 10px 0", padding: "16px 20px" }}>
+                    <div style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "6px" }}>Coach verdict</div>
                     <p style={{ margin: 0, fontSize: "14px", color: "#777", fontStyle: "italic", lineHeight: "1.65" }}>"{result.coach_verdict}"</p>
                   </div>
                 )}
@@ -1180,20 +1219,20 @@ export default function App() {
 
               {result.priority_fixes?.length > 0 && (
                 <div style={{ marginBottom: "32px" }}>
-                  <SectionLabel icon="⚡" color="#1D9E75">Top 3 fixes</SectionLabel>
+                  <SectionLabel icon="⚡" color="#3b82f6">Top 3 fixes</SectionLabel>
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {result.priority_fixes.map(p => (
                       <div key={p.rank} style={{
-                        background: p.rank === 1 ? "#0b1300" : "#080808",
-                        border: `1px solid ${p.rank === 1 ? "#1e3300" : "#111"}`,
+                        background: p.rank === 1 ? "#080e1a" : "#080808",
+                        border: `1px solid ${p.rank === 1 ? "#0e1e3a" : "#111"}`,
                         borderRadius: "12px", padding: "16px 18px",
                         display: "flex", gap: "16px", alignItems: "flex-start",
                       }}>
                         <div style={{
                           width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
-                          background: p.rank === 1 ? "#1D9E75" : "#0e0e0e",
+                          background: p.rank === 1 ? "#3b82f6" : "#0e0e0e",
                           color: p.rank === 1 ? "#060606" : "#2e2e2e",
-                          border: `1px solid ${p.rank === 1 ? "#1D9E75" : "#1a1a1a"}`,
+                          border: `1px solid ${p.rank === 1 ? "#3b82f6" : "#1a1a1a"}`,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: "14px", fontWeight: "900",
                         }}>{p.rank}</div>
@@ -1202,8 +1241,8 @@ export default function App() {
                           {p.why && <div style={{ fontSize: "12px", color: "#3a3a3a", marginBottom: p.on_court_cue ? "8px" : 0 }}>{p.why}</div>}
                           {p.on_court_cue && (
                             <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: "6px", padding: "8px 12px", display: "inline-block" }}>
-                              <span style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em" }}>Say on court: </span>
-                              <span style={{ fontSize: "12px", color: "#1D9E75", fontStyle: "italic", fontWeight: "600" }}>"{p.on_court_cue}"</span>
+                              <span style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.15em" }}>Say on court: </span>
+                              <span style={{ fontSize: "12px", color: "#3b82f6", fontStyle: "italic", fontWeight: "600" }}>"{p.on_court_cue}"</span>
                             </div>
                           )}
                         </div>
@@ -1223,8 +1262,8 @@ export default function App() {
                 ].map(t => (
                   <button key={t.id} onClick={() => setTab(t.id)} style={{
                     flex: 1, padding: "12px 8px",
-                    background: tab === t.id ? "#1D9E75" : "#080808",
-                    border: `1px solid ${tab === t.id ? "#1D9E75" : "#141414"}`,
+                    background: tab === t.id ? "#3b82f6" : "#080808",
+                    border: `1px solid ${tab === t.id ? "#3b82f6" : "#141414"}`,
                     borderRadius: "10px",
                     color: tab === t.id ? "#060606" : "#333",
                     fontSize: "12px", fontWeight: "800", cursor: "pointer",
@@ -1243,7 +1282,7 @@ export default function App() {
                       <SectionLabel color="#5bc85b">What's working</SectionLabel>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                         {tech.strengths.map((s, i) => (
-                          <div key={i} style={{ background: "#0b180b", border: "1px solid #1a3a1a", borderRadius: "6px", padding: "7px 14px", fontSize: "13px", color: "#5bc85b", fontWeight: "600" }}>✓ {s}</div>
+                          <div key={i} style={{ background: "#080e1f", border: "1px solid #1a2a4a", borderRadius: "6px", padding: "7px 14px", fontSize: "13px", color: "#5bc85b", fontWeight: "600" }}>✓ {s}</div>
                         ))}
                       </div>
                     </div>
@@ -1258,7 +1297,7 @@ export default function App() {
                   )}
                   {tech.patterns?.length > 0 && (
                     <div>
-                      <SectionLabel color="#1D9E75">Recurring patterns</SectionLabel>
+                      <SectionLabel color="#3b82f6">Recurring patterns</SectionLabel>
                       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         {tech.patterns.map((p, i) => (
                           <Panel key={i} title={p.pattern} badge accent="#60a5fa">
@@ -1291,14 +1330,14 @@ export default function App() {
                       <SectionLabel color="#5bc85b">What's working</SectionLabel>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                         {strat.strengths.map((s, i) => (
-                          <div key={i} style={{ background: "#0b180b", border: "1px solid #1a3a1a", borderRadius: "6px", padding: "7px 14px", fontSize: "13px", color: "#5bc85b", fontWeight: "600" }}>✓ {s}</div>
+                          <div key={i} style={{ background: "#080e1f", border: "1px solid #1a2a4a", borderRadius: "6px", padding: "7px 14px", fontSize: "13px", color: "#5bc85b", fontWeight: "600" }}>✓ {s}</div>
                         ))}
                       </div>
                     </div>
                   )}
                   {strat.patterns?.length > 0 && (
                     <div>
-                      <SectionLabel color="#1D9E75">Tactical patterns</SectionLabel>
+                      <SectionLabel color="#3b82f6">Tactical patterns</SectionLabel>
                       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         {strat.patterns.map((p, i) => (
                           <Panel key={i} title={p.pattern} badge accent="#f59e0b">
@@ -1324,28 +1363,28 @@ export default function App() {
                       {result.training_plan.this_week}
                     </p>
                     {result.training_plan.match_focus && (
-                      <div style={{ background: "#0a1100", border: "1px solid #1a2500", borderRadius: "8px", padding: "14px 16px" }}>
-                        <div style={{ fontSize: "9px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>Match rule</div>
+                      <div style={{ background: "#080e1a", border: "1px solid #0e1e3a", borderRadius: "8px", padding: "14px 16px" }}>
+                        <div style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "6px" }}>Match rule</div>
                         <p style={{ margin: 0, fontSize: "13px", color: "#bbb", lineHeight: "1.65" }}>{result.training_plan.match_focus}</p>
                       </div>
                     )}
                   </div>
                   {result.priority_fixes?.some(p => p.on_court_cue) && (
                     <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px" }}>
-                      <SectionLabel icon="💬" color="#1D9E75">On-court cues</SectionLabel>
+                      <SectionLabel icon="💬" color="#3b82f6">On-court cues</SectionLabel>
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         {result.priority_fixes.filter(p => p.on_court_cue).map(p => (
                           <div key={p.rank} style={{ display: "flex", gap: "14px", alignItems: "center" }}>
                             <div style={{
                               width: "32px", height: "32px", borderRadius: "50%", flexShrink: 0,
-                              background: p.rank === 1 ? "#1D9E75" : "#0e0e0e",
+                              background: p.rank === 1 ? "#3b82f6" : "#0e0e0e",
                               color: p.rank === 1 ? "#060606" : "#333",
-                              border: `1px solid ${p.rank === 1 ? "#1D9E75" : "#1a1a1a"}`,
+                              border: `1px solid ${p.rank === 1 ? "#3b82f6" : "#1a1a1a"}`,
                               display: "flex", alignItems: "center", justifyContent: "center",
                               fontSize: "12px", fontWeight: "900",
                             }}>{p.rank}</div>
                             <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: "8px", padding: "10px 14px", flex: 1 }}>
-                              <p style={{ margin: 0, fontSize: "14px", color: "#1D9E75", fontStyle: "italic", fontWeight: "700" }}>"{p.on_court_cue}"</p>
+                              <p style={{ margin: 0, fontSize: "14px", color: "#3b82f6", fontStyle: "italic", fontWeight: "700" }}>"{p.on_court_cue}"</p>
                             </div>
                           </div>
                         ))}
@@ -1367,9 +1406,9 @@ export default function App() {
               )}
 
               <div style={{ marginTop: "32px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "14px", padding: "24px 20px", textAlign: "center" }}>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#1D9E7518", border: "1px solid #1D9E7530", borderRadius: "20px", padding: "4px 14px", marginBottom: "12px" }}>
-                  <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }}/>
-                  <span style={{ fontSize: "10px", color: "#1D9E75", textTransform: "uppercase", letterSpacing: "0.15em" }}>Free Beta</span>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "#3b82f618", border: "1px solid #3b82f630", borderRadius: "20px", padding: "4px 14px", marginBottom: "12px" }}>
+                  <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#3b82f6", animation: "pulse 1.5s infinite" }}/>
+                  <span style={{ fontSize: "10px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.15em" }}>Free Beta</span>
                 </div>
                 <p style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: "800", color: "#e0e0e0", letterSpacing: "-0.01em" }}>
                   Forty Fifteen is free during beta.
@@ -1381,7 +1420,7 @@ export default function App() {
                   Pro features: unlimited analyses, session history, progress tracking, and coach sharing.
                 </p>
                 <a href="https://tally.so/r/RG2pGj" target="_blank" rel="noopener noreferrer"
-                  style={{ display: "inline-block", background: "#1D9E75", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}>
+                  style={{ display: "inline-block", background: "#c8e63c", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}>
                   Join the Pro waitlist →
                 </a>
                 <p style={{ margin: "12px 0 0", fontSize: "11px", color: "#222" }}>No spam. Just one email when Pro launches.</p>
