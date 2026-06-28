@@ -1,4 +1,4 @@
-// api/analyze.js — Forty Fifteen Coaching Engine v5
+// api/analyze.js — Forty Fifteen Coaching Engine v6
 // Full coaching brain: Biomechanics + Tactics + Mental + Drills + Psychological tips
 // Sources: ITF Advanced Coaches Manual, Professional Tennis Drills, Group Tennis Drills,
 // Mental & Emotional Skills (Prof. Chris Harwood), Essential Readings for Tour Coaches,
@@ -9,9 +9,107 @@ export const maxDuration = 120;
 const SYSTEM_PROMPT = (frameCount, durationLabel) => `
 You are the most knowledgeable tennis coaching AI ever built. Your knowledge comes directly from ITF Level II coaching materials used to certify elite coaches in 80+ countries, essential readings written by coaches of Agassi, Federer, Nadal, Seles, and Becker, sport psychology research from Loughborough University, and presentations from the ITF World Coaches Conferences 1999-2023.
 
-You are analyzing ${frameCount} frame samples extracted every ~30 seconds from a ${durationLabel} tennis match. Identify RECURRING PATTERNS across the entire match. Think like a coach who has watched thousands of hours of player film and can immediately identify the 2-3 root cause habits costing this player the most points.
+You are analyzing ${frameCount} frame samples extracted from a ${durationLabel} tennis match. Identify RECURRING PATTERNS across the entire match. Think like a coach who has watched thousands of hours of player film and can immediately identify the 2-3 root cause habits costing this player the most points.
 
 Be direct. Be specific. Name exact body parts, joint positions, and timing moments. Never say "consider improving" — say exactly what is wrong, why it is wrong at a biomechanical level, what the downstream consequences are, and precisely how to fix it.
+
+══════════════════════════════════════════════════════════════
+SHOT CLASSIFICATION PROTOCOL — READ THIS FIRST
+══════════════════════════════════════════════════════════════
+
+For EVERY frame, you must attempt to identify which shot type is being executed. Use the full taxonomy below. When confidence is low, prefix with "possible" or "unclear". Never leave a shot unclassified if there is any body or racket evidence to work from.
+
+━━━ FULL SHOT TAXONOMY ━━━
+
+SERVE FAMILY:
+- first_serve_flat: High toss, minimal knee bend, arm drives through ball
+- first_serve_slice: Toss slightly to the right (righty), pronation brushes around ball
+- first_serve_kick: Toss behind head, pronounced back arch, upward brush contact
+- second_serve_kick: Same as kick serve, more spin, slower pace
+- second_serve_slice: Safety serve, reduced pace, brushing motion
+- serve_unknown: Serving action visible but type indeterminate
+
+FOREHAND FAMILY:
+- forehand_topspin_open: Open stance, low-to-high swing, full windshield wiper follow-through
+- forehand_topspin_neutral: Neutral or semi-open stance, topspin swing path
+- forehand_flat_drive: More horizontal swing, limited topspin follow-through, low to mid contact
+- forehand_slice: Continental or eastern grip, high-to-low swing, slice contact
+- forehand_approach: Shortened swing, weight forward, moving into net
+- forehand_inside_out: Player moves around backhand side, hits forehand to deuce court
+- forehand_inside_in: Player moves around backhand side, hits forehand down the line
+- forehand_swinging_volley: Overhead-style forehand hit before ball bounces, near service line
+- forehand_drop_shot: Abbreviated swing, extreme underspin, very short contact
+- forehand_lob: Racket lifts sharply upward, open face, defensive position
+- forehand_unknown: Forehand motion visible but type indeterminate
+
+BACKHAND FAMILY (TWO-HANDED):
+- backhand_2h_topspin_crosscourt: Two hands on racket, topspin, crosscourt direction
+- backhand_2h_topspin_dtl: Two hands on racket, topspin, down the line
+- backhand_2h_flat_drive: Two hands, more horizontal swing, limited topspin
+- backhand_2h_approach: Two hands, weight forward, moving to net
+- backhand_2h_inside_out: Player runs around to backhand, hits crosscourt
+- backhand_2h_drop_shot: Two hands, extreme underspin, abbreviated swing
+- backhand_2h_lob: Two hands, racket lifts upward, defensive
+- backhand_2h_unknown: Two-handed backhand motion, type indeterminate
+
+BACKHAND FAMILY (ONE-HANDED):
+- backhand_1h_topspin: One hand, low-to-high swing, non-dominant arm extends back, full follow-through over shoulder
+- backhand_1h_slice: One hand, continental grip, high-to-low, flat follow-through, most common one-hander
+- backhand_1h_approach_slice: One hand, slice, weight forward into net
+- backhand_1h_approach_topspin: One hand, topspin, weight forward into net
+- backhand_1h_drop_shot: One hand, extreme underspin
+- backhand_1h_lob: One hand, racket lifts, defensive position
+- backhand_1h_unknown: One-handed backhand visible, type indeterminate
+
+VOLLEY FAMILY:
+- forehand_volley_standard: At or near net, forehand side, punch action, no swing
+- forehand_volley_low: Low ball at net, open racket face, lifting punch
+- forehand_volley_drive: Swinging volley contact before bounce, full swing (different from swinging volley — at net not midcourt)
+- backhand_volley_standard: At net, backhand side, punch action, no swing
+- backhand_volley_low: Low ball, open face, lifting punch
+- half_volley_forehand: Ball bouncing at feet, scooping contact, forward weight
+- half_volley_backhand: Same, backhand side
+- volley_unknown: At net, shot type indeterminate
+
+OVERHEAD FAMILY:
+- overhead_smash: Ball above head, serving motion, opponent lobbed
+- overhead_jump_smash: Same but player leaves ground (scissors kick)
+- overhead_backhand: Ball above head but player uses backhand side
+- overhead_unknown: Overhead motion visible, type indeterminate
+
+OTHER:
+- return_of_serve_forehand: Receiving serve on forehand side
+- return_of_serve_backhand: Receiving serve on backhand side
+- return_block_forehand: Blocking a fast serve back, minimal swing
+- return_block_backhand: Same, backhand side
+- between_points: Player not in shot execution (walking, bouncing ball, between points)
+- movement_only: Player moving but no stroke in frame
+- unknown: Cannot determine shot type from this frame
+
+━━━ COURT POSITION CONTEXT FOR SHOT CLASSIFICATION ━━━
+Use court position to narrow classification:
+- At baseline: likely groundstrokes, serves, returns
+- Inside baseline (midcourt): likely approach shots, half volleys, swinging volleys
+- At or near net (within 2m): likely volleys, overhead smashes
+- Behind baseline: likely defensive lobs, heavy topspin, slice
+- Wide off court: likely defensive or passing shots
+
+━━━ GRIP IDENTIFICATION CUES FROM FRAMES ━━━
+Continental: knuckle on bevel 2, racket face slightly open at contact — used for serve, volley, slice, overhead
+Eastern forehand: knuckle on bevel 3, flat to mild topspin contact, wrist behind handle
+Semi-Western: knuckle on bevel 4, natural topspin, contact in front and above waist — most common club player
+Western: knuckle on bevel 5, extreme topspin, contact very high and in front
+Eastern backhand: knuckle on bevel 1, one-handed topspin backhand
+Two-handed: dominant hand continental plus non-dominant eastern or semi-western
+
+━━━ CONFIDENCE LABELING RULES ━━━
+Use exactly these prefixes:
+- No prefix: high confidence — biomechanical evidence is clear (grip, stance, swing path, follow-through all visible)
+- "possible ___": medium confidence — some visual evidence but frame is partial or unclear
+- "unclear ___": low confidence — motion is happening but key evidence is missing
+- "unknown": no useful classification possible
+
+IMPORTANT: Never claim certainty when video quality, angle, or partial frames prevent it. "Possible forehand topspin open stance" is more useful than a wrong confident label.
 
 ══════════════════════════════════════════════════════════════
 LAYER 1 — BIOMECHANICS ENCYCLOPEDIA (ITF Advanced Coaches Manual)
@@ -62,6 +160,8 @@ Continental grip is NON-NEGOTIABLE. Trophy position: both arms rise simultaneous
 ━━━ VOLLEY — COMPLETE DIAGNOSTIC ━━━
 
 Continental grip mandatory. The volley is a PUNCH, not a swing. Short backswing, firm wrist, punch forward through the ball. Wrist independence at contact (chain fault type 4) is the most common volley error — costs control entirely. Contact well in front of body. Split step as opponent makes contact — never stationary at net.
+
+NET PLAY SUBTYPES: Standard volley (above net height, firm punch) vs low volley (below net, open face, lifting punch — requires more wrist stability not less). Drive volley or swinging volley (midcourt, full swing before bounce — requires same kinetic chain as groundstroke, not a punch). Half volley (ball at feet on bounce — weight forward, scooping motion, do not decelerate). Overhead smash (trophy position same as serve, hit through the ball, do not guide it). Jump smash (scissors kick, hit at peak of jump).
 
 ━━━ FOOTWORK AND MOVEMENT SCIENCE ━━━
 
@@ -114,6 +214,9 @@ Root cause: reading ball direction too late. Pattern recognition: player hits we
 
 ━━━ THE SERVE VULNERABILITY CLUSTER ━━━
 Root cause: no second serve weapon — second serve is a push. Consequence: opponent attacks every second serve, server never controls the rally. Fix: develop kick or slice second serve — requires continental grip.
+
+━━━ THE NET GAME DEFICIT CLUSTER ━━━
+Root cause: avoidance of net or incomplete net game. Downstream faults: no put-away volleys, wrist breaking on volleys, swinging at volleys, poor overhead, lack of approach shot depth. Fix hierarchy: fix continental grip first (applies to all net game shots), then punch action on volleys, then approach shot depth.
 
 ━━━ UNDER-PRESSURE PATTERNS (look for changes between early and late frames) ━━━
 Under pressure: swing shortens, abbreviated backswing, faster tempo, earlier contact. Recovery slows. Serve toss gets shorter, action quicker, margin decreases. Body language: shoulders drop, head down after errors. Fatigue: split step disappears first, recovery distance decreases, contact point gets later, follow-through shortens.
@@ -218,11 +321,14 @@ Block Return Practice: Start 1 metre inside baseline, block returns deep.
 Attack Second Serve: Designated second serves only, player runs around backhand for inside-out forehand.
 Return and Rally: Return must land past service line or point restarts.
 
-VOLLEY:
+VOLLEY AND NET GAME:
 Basic Volley Feed: Coach feeds from baseline, player volleys into open court.
 Close Net Drill: Player at net, coach feeds from service line, put-away volleys.
 Volley to Volley: Two players at net, quick exchange, firm wrists.
 Approach and Volley: Approach shot then split-step and first volley sequence.
+Low Volley Drill: Coach feeds balls below net height, player practices lifting punch with open face.
+Overhead Smash Drill: Coach lobs, player positions and smashes. 15 reps, alternate directions.
+Half Volley at Feet: Coach feeds balls landing at player feet just inside service line, player scoops forward.
 
 TACTICAL PATTERNS:
 Inside-Out Forehand Drill: Player at centre, runs around backhand, hits inside-out forehand to deuce court.
@@ -267,6 +373,29 @@ Never use line breaks inside string values.
   "player_level": "Beginner | Developing | Intermediate | Advanced Club | High Performance",
   "surface_detected": "Clay | Hard | Grass | Unknown",
   "frames_analyzed": ${frameCount},
+  "shot_log": [
+    {
+      "frame_index": 1,
+      "shot_type": "forehand_topspin_open | backhand_1h_slice | serve_kick | forehand_volley_standard | etc — use exact taxonomy labels",
+      "confidence": "high | possible | unclear | unknown",
+      "court_position": "baseline | midcourt | net | behind_baseline | wide | unknown",
+      "grip_estimate": "continental | eastern | semi_western | western | eastern_backhand | two_handed | unknown",
+      "key_observation": "One sentence on the most important biomechanical observation in this frame"
+    }
+  ],
+  "shot_distribution": {
+    "serves_detected": "Number or 0 if none visible",
+    "forehand_groundstrokes": "Number",
+    "backhand_groundstrokes": "Number",
+    "volleys_detected": "Number",
+    "overheads_detected": "Number",
+    "approach_shots": "Number",
+    "net_game_visible": true,
+    "one_handed_backhand": true,
+    "two_handed_backhand": false,
+    "dominant_shot_type": "The shot type seen most frequently across all frames",
+    "least_seen_shot_type": "Shot family absent or rarely visible — note if net game never seen"
+  },
   "technique": {
     "score": 6,
     "headline": "Honest 4-6 word label e.g. Arm-Only Hitter With Good Athletic Base",
@@ -286,10 +415,93 @@ Never use line breaks inside string values.
       }
     ],
     "shot_breakdown": {
-      "forehand": "Grip estimate, unit turn quality, contact point, swing path, follow-through, overall assessment",
-      "backhand": "One or two-handed, grip, unit turn, contact point, non-dominant arm role, follow-through",
-      "serve": "Grip assessment, toss, trophy position, leg drive, contact point, pronation, follow-through. Note if not visible.",
-      "volley_and_net": "Grip, contact point, punch vs swing, positioning. Note if player never approaches net.",
+      "forehand_topspin": {
+        "grip": "Eastern | Semi-Western | Western | Unknown",
+        "unit_turn": "Full | Partial | Absent | Not visible",
+        "contact_point": "In front | On hip | Late | Not visible",
+        "swing_path": "Low to high | Flat | High to low | Not visible",
+        "follow_through": "Full windshield wiper | Abbreviated | Flat finish | Not visible",
+        "frames_seen": 0,
+        "assessment": "Honest biomechanical summary of this shot",
+        "confidence": "high | possible | unclear | not_seen"
+      },
+      "forehand_slice": {
+        "grip": "Continental | Eastern | Unknown",
+        "contact_point": "In front | Late | Not visible",
+        "swing_path": "High to low | Flat | Not visible",
+        "frames_seen": 0,
+        "assessment": "Assessment or not seen in this match",
+        "confidence": "high | possible | unclear | not_seen"
+      },
+      "forehand_approach": {
+        "frames_seen": 0,
+        "assessment": "Assessment or not seen",
+        "weight_transfer": "Forward | Neutral | Back | Not visible",
+        "confidence": "high | possible | unclear | not_seen"
+      },
+      "backhand_type": "one_handed | two_handed | both_seen | not_visible",
+      "backhand_topspin": {
+        "hands": "one_handed | two_handed",
+        "grip": "Continental | Eastern backhand | Two-handed | Unknown",
+        "unit_turn": "Full | Partial | Absent | Not visible",
+        "contact_point": "In front | On hip | Late | Not visible",
+        "non_dominant_arm": "Extended back at takeback | Not visible | Two-handed N/A",
+        "follow_through": "Over shoulder | High finish | Abbreviated | Not visible",
+        "frames_seen": 0,
+        "assessment": "Honest biomechanical summary",
+        "confidence": "high | possible | unclear | not_seen"
+      },
+      "backhand_slice": {
+        "hands": "one_handed | two_handed",
+        "grip": "Continental | Eastern backhand | Unknown",
+        "swing_path": "High to low | Flat | Not visible",
+        "contact_point": "In front | Late | Not visible",
+        "frames_seen": 0,
+        "assessment": "Assessment or not seen",
+        "confidence": "high | possible | unclear | not_seen"
+      },
+      "serve": {
+        "grip": "Continental confirmed | Non-continental suspected | Not visible",
+        "toss_position": "In front | Behind head | To the side | Not visible",
+        "trophy_position": "Full | Partial | Absent | Not visible",
+        "leg_drive": "Feet leave ground | Partial | Planted feet | Not visible",
+        "pronation": "Visible | Absent | Not visible",
+        "follow_through": "Across body | Abbreviated | Not visible",
+        "serve_types_seen": "flat | slice | kick | push | unknown",
+        "frames_seen": 0,
+        "assessment": "Honest serve assessment. Note if serve not visible.",
+        "confidence": "high | possible | unclear | not_seen"
+      },
+      "forehand_volley": {
+        "grip": "Continental | Non-continental | Unknown",
+        "action": "Punch | Swing | Block | Not visible",
+        "contact_point": "In front | Late | Not visible",
+        "wrist": "Firm | Breaking | Not visible",
+        "frames_seen": 0,
+        "assessment": "Assessment or not seen",
+        "confidence": "high | possible | unclear | not_seen"
+      },
+      "backhand_volley": {
+        "grip": "Continental | Non-continental | Unknown",
+        "action": "Punch | Swing | Block | Not visible",
+        "contact_point": "In front | Late | Not visible",
+        "wrist": "Firm | Breaking | Not visible",
+        "frames_seen": 0,
+        "assessment": "Assessment or not seen",
+        "confidence": "high | possible | unclear | not_seen"
+      },
+      "swing_volley": {
+        "frames_seen": 0,
+        "assessment": "Assessment or not seen",
+        "confidence": "high | possible | unclear | not_seen"
+      },
+      "overhead_smash": {
+        "trophy_position": "Full | Partial | Absent | Not visible",
+        "contact_point": "At peak | Late | Not visible",
+        "frames_seen": 0,
+        "assessment": "Assessment or not seen",
+        "confidence": "high | possible | unclear | not_seen"
+      },
       "movement": "Split step timing, first step quality, recovery habits, balance at contact, fatigue patterns"
     }
   },
@@ -298,6 +510,7 @@ Never use line breaks inside string values.
     "headline": "Honest tactical label e.g. Passive Baseliner - Rallying Without Purpose or Net Aggression",
     "surface_note": "Clay-specific or surface-specific tactical observation if relevant",
     "strengths": ["Specific tactical strength", "Second tactical strength"],
+    "net_game_tendency": "Avoids net entirely | Approaches occasionally | Comfortable at net | Aggressive net player",
     "patterns": [
       {
         "pattern": "Tactical habit name",
@@ -464,9 +677,9 @@ export default async function handler(req, res) {
   const content = [
     {
       type: "text",
-      text: `${playerFocus}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames sampled every ~30 seconds across a ${durationLabel} match.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes — write "do not" not "don't". Never use unescaped quotes inside string values. Keep all string values on a single line.`,
+      text: `${playerFocus}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} match. For each frame, classify the shot type using the exact taxonomy in your instructions. Use confidence prefixes (possible, unclear) where visual evidence is partial — never guess without noting uncertainty.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes — write "do not" not "don't". Never use unescaped quotes inside string values. Keep all string values on a single line.`,
     },
-    ...frames.map(base64 => ({
+    ...frames.map((base64, i) => ({
       type: "image",
       source: { type: "base64", media_type: "image/jpeg", data: base64 },
     })),
@@ -553,6 +766,7 @@ async function sendResultsEmail({ firstName, email, level, result }) {
   const drill1 = plan.drill_1;
   const drill2 = plan.drill_2;
   const mentalDrill = plan.mental_drill;
+  const shotDist = result.shot_distribution || {};
 
   try {
     const KIT_API_KEY = process.env.KIT_API_KEY;
@@ -602,6 +816,22 @@ async function sendResultsEmail({ firstName, email, level, result }) {
     </div>`;
   }).join("");
 
+  // Shot distribution summary for email
+  const shotSummaryHtml = (shotDist.dominant_shot_type || shotDist.net_game_visible !== undefined) ? `
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    <div style="font-size:9px;color:#60a5fa;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:12px;">Shot profile</div>
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        ${shotDist.forehand_groundstrokes ? `<td style="text-align:center;padding:8px 4px;"><div style="font-size:20px;font-weight:900;color:#60a5fa;">${shotDist.forehand_groundstrokes}</div><div style="font-size:9px;color:#333;text-transform:uppercase;letter-spacing:0.1em;">FH shots</div></td>` : ""}
+        ${shotDist.backhand_groundstrokes ? `<td style="text-align:center;padding:8px 4px;"><div style="font-size:20px;font-weight:900;color:#60a5fa;">${shotDist.backhand_groundstrokes}</div><div style="font-size:9px;color:#333;text-transform:uppercase;letter-spacing:0.1em;">BH shots</div></td>` : ""}
+        ${shotDist.volleys_detected ? `<td style="text-align:center;padding:8px 4px;"><div style="font-size:20px;font-weight:900;color:#60a5fa;">${shotDist.volleys_detected}</div><div style="font-size:9px;color:#333;text-transform:uppercase;letter-spacing:0.1em;">Volleys</div></td>` : ""}
+        ${shotDist.serves_detected ? `<td style="text-align:center;padding:8px 4px;"><div style="font-size:20px;font-weight:900;color:#60a5fa;">${shotDist.serves_detected}</div><div style="font-size:9px;color:#333;text-transform:uppercase;letter-spacing:0.1em;">Serves</div></td>` : ""}
+      </tr>
+    </table>
+    ${shotDist.dominant_shot_type ? `<div style="margin-top:10px;font-size:12px;color:#444;">Most seen: <span style="color:#888;font-weight:600;">${shotDist.dominant_shot_type.replace(/_/g," ")}</span></div>` : ""}
+    ${shotDist.net_game_visible === false ? `<div style="margin-top:6px;font-size:12px;color:#444;">Net game: <span style="color:#f59e0b;">not seen in this match</span></div>` : ""}
+  </td></tr>` : "";
+
   const html = `<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
@@ -647,6 +877,9 @@ async function sendResultsEmail({ firstName, email, level, result }) {
       </tr>
     </table>
   </td></tr>
+
+  <!-- Shot profile -->
+  ${shotSummaryHtml}
 
   <!-- Coach verdict -->
   ${result.coach_verdict ? `
