@@ -790,14 +790,20 @@ export default function App() {
               <div style={{ position: "absolute", top: 0, left: "-100%", width: "60%", height: "100%", background: "linear-gradient(90deg, transparent, rgba(29,158,117,0.06), rgba(29,158,117,0.15), rgba(29,158,117,0.06), transparent)", animation: "courtScan 2.5s linear infinite", pointerEvents: "none" }}/>
               <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #3b82f6, transparent)", animation: "courtScan 2.5s linear infinite", opacity: 0.6 }}/>
               <div style={{ fontSize: "56px", marginBottom: "14px", lineHeight: 1 }}>🎾</div>
-              <div style={{ fontSize: "18px", fontWeight: "800", marginBottom: "6px", letterSpacing: "-0.02em", color: "#e0e0e0" }}>
+              <div style={{ fontSize: "18px", fontWeight: "800", marginBottom: "8px", letterSpacing: "-0.02em", color: "#e0e0e0" }}>
                 The ball never lies. Start understanding what yours has been saying.
               </div>
-              <div style={{ color: "#555", fontSize: "13px", marginBottom: "22px" }}>
+              <div style={{ color: "#666", fontSize: "13px", marginBottom: "4px" }}>
+                Tap the button to choose your match video from your phone.
+              </div>
+              <div style={{ color: "#444", fontSize: "12px", marginBottom: "22px" }}>
                 Best results: 10–20 min · 720p or higher · MP4 or MOV
               </div>
               <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#c8e63c", color: "#060606", borderRadius: "10px", padding: "13px 32px", fontWeight: "900", fontSize: "14px", letterSpacing: "0.02em" }}>
-                <span>↑</span> Get my coaching report
+                <span>↑</span> Upload your video
+              </div>
+              <div style={{ marginTop: "12px", fontSize: "12px", color: "#333" }}>
+                Even Djokovic reviews his footage. Your turn.
               </div>
             </div>
             <input ref={fileRef} type="file" accept="video/*" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
@@ -905,6 +911,40 @@ export default function App() {
               </div>
             </FadeIn>
 
+            {/* ── FOUNDER SECTION ── */}
+            <FadeIn delay={0}>
+              <div style={{ marginTop: "48px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "16px", padding: "28px 24px" }}>
+                <div style={{ fontSize: "9px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "20px" }}>Built by a coach</div>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "18px", marginBottom: "20px" }}>
+                  <div style={{ flexShrink: 0, width: "44px", height: "44px", borderRadius: "50%", background: "#3b82f614", border: "1px solid #3b82f630", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                      <circle cx="11" cy="7" r="4" stroke="#3b82f6" strokeWidth="1.4" fill="none"/>
+                      <path d="M 3 20 C 3 15.5 7 13 11 13 C 15 13 19 15.5 19 20" stroke="#3b82f6" strokeWidth="1.4" fill="none" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "16px", fontWeight: "900", color: "#e8e8e8", letterSpacing: "-0.02em", marginBottom: "3px" }}>William Ayers</div>
+                    <div style={{ fontSize: "11px", color: "#3b82f6", letterSpacing: "0.04em" }}>Tennis Canada Certified Club Pro</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <p style={{ margin: 0, fontSize: "14px", color: "#666", lineHeight: "1.8" }}>
+                    I built Forty Fifteen because I kept watching players — my students, opponents, myself — make the same mistakes week after week with no idea why.
+                  </p>
+                  <p style={{ margin: 0, fontSize: "14px", color: "#666", lineHeight: "1.8" }}>
+                    After a match, the feedback disappears. You remember the score, not the patterns. You know something felt wrong, but not what, not why, and not how to fix it before next week.
+                  </p>
+                  <p style={{ margin: 0, fontSize: "14px", color: "#666", lineHeight: "1.8" }}>
+                    I have spent years playing and coaching. Forty Fifteen is what I wanted to hand every player after every session — a structured, honest read of what actually happened and exactly what to work on next.
+                  </p>
+                </div>
+                <div style={{ marginTop: "20px", paddingTop: "18px", borderTop: "1px solid #111", display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#3b82f6" }}/>
+                  <span style={{ fontSize: "12px", color: "#444", fontStyle: "italic" }}>Made in Canada 🍁 — for players who want real answers, not guesswork.</span>
+                </div>
+              </div>
+            </FadeIn>
+
             {/* ── PRO WAITLIST ── */}
             <FadeIn delay={0}>
               <div style={{ marginTop: "48px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "16px", padding: "28px 24px", textAlign: "center" }}>
@@ -932,7 +972,7 @@ export default function App() {
             <FadeIn delay={0}>
               <div style={{ marginTop: "32px", textAlign: "center", paddingBottom: "16px" }}>
                 <p style={{ margin: 0, fontSize: "12px", color: "#555", lineHeight: "1.9" }}>
-                  Made in Canada 🍁 by a Tennis Canada NCCP certified Club Pro<br />
+                  Made in Canada 🍁 by a Tennis Canada certified Club Pro<br />
                   <span style={{ fontStyle: "italic", color: "#555" }}>who got tired of guessing what was wrong with his game.</span>
                 </p>
                 <p style={{ margin: "16px 0 0", fontSize: "12px", color: "#555", lineHeight: "1.8" }}>
