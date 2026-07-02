@@ -458,7 +458,8 @@ export default function App() {
         if (phase === "scanning") {
           setStatusMsg(phases[0]);
           setFramesDone(0);
-          setFramesTotal(100);
+          // Show consistent estimated frame count during scan
+          setFramesTotal(Math.min(MAX_FRAMES, Math.floor(Math.max(0, duration - 4) / FRAME_INTERVAL) + 1));
         } else {
           if (pct < 65) setStatusMsg(phases[1]);
           else setStatusMsg(phases[2]);
@@ -1403,14 +1404,19 @@ export default function App() {
                   ][Math.floor(elapsedSecs / 25) % 5]}
                 </div>
               )}
-              {framesTotal > 0 && pct < 60 && (
+              {framesTotal > 0 && pct < 40 && (
                 <div style={{ fontSize: "14px", color: "#999", marginBottom: "4px" }}>
-                  Frame {framesDone} of {framesTotal} extracted
+                  Scanning video for action moments…
                 </div>
               )}
-              {pct >= 60 && pct < 100 && (
+              {pct >= 40 && pct < 96 && (
+                <div style={{ fontSize: "14px", color: "#999", marginBottom: "4px" }}>
+                  Capturing frame {framesDone} of {framesTotal}
+                </div>
+              )}
+              {pct >= 96 && pct < 100 && (
                 <div style={{ fontSize: "14px", color: "#999" }}>
-                  {framesTotal > 0 ? `${framesTotal} frames` : "Frames"} sent · Your coaching report is being built…
+                  {framesTotal} frames sent · Your coaching report is being built…
                 </div>
               )}
               <p style={{ color: "#888", fontSize: "14px", margin: "6px 0 0" }}>Keep this tab open and your screen unlocked</p>
