@@ -28,11 +28,11 @@ function FadeIn({ children, delay = 0, style = {} }) {
   );
 }
 
-const FRAME_INTERVAL = 5;
-const FRAME_W = 640;
-const FRAME_H = 360;
-const FRAME_QUALITY = 0.72;
-const MAX_FRAMES = 60;
+const FRAME_INTERVAL = 2;
+const FRAME_W = 480;
+const FRAME_H = 270;
+const FRAME_QUALITY = 0.65;
+const MAX_FRAMES = 120;
 
 const TENNIS_FACTS = [
   "60% of club coaches say late contact point is the single most damaging habit they see — it forces arm-only swings and kills consistency.",
@@ -47,35 +47,136 @@ const TENNIS_FACTS = [
   "A 5cm shift in toss position changes a flat serve into a kick serve. Toss position is the most diagnostic tell in serve analysis.",
 ];
 
+// ── Motion-based frame extractor ─────────────────────────────────────────────
+// Pass 1: Scan video at low resolution every 0.5s to detect motion spikes
+// Pass 2: Capture high-quality frames at detected action peaks
+// This ensures every frame sent to Claude shows actual tennis activity
+// rather than dead moments between points
 function extractFrames(file, onProgress) {
   return new Promise((resolve, reject) => {
     const video = document.createElement("video");
-    const canvas = document.createElement("canvas");
-    canvas.width = FRAME_W; canvas.height = FRAME_H;
-    const ctx = canvas.getContext("2d");
     const url = URL.createObjectURL(file);
     video.src = url; video.muted = true; video.playsInline = true;
-    video.addEventListener("loadedmetadata", () => {
+
+    // Low-res canvas for motion scanning (fast pass 1)
+    const scanW = 160, scanH = 90;
+    const scanCanvas = document.createElement("canvas");
+    scanCanvas.width = scanW; scanCanvas.height = scanH;
+    const scanCtx = scanCanvas.getContext("2d");
+
+    // Full-res canvas for final frame capture (pass 2)
+    const capCanvas = document.createElement("canvas");
+    capCanvas.width = FRAME_W; capCanvas.height = FRAME_H;
+    const capCtx = capCanvas.getContext("2d");
+
+    video.addEventListener("loadedmetadata", async () => {
       const dur = video.duration;
-      const times = [];
-      for (let t = 2; t < dur - 2; t += FRAME_INTERVAL) {
-        times.push(parseFloat(t.toFixed(1)));
-        if (times.length >= MAX_FRAMES) break;
+      const SCAN_INTERVAL = 0.5; // scan every 0.5s in pass 1
+      const MIN_MOTION = 8;      // minimum avg pixel change to count as motion
+      const MIN_GAP = 1.5;       // min seconds between captured frames
+      const CONTEXT_BEFORE = 0.3; // capture slightly before peak
+      const CONTEXT_AFTER = 0.5;  // capture slightly after peak
+
+      // ── PASS 1: Build motion score map ──────────────────────────────────
+      const scanTimes = [];
+      for (let t = 1; t < dur - 1; t += SCAN_INTERVAL) {
+        scanTimes.push(parseFloat(t.toFixed(1)));
       }
-      if (dur > 10) times.push(parseFloat((dur - 3).toFixed(1)));
-      const frames = []; let idx = 0;
-      const grabNext = () => {
-        if (idx >= times.length) { URL.revokeObjectURL(url); resolve(frames); return; }
-        video.currentTime = times[idx];
-      };
-      video.addEventListener("seeked", () => {
-        ctx.drawImage(video, 0, 0, FRAME_W, FRAME_H);
-        frames.push({ base64: canvas.toDataURL("image/jpeg", FRAME_QUALITY).split(",")[1], timestamp: Math.round(times[idx]) });
-        onProgress?.(idx + 1, times.length);
-        idx++; grabNext();
+
+      // Seek helper that returns a promise
+      const seekTo = (v, t) => new Promise(res => {
+        const handler = () => { v.removeEventListener("seeked", handler); res(); };
+        v.addEventListener("seeked", handler);
+        v.currentTime = t;
       });
-      grabNext();
+
+      // Scan all frames at low res and compute motion score
+      const motionScores = [];
+      let prevData = null;
+
+      for (let i = 0; i < scanTimes.length; i++) {
+        await seekTo(video, scanTimes[i]);
+        scanCtx.drawImage(video, 0, 0, scanW, scanH);
+        const curr = scanCtx.getImageData(0, 0, scanW, scanH).data;
+
+        let score = 0;
+        if (prevData) {
+          let diff = 0;
+          // Sample every 4th pixel (every RGBA group) for speed
+          for (let p = 0; p < curr.length; p += 16) {
+            diff += Math.abs(curr[p] - prevData[p])
+                  + Math.abs(curr[p+1] - prevData[p+1])
+                  + Math.abs(curr[p+2] - prevData[p+2]);
+          }
+          score = diff / (scanW * scanH / 4);
+        }
+        motionScores.push({ t: scanTimes[i], score });
+        prevData = curr.slice(); // copy
+
+        // Report pass 1 progress (first 40% of progress bar)
+        onProgress?.(Math.round((i / scanTimes.length) * 40), 100, "scanning");
+      }
+
+      // ── Find motion peaks (local maxima above threshold) ─────────────────
+      const peaks = [];
+      for (let i = 1; i < motionScores.length - 1; i++) {
+        const { t, score } = motionScores[i];
+        const isLocalMax = score >= motionScores[i-1].score && score >= motionScores[i+1].score;
+        if (score >= MIN_MOTION && isLocalMax) {
+          // Check not too close to last peak
+          const lastPeak = peaks[peaks.length - 1];
+          if (!lastPeak || t - lastPeak > MIN_GAP) {
+            peaks.push(t);
+          }
+        }
+      }
+
+      // ── FALLBACK: if too few peaks detected, add evenly-spaced frames ────
+      // This handles static-camera footage or very low-motion videos
+      const MIN_PEAKS = 30;
+      if (peaks.length < MIN_PEAKS) {
+        const fallbackInterval = Math.max(2, dur / (MIN_PEAKS - peaks.length));
+        for (let t = 2; t < dur - 2; t += fallbackInterval) {
+          const tRound = parseFloat(t.toFixed(1));
+          const tooClose = peaks.some(p => Math.abs(p - tRound) < MIN_GAP);
+          if (!tooClose) peaks.push(tRound);
+        }
+        peaks.sort((a, b) => a - b);
+      }
+
+      // ── Trim to MAX_FRAMES, keeping highest-motion peaks ─────────────────
+      // Sort by motion score, keep top MAX_FRAMES, then re-sort by time
+      const scored = peaks.map(t => {
+        const nearest = motionScores.reduce((best, m) =>
+          Math.abs(m.t - t) < Math.abs(best.t - t) ? m : best, motionScores[0]);
+        return { t, score: nearest.score };
+      });
+      scored.sort((a, b) => b.score - a.score);
+      const selected = scored.slice(0, MAX_FRAMES).map(s => s.t);
+      selected.sort((a, b) => a - b);
+
+      // ── PASS 2: Capture full-res frames at detected action moments ────────
+      const frames = [];
+      for (let i = 0; i < selected.length; i++) {
+        // Capture slightly before the peak to catch preparation
+        const captureTime = Math.max(0.5, selected[i] - CONTEXT_BEFORE);
+        await seekTo(video, captureTime);
+        capCtx.drawImage(video, 0, 0, FRAME_W, FRAME_H);
+        frames.push({
+          base64: capCanvas.toDataURL("image/jpeg", FRAME_QUALITY).split(",")[1],
+          timestamp: Math.round(selected[i]),
+          motionScore: scored.find(s => s.t === selected[i])?.score || 0,
+        });
+
+        // Report pass 2 progress (40-100% of progress bar)
+        const pct = 40 + Math.round((i / selected.length) * 60);
+        onProgress?.(pct, 100, "capturing");
+      }
+
+      URL.revokeObjectURL(url);
+      resolve(frames);
     });
+
     video.addEventListener("error", () => reject(new Error("Could not load video.")));
   });
 }
@@ -275,7 +376,7 @@ export default function App() {
 
   const handleFile = f => {
     if (!f?.type.startsWith("video/")) { setError("Please upload a video file — MP4 or MOV works best."); return; }
-    if (f.size > 2 * 1024 * 1024 * 1024) { setError("That file is bigger than Nadal's forehand — try recording in 720p or trimming to 20 minutes and try again."); return; }
+    if (f.size > 2 * 1024 * 1024 * 1024) { setError("That file is bigger than Nadal's forehand — try recording in 720p or trimming to 30 minutes and try again."); return; }
     setError(null); setVideoFile(f); setVideoUrl(URL.createObjectURL(f)); setStage("context");
   };
 
@@ -321,17 +422,24 @@ export default function App() {
       setStatusMsg(phases[0]);
       setStatusPhase(0);
 
-      const frames = await extractFrames(videoFile, (done, total) => {
-        setFramesDone(done);
-        setFramesTotal(total);
-        const extractPct = Math.round((done / total) * 55);
-        setPct(extractPct);
-        if (done < total * 0.3) setStatusMsg(phases[0]);
-        else if (done < total * 0.7) setStatusMsg(phases[1]);
-        else setStatusMsg(phases[2]);
+      const frames = await extractFrames(videoFile, (pct, total, phase) => {
+        if (phase === "scanning") {
+          // Pass 1: motion scanning (0-40%)
+          setPct(pct);
+          setStatusMsg(phases[0]);
+          setFramesDone(Math.round(pct * 1.2)); // approximate
+          setFramesTotal(100);
+        } else {
+          // Pass 2: frame capture (40-95%)
+          setPct(pct);
+          setFramesDone(Math.round((pct - 40) / 60 * frames?.length || 0));
+          if (pct < 60) setStatusMsg(phases[1]);
+          else setStatusMsg(phases[2]);
+        }
       });
 
       setFramesDone(frames.length);
+      setFramesTotal(frames.length);
       setStatusMsg(phases[2]);
       setPct(58);
 
@@ -374,6 +482,12 @@ export default function App() {
           if (aiTimer) clearInterval(aiTimer);
           setStage("gate");
           setGateError(e.message || "You have already used your 2 free analyses. Get early access to Forty Fifteen Pro.");
+          return;
+        }
+        if (e.error === "NOT_TENNIS") {
+          if (aiTimer) clearInterval(aiTimer);
+          setStage("context");
+          setError("NOT_TENNIS:" + (e.message || "This does not appear to be tennis footage."));
           return;
         }
         throw new Error(e.message || e.error || `Error ${apiRes.status}`);
@@ -1050,18 +1164,35 @@ export default function App() {
 
             {error && (
               <div style={{ marginTop: "12px", background: "#120808", border: "1px solid #2e1010", borderRadius: "12px", padding: "18px 20px" }}>
-                <div style={{ fontSize: "20px", marginBottom: "8px" }}>🎾</div>
-                <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "6px" }}>
-                  Oops — your coaching engine hit one into the net.
-                </div>
-                <p style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", lineHeight: "1.6" }}>
-                  Something went wrong during analysis. This is usually a one-time glitch — hit the button again and it should work.
-                </p>
-                <p style={{ margin: 0, fontSize: "14px", color: "#888", lineHeight: "1.6" }}>
-                  If this keeps happening, reach out at{" "}
-                  <a href="mailto:coach@fortyfifteen.app" style={{ color: "#3b82f6", textDecoration: "none" }}>coach@fortyfifteen.app</a>
-                  {" "}and we will sort it out.
-                </p>
+                {error.startsWith("NOT_TENNIS:") ? (
+                  <>
+                    <div style={{ fontSize: "20px", marginBottom: "8px" }}>🎾</div>
+                    <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "8px" }}>
+                      That does not look like tennis footage.
+                    </div>
+                    <p style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", lineHeight: "1.7" }}>
+                      {error.replace("NOT_TENNIS:", "").trim()}
+                    </p>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#555", lineHeight: "1.6" }}>
+                      Upload a video of a tennis match, lesson, or drilling session — filmed from the side of the court or behind the baseline.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: "20px", marginBottom: "8px" }}>🎾</div>
+                    <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "6px" }}>
+                      Oops — your coaching engine hit one into the net.
+                    </div>
+                    <p style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", lineHeight: "1.6" }}>
+                      Something went wrong during analysis. This is usually a one-time glitch — hit the button again and it should work.
+                    </p>
+                    <p style={{ margin: 0, fontSize: "14px", color: "#888", lineHeight: "1.6" }}>
+                      If this keeps happening, reach out at{" "}
+                      <a href="mailto:coach@fortyfifteen.app" style={{ color: "#3b82f6", textDecoration: "none" }}>coach@fortyfifteen.app</a>
+                      {" "}and we will sort it out.
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
