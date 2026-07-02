@@ -868,6 +868,12 @@ async function sendResultsEmail({ firstName, email, level, result }) {
     </tr></table>
   </td></tr>` : ""}
 
+  ${result.technique?.pro_style_comparison ? `
+  <tr><td style="background:#07101f;padding:20px 28px;border-bottom:1px solid #0e1e3a;">
+    <div style="font-size:9px;color:#60a5fa;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:10px;">Pro style comparison</div>
+    <p style="color:#888;font-size:14px;margin:0;line-height:1.75;">${result.technique.pro_style_comparison}</p>
+  </td></tr>` : ""}
+
   <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
     <div style="font-size:9px;color:#3b82f6;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:16px;">Your top 3 technical fixes</div>
     ${fixesHtml}
@@ -906,6 +912,23 @@ async function sendResultsEmail({ firstName, email, level, result }) {
       <p style="color:#ccc;font-size:15px;font-weight:700;margin:0;line-height:1.5;">${plan.match_focus}</p>
       <p style="color:#333;font-size:11px;margin:8px 0 0;line-height:1.5;">One rule simple enough to hold in mind during a match point.</p>
     </div>
+  </td></tr>` : ""}
+
+  ${result.ntrp_milestone ? `
+  <tr><td style="background:#07101f;padding:20px 28px;border-bottom:1px solid #0e1e3a;">
+    <div style="font-size:9px;color:#3b82f6;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:14px;">Your development roadmap</div>
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td width="48%" style="background:#060606;border:1px solid #141414;border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;">Current estimate</div>
+        <div style="font-size:14px;font-weight:900;color:#e0e0e0;">${result.ntrp_milestone.current_estimate || ""}</div>
+      </td>
+      <td width="4%"></td>
+      <td width="48%" style="background:#060606;border:1px solid #141414;border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;">Timeline to next level</div>
+        <div style="font-size:14px;font-weight:900;color:#c8e63c;">${result.ntrp_milestone.estimated_timeline || ""}</div>
+      </td>
+    </tr></table>
+    ${result.ntrp_milestone.next_milestone ? `<div style="margin-top:12px;background:#060606;border:1px solid #141414;border-radius:10px;padding:14px;"><div style="font-size:9px;color:#3b82f6;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;">Next milestone</div><p style="color:#e0e0e0;font-size:14px;font-weight:700;margin:0;line-height:1.5;">${result.ntrp_milestone.next_milestone}</p></div>` : ""}
   </td></tr>` : ""}
 
   <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;text-align:center;">
