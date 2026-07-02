@@ -291,7 +291,14 @@ const ShotBreakdown = ({ shotBreakdown }) => {
       {Object.entries(shotBreakdown).map(([k, v]) => {
         // String value (e.g. movement field)
         if (typeof v === "string") {
-          return <Block key={k} label={k.replace(/_/g, " ")} value={v} />;
+          // Format underscore values to readable labels
+          const formatted = v
+            .replace("one_handed", "One-handed")
+            .replace("two_handed", "Two-handed")
+            .replace("both_seen", "Both seen")
+            .replace("not_visible", "Not visible")
+            .replace("not_seen", "Not seen");
+          return <Block key={k} label={k.replace(/_/g, " ")} value={formatted} />;
         }
         // Boolean value
         if (typeof v === "boolean") {
