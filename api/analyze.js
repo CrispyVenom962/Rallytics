@@ -34,7 +34,15 @@ This is MATCH FOOTAGE. Identify RECURRING PATTERNS across the entire match. Thin
 const SYSTEM_PROMPT = (frameCount, durationLabel, sessionType = "match") => `
 You are the most knowledgeable tennis coaching AI ever built. Your knowledge comes from the world's leading coaching publications, world-leading books, peer-reviewed biomechanics research, and methodology from elite coaches and conferences around the globe. You have deep knowledge of professional player biomechanics, playing styles, and technical signatures — use this to make accurate, specific pro player comparisons where clearly applicable. Every observation must include honest confidence scoring based on how many frames confirmed it. Write like a great coach talking — specific, visual, and memorable.
 
-You are analyzing ${frameCount} frame samples extracted from a ${durationLabel} tennis session.
+You are analyzing ${frameCount} frame samples extracted from a ${durationLabel} tennis session. Frames are sampled every 2 seconds giving dense coverage — a 10-minute match yields approximately 120 frames. This means most shots are represented by multiple frames including preparation, contact, and follow-through phases. Use this density to make confident, evidence-based observations.
+
+TENNIS VALIDATION — MANDATORY FIRST STEP:
+Before producing any analysis, examine the frames and confirm this is tennis footage.
+TENNIS INDICATORS: Tennis court lines (baseline, service box, net), tennis rackets, tennis balls, players in tennis attire on a court surface.
+If you cannot identify at least ONE of the following in the frames — (1) a tennis court surface with visible lines, (2) a tennis racket being held or swung, (3) a tennis ball in play — then this is NOT tennis footage.
+If the footage is NOT tennis, return ONLY this exact JSON and nothing else:
+{"not_tennis": true, "reason": "One honest sentence describing what the video actually appears to show instead of tennis."}
+Do not attempt to produce a coaching report for non-tennis footage. Do not hallucinate tennis content.
 
 ${SESSION_CONTEXT(sessionType)}
 
@@ -86,6 +94,13 @@ E — ELASTIC ENERGY: Pre-stretch of large muscle groups in backswing stores ene
 C — CO-ORDINATION CHAIN (KINETIC CHAIN): LEGS to HIPS to TRUNK to UPPER ARM to FOREARM/ELBOW to WRIST to RACKET. Large segments move BEFORE small segments. Four breakdown types: (1) body part omitted, (2) timing problem, (3) inefficient use, (4) unnecessary body part used.
 
 FOREHAND DIAGNOSTIC: Eastern = bevel 3 flat to mild topspin. Semi-Western = bevel 4 most common. Western = bevel 5 heavy topspin struggles on low balls. Unit turn = simultaneous shoulders AND hips rotating 90 degrees from square. Absent unit turn = player loses 40-60% of racket head speed. Ideal contact = ball ahead of front hip at arm extension. Late contact behind hip = arm-only shot. Full topspin finish = windshield wiper racket crosses opposite shoulder. Abbreviated finish = flat swing or deceleration.
+
+BACKHAND HAND DETECTION — CRITICAL — ALWAYS DO THIS FIRST:
+Before making ANY backhand observation, determine whether the player uses a one-handed or two-handed backhand by examining the frames. This is NOT optional.
+ONE-HANDED INDICATORS: Single arm extended at contact. Non-dominant hand releases the racket early in the swing (usually at or before the trophy position). Racket held by dominant hand only at contact. Non-dominant arm typically extends backward to load the shoulder coil.
+TWO-HANDED INDICATORS: Both hands remain on the racket through contact and follow-through. Non-dominant hand drives through the hitting zone. Wider stance typical.
+NEVER label a backhand as two-handed unless both hands are clearly visible on the racket at contact. NEVER label as one-handed unless the non-dominant hand has clearly released. If frames are ambiguous, state "backhand hand count unclear from available frames" and ask in the confidence note.
+If you observe multiple frames showing the same hand configuration, that is your ground truth. Do not override visual evidence with assumptions about what is more common.
 
 BACKHAND TWO-HANDED: Non-dominant hand is the PRIMARY driver. Contact further in front than forehand. Late contact = leaky backhand going wide. High finish = topspin.
 
@@ -379,7 +394,7 @@ All shot_distribution count fields must be integers not strings.
         "assessment": "Assessment or not seen",
         "confidence": "high | possible | unclear | not_seen"
       },
-      "backhand_type": "one_handed | two_handed | both_seen | not_visible",
+      "backhand_type": "one_handed | two_handed | both_seen | not_visible — CRITICAL: determine this from visual evidence of hand position at contact. Do not assume. If unclear state not_visible.",
       "backhand_topspin": {
         "hands": "one_handed | two_handed",
         "grip": "Continental | Eastern backhand | Two-handed | Unknown",
@@ -683,6 +698,14 @@ export default async function handler(req, res) {
           return res.status(500).json({ error: "Analysis returned an unexpected format. Please try again." });
         }
       }
+    }
+
+    // ── Validate tennis content ─────────────────────────────────────────────
+    if (parsed.not_tennis) {
+      return res.status(422).json({
+        error: "NOT_TENNIS",
+        message: parsed.reason || "This does not appear to be tennis footage. Please upload a video of a tennis match, lesson, or drilling session.",
+      });
     }
 
     // Coerce shot_distribution count fields to integers in case Claude returned strings
