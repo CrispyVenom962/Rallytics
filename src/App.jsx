@@ -1385,6 +1385,17 @@ export default function App() {
               <h2 style={{ fontSize: "22px", fontWeight: "900", letterSpacing: "-0.02em", margin: "0 0 8px", minHeight: "32px" }}>
                 {statusMsg}
               </h2>
+              {pct >= 96 && (
+                <div style={{ fontSize: "13px", color: "#555", fontStyle: "italic", marginBottom: "6px", animation: "fadeUp 0.5s ease" }}>
+                  {[
+                    "Reading 120 frames. Your game has a lot to say.",
+                    "More frames than Federer has Wimbledon titles. Almost done.",
+                    "5 coaching layers deep. Worth every second.",
+                    "Cross-referencing biomechanics, tactics, mental game...",
+                    "Almost ready. Took longer than a tiebreak, less than a set.",
+                  ][Math.floor(elapsedSecs / 25) % 5]}
+                </div>
+              )}
               {framesTotal > 0 && pct < 60 && (
                 <div style={{ fontSize: "14px", color: "#999", marginBottom: "4px" }}>
                   Frame {framesDone} of {framesTotal} extracted
@@ -1396,7 +1407,11 @@ export default function App() {
                 </div>
               )}
               <p style={{ color: "#888", fontSize: "14px", margin: "6px 0 0" }}>Keep this tab open and your screen unlocked</p>
-              <div style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "6px", background: "#1a1000", border: "1px solid #2a1e00", borderRadius: "8px", padding: "7px 14px" }}>
+              <div style={{ marginTop: "10px", display: "inline-flex", alignItems: "center", gap: "8px", background: "#07101f", border: "1px solid #0e1e3a", borderRadius: "8px", padding: "8px 16px" }}>
+                <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#3b82f6", flexShrink: 0 }}/>
+                <span style={{ fontSize: "13px", color: "#3b82f6", fontWeight: "600" }}>This usually takes 3–5 minutes — your report is worth the wait.</span>
+              </div>
+              <div style={{ marginTop: "8px", display: "inline-flex", alignItems: "center", gap: "6px", background: "#1a1000", border: "1px solid #2a1e00", borderRadius: "8px", padding: "7px 14px" }}>
                 <span style={{ fontSize: "13px" }}>📱</span>
                 <span style={{ fontSize: "13px", color: "#a07020" }}>On mobile: turn off auto-lock or keep tapping the screen</span>
               </div>
@@ -1414,23 +1429,23 @@ export default function App() {
               </div>
 
               {/* ── THRESHOLD MESSAGES ── */}
-              {elapsedSecs >= 90 && elapsedSecs < 150 && (
-                <div style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "8px", background: "#0a0f00", border: "1px solid #1a2800", borderRadius: "8px", padding: "8px 16px", animation: "fadeUp 0.4s ease" }}>
-                  <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#a3e635", flexShrink: 0 }}/>
-                  <span style={{ fontSize: "13px", color: "#a3e635" }}>Still working — longer videos take a bit more time. Hang tight.</span>
+              {elapsedSecs >= 90 && elapsedSecs < 180 && (
+                <div style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "8px", background: "#07101f", border: "1px solid #0e1e3a", borderRadius: "8px", padding: "8px 16px", animation: "fadeUp 0.4s ease" }}>
+                  <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#3b82f6", flexShrink: 0 }}/>
+                  <span style={{ fontSize: "13px", color: "#3b82f6" }}>Still processing — 120 frames is a lot of tennis to read. Normal timing.</span>
                 </div>
               )}
-              {elapsedSecs >= 150 && elapsedSecs < 210 && (
+              {elapsedSecs >= 180 && elapsedSecs < 270 && (
                 <div style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "8px", background: "#0f0a00", border: "1px solid #2a1e00", borderRadius: "8px", padding: "8px 16px", animation: "fadeUp 0.4s ease" }}>
                   <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }}/>
-                  <span style={{ fontSize: "13px", color: "#f59e0b" }}>Taking longer than usual — the report is still being built. Almost there.</span>
+                  <span style={{ fontSize: "13px", color: "#f59e0b" }}>3 minutes in — the coaching engine is still writing your report. Hang tight.</span>
                 </div>
               )}
-              {elapsedSecs >= 210 && (
+              {elapsedSecs >= 270 && (
                 <div style={{ marginTop: "14px", background: "#120808", border: "1px solid #2e1010", borderRadius: "12px", padding: "16px 18px", animation: "fadeUp 0.4s ease" }}>
                   <div style={{ fontSize: "14px", fontWeight: "800", color: "#e0e0e0", marginBottom: "6px" }}>This is taking longer than expected.</div>
                   <p style={{ margin: "0 0 14px", fontSize: "13px", color: "#888", lineHeight: "1.7" }}>
-                    The analysis may still complete — sometimes long videos take 4+ minutes. You can keep waiting or try again with a shorter clip (10–15 minutes works best).
+                    The analysis may still complete — sometimes the coaching engine takes up to 5 minutes on dense footage. You can keep waiting or try again with a shorter clip (10–15 minutes works best).
                   </p>
                   <button onClick={() => { clearInterval(elapsedTimer.current); setStage("context"); setError(null); setPct(0); setElapsedSecs(0); }} style={{
                     background: "none", border: "1px solid #3e1010", borderRadius: "8px",
