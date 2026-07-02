@@ -604,7 +604,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { frames, context, playerId, frameCount, durationLabel, firstName, email, level, sessionType } = req.body;
+  const { frames, context, playerId, frameCount, durationLabel, firstName, email, level, sessionType, dominantHand, backhandType } = req.body;
 
   if (!frames || !Array.isArray(frames) || frames.length === 0) {
     return res.status(400).json({ error: "No frames provided" });
@@ -635,10 +635,17 @@ export default async function handler(req, res) {
     ? `IMPORTANT: There are multiple players visible. Focus your ENTIRE analysis ONLY on the player matching this description: "${playerId}". Ignore all other players completely.`
     : "This video contains one primary player — analyze that player.";
 
+  const playerProfile = [
+    dominantHand === "right" ? "CONFIRMED: Player is RIGHT-HANDED." :
+    dominantHand === "left"  ? "CONFIRMED: Player is LEFT-HANDED. All grip and swing direction references must be mirrored accordingly." : "",
+    backhandType === "one_handed" ? "⚠️ CRITICAL PLAYER-CONFIRMED DATA: THIS PLAYER HAS A ONE-HANDED BACKHAND. This is CONFIRMED by the player themselves and overrides ALL visual frame interpretation. Do NOT classify this as two-handed under any circumstances. Do NOT write two_handed anywhere in your response. The backhand_type field MUST be one_handed. The non-dominant hand leaving the racket during the swing is CORRECT one-handed technique — do not flag it as unusual. Analyze the one-handed backhand mechanics only." :
+    backhandType === "two_handed" ? "⚠️ CRITICAL PLAYER-CONFIRMED DATA: THIS PLAYER HAS A TWO-HANDED BACKHAND. This is CONFIRMED by the player. The backhand_type field MUST be two_handed." : "",
+  ].filter(Boolean).join(" ");
+
   const content = [
     {
       type: "text",
-      text: `${playerFocus}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${sessionType === "match" ? "match" : sessionType === "drilling" ? "drilling session" : "lesson"}. Use the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
+      text: `${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${sessionType === "match" ? "match" : sessionType === "drilling" ? "drilling session" : "lesson"}. Use the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
     },
     ...frames.map((base64) => ({
       type: "image",
