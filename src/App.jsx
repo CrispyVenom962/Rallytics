@@ -350,11 +350,15 @@ export default function App() {
   const [statusMsg, setStatusMsg] = useState("");
   const [statusPhase, setStatusPhase] = useState(0);
   const [factIndex, setFactIndex] = useState(0);
+  const [elapsedSecs, setElapsedSecs] = useState(0);
+  const elapsedTimer = useRef(null);
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [level, setLevel] = useState("");
   const [gateError, setGateError] = useState("");
   const [sessionType, setSessionType] = useState("match");
+  const [dominantHand, setDominantHand] = useState("");
+  const [backhandType, setBackhandType] = useState("");
   const fileRef = useRef();
   const factTimer = useRef(null);
   const wakeLock = useRef(null);
@@ -394,6 +398,8 @@ export default function App() {
 
   const analyze = async () => {
     setStage("working"); setPct(0); setError(null); setFramesDone(0); setStatusPhase(0);
+    setElapsedSecs(0);
+    elapsedTimer.current = setInterval(() => setElapsedSecs(s => s + 1), 1000);
 
     try {
       if ('wakeLock' in navigator) {
@@ -471,6 +477,7 @@ export default function App() {
           context: context.trim(), playerId: playerId.trim(),
           frameCount: frames.length, durationLabel: dLabel,
           firstName: firstName.trim(), email: email.trim(), level, sessionType,
+          dominantHand, backhandType,
         }),
       });
 
@@ -501,12 +508,14 @@ export default function App() {
       setStatusMsg("Report complete.");
       setStage("complete");
       if (wakeLock.current) { try { await wakeLock.current.release(); } catch(e) {} wakeLock.current = null; }
+      clearInterval(elapsedTimer.current);
 
       // Auto-advance to result after 2 seconds
       setTimeout(() => setStage("result"), 2200);
     } catch (e) {
       if (aiTimer) clearInterval(aiTimer);
       if (wakeLock.current) { try { await wakeLock.current.release(); } catch(err) {} wakeLock.current = null; }
+      clearInterval(elapsedTimer.current);
       setError("ANALYSIS_ERROR"); setStage("context");
     }
   };
@@ -514,7 +523,7 @@ export default function App() {
   const reset = () => {
     setStage("upload"); setVideoFile(null); setVideoUrl(null); setContext(""); setPlayerId("");
     setResult(null); setError(null); setPct(0); setFramesDone(0); setFramesTotal(0);
-    setDuration(0); setTab("technique"); setFirstName(""); setEmail(""); setLevel(""); setGateError(""); setSessionType("match");
+    setDuration(0); setTab("technique"); setFirstName(""); setEmail(""); setLevel(""); setGateError(""); setSessionType("match"); setDominantHand(""); setBackhandType(""); setElapsedSecs(0); clearInterval(elapsedTimer.current);
   };
 
   const lc = l => !l ? "#888" : l.includes("Beginner") ? "#5bc85b" : l.includes("Developing") ? "#a3e635" : l.includes("Intermediate") ? "#f5c842" : "#f97316";
@@ -1142,6 +1151,51 @@ export default function App() {
               </div>
             )}
 
+            {/* ── PLAYER PROFILE ── */}
+            <div style={{ background: "#080808", border: "1px solid #141414", borderRadius: "14px", padding: "16px 18px", marginBottom: "16px" }}>
+              <div style={{ fontSize: "11px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "14px" }}>Player profile — helps the engine analyse correctly</div>
+
+              <div style={{ marginBottom: "14px" }}>
+                <div style={{ fontSize: "11px", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "8px" }}>Dominant hand</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                  {[
+                    { id: "right", label: "Right-handed" },
+                    { id: "left", label: "Left-handed" },
+                    { id: "", label: "Not sure" },
+                  ].map(h => (
+                    <button key={h.id} onClick={() => setDominantHand(h.id)} style={{
+                      background: dominantHand === h.id && h.id !== "" ? "#3b82f614" : "#060606",
+                      border: `1px solid ${dominantHand === h.id && h.id !== "" ? "#3b82f6" : "#1a1a1a"}`,
+                      borderRadius: "8px", padding: "10px 8px", cursor: "pointer",
+                      fontSize: "12px", fontWeight: "700",
+                      color: dominantHand === h.id && h.id !== "" ? "#3b82f6" : "#555",
+                      transition: "all 0.18s",
+                    }}>{h.label}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: "11px", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "8px" }}>Backhand type</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                  {[
+                    { id: "one_handed", label: "One-handed" },
+                    { id: "two_handed", label: "Two-handed" },
+                    { id: "", label: "Not sure" },
+                  ].map(b => (
+                    <button key={b.id} onClick={() => setBackhandType(b.id)} style={{
+                      background: backhandType === b.id && b.id !== "" ? "#3b82f614" : "#060606",
+                      border: `1px solid ${backhandType === b.id && b.id !== "" ? "#3b82f6" : "#1a1a1a"}`,
+                      borderRadius: "8px", padding: "10px 8px", cursor: "pointer",
+                      fontSize: "12px", fontWeight: "700",
+                      color: backhandType === b.id && b.id !== "" ? "#3b82f6" : "#555",
+                      transition: "all 0.18s",
+                    }}>{b.label}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <div style={{ marginBottom: "10px" }}>
               <div style={{ fontSize: "14px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "6px" }}>
                 Who should I focus on? <span style={{ color: "#888", textTransform: "none", letterSpacing: 0 }}>(leave blank if it's only you)</span>
@@ -1332,6 +1386,47 @@ export default function App() {
                 <span style={{ fontSize: "13px" }}>📱</span>
                 <span style={{ fontSize: "13px", color: "#a07020" }}>On mobile: turn off auto-lock or keep tapping the screen</span>
               </div>
+
+              {/* ── ELAPSED TIMER ── */}
+              <div style={{ marginTop: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+                <div style={{ fontSize: "11px", color: "#333", textTransform: "uppercase", letterSpacing: "0.12em" }}>Time elapsed</div>
+                <div style={{
+                  fontFamily: "monospace", fontSize: "20px", fontWeight: "900", letterSpacing: "0.05em",
+                  color: elapsedSecs > 210 ? "#e05555" : elapsedSecs > 90 ? "#f59e0b" : "#3b82f6",
+                  transition: "color 0.5s",
+                }}>
+                  {String(Math.floor(elapsedSecs / 60)).padStart(2, "0")}:{String(elapsedSecs % 60).padStart(2, "0")}
+                </div>
+              </div>
+
+              {/* ── THRESHOLD MESSAGES ── */}
+              {elapsedSecs >= 90 && elapsedSecs < 150 && (
+                <div style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "8px", background: "#0a0f00", border: "1px solid #1a2800", borderRadius: "8px", padding: "8px 16px", animation: "fadeUp 0.4s ease" }}>
+                  <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#a3e635", flexShrink: 0 }}/>
+                  <span style={{ fontSize: "13px", color: "#a3e635" }}>Still working — longer videos take a bit more time. Hang tight.</span>
+                </div>
+              )}
+              {elapsedSecs >= 150 && elapsedSecs < 210 && (
+                <div style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "8px", background: "#0f0a00", border: "1px solid #2a1e00", borderRadius: "8px", padding: "8px 16px", animation: "fadeUp 0.4s ease" }}>
+                  <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }}/>
+                  <span style={{ fontSize: "13px", color: "#f59e0b" }}>Taking longer than usual — the report is still being built. Almost there.</span>
+                </div>
+              )}
+              {elapsedSecs >= 210 && (
+                <div style={{ marginTop: "14px", background: "#120808", border: "1px solid #2e1010", borderRadius: "12px", padding: "16px 18px", animation: "fadeUp 0.4s ease" }}>
+                  <div style={{ fontSize: "14px", fontWeight: "800", color: "#e0e0e0", marginBottom: "6px" }}>This is taking longer than expected.</div>
+                  <p style={{ margin: "0 0 14px", fontSize: "13px", color: "#888", lineHeight: "1.7" }}>
+                    The analysis may still complete — sometimes long videos take 4+ minutes. You can keep waiting or try again with a shorter clip (10–15 minutes works best).
+                  </p>
+                  <button onClick={() => { clearInterval(elapsedTimer.current); setStage("context"); setError(null); setPct(0); setElapsedSecs(0); }} style={{
+                    background: "none", border: "1px solid #3e1010", borderRadius: "8px",
+                    color: "#e05555", fontSize: "13px", fontWeight: "700",
+                    padding: "9px 20px", cursor: "pointer",
+                  }}>
+                    ← Try again with a shorter video
+                  </button>
+                </div>
+              )}
             </div>
 
             <div style={{ marginBottom: "28px" }}>
