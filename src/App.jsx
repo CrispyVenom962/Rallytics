@@ -343,13 +343,20 @@ const KeyFrames = ({ keyFrames, capturedFrames }) => {
   const [expanded, setExpanded] = useState(null);
   if (!keyFrames?.length || !capturedFrames?.length) return null;
 
-  // Match each key frame timestamp to the closest captured frame
+  // Match each key frame by index (exact) or fall back to timestamp
   const matched = keyFrames.map(kf => {
-    const closest = capturedFrames.reduce((best, f) =>
-      Math.abs(f.timestamp - kf.timestamp) < Math.abs(best.timestamp - kf.timestamp) ? f : best,
-      capturedFrames[0]
-    );
-    return { ...kf, base64: closest?.base64 };
+    let frame = null;
+    if (kf.frame_index !== undefined && capturedFrames[kf.frame_index]) {
+      // Exact match by index — accurate
+      frame = capturedFrames[kf.frame_index];
+    } else if (kf.timestamp !== undefined) {
+      // Fallback: closest timestamp match
+      frame = capturedFrames.reduce((best, f) =>
+        Math.abs(f.timestamp - kf.timestamp) < Math.abs(best.timestamp - kf.timestamp) ? f : best,
+        capturedFrames[0]
+      );
+    }
+    return { ...kf, base64: frame?.base64 };
   }).filter(f => f.base64);
 
   if (!matched.length) return null;
@@ -1740,8 +1747,8 @@ export default function App() {
 
               <CourtLine />
 
-              {/* ── EVIDENCE FRAMES — disabled until two-pass classifier is built ── */}
-              {/* <KeyFrames keyFrames={result.key_frames} capturedFrames={capturedFrames} /> */}
+              {/* ── EVIDENCE FRAMES ── */}
+              <KeyFrames keyFrames={result.key_frames} capturedFrames={capturedFrames} />
 
               {result.priority_fixes?.length > 0 && (
                 <div style={{ marginBottom: "32px" }}>
