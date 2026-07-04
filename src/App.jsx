@@ -1488,8 +1488,8 @@ export default function App() {
               {pct >= 96 && (
                 <div style={{ fontSize: "13px", color: "#555", fontStyle: "italic", marginBottom: "6px", animation: "fadeUp 0.5s ease" }}>
                   {[
-                    "Reading 120 frames. Your game has a lot to say.",
-                    "More frames than Federer has Wimbledon titles. Almost done.",
+                    "Your game has a lot to say.",
+                    "More thorough than most post-match debriefs.",
                     "5 coaching layers deep. Worth every second.",
                     "Cross-referencing biomechanics, tactics, mental game...",
                     "Almost ready. Took longer than a tiebreak, less than a set.",
@@ -1740,8 +1740,8 @@ export default function App() {
 
               <CourtLine />
 
-              {/* ── EVIDENCE FRAMES ── */}
-              <KeyFrames keyFrames={result.key_frames} capturedFrames={capturedFrames} />
+              {/* ── EVIDENCE FRAMES — disabled until two-pass classifier is built ── */}
+              {/* <KeyFrames keyFrames={result.key_frames} capturedFrames={capturedFrames} /> */}
 
               {result.priority_fixes?.length > 0 && (
                 <div style={{ marginBottom: "32px" }}>
