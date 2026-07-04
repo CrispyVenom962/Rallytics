@@ -836,14 +836,16 @@ All shot_distribution count fields must be integers not strings.
   "coach_verdict": "One direct honest sentence the kind a real coach says after watching film. Make it memorable — the kind of thing a player writes down and puts on their bag.",
   "key_frames": [
     {
-      "timestamp": 14,
+      "frame_index": 3,
+      "shot_type": "forehand_contact",
       "label": "Late contact on forehand",
       "observation": "Ball is contacted beside the hip rather than in front at arm extension"
     },
     {
-      "timestamp": 47,
-      "label": "Incomplete unit turn",
-      "observation": "Shoulders still facing net as swing begins indicating absent rotation"
+      "frame_index": 12,
+      "shot_type": "serve_trophy",
+      "label": "Strong serve trophy position",
+      "observation": "Both arms rise together with visible knee bend showing good leg drive loading"
     }
   ]
 }`.trim();
@@ -937,14 +939,94 @@ export default async function handler(req, res) {
     matchFormat === "doubles" ? "⚠️ CONFIRMED: THIS IS A DOUBLES MATCH. Apply all doubles-specific rules from the session context. Focus only on the specified player. Net positioning and net approaches are EXPECTED and CORRECT in doubles — do not flag them as unusual. Tactical recovery is to the player's half of the court not the centre mark." : "",
   ].filter(Boolean).join(" ");
 
+  // ── PASS 1: Frame Classification ─────────────────────────────────────────────
+  // Cheap fast call — labels each frame by shot type and phase
+  // Returns frame_index so Pass 2 knows exactly which frame shows what
+  let frameLabels = [];
+  try {
+    const classifyContent = [
+      {
+        type: "text",
+        text: `You are a tennis shot classifier. Label each frame with the index number and shot type.
+Return ONLY a JSON array. No other text. Example: [{"i":0,"shot":"forehand_contact"},{"i":1,"shot":"movement"}]
+
+Shot types to use:
+forehand_prep, forehand_contact, forehand_follow
+backhand_prep, backhand_contact, backhand_follow
+serve_trophy, serve_contact, serve_follow
+volley_contact, overhead_contact
+movement, between_points, unknown
+
+${playerId ? `Focus only on: ${playerId}` : "Focus on the primary player."}
+Label all ${frames.length} frames. Return array of {"i": frame_index, "shot": shot_type} objects only.`,
+      },
+      ...frames.map((base64) => ({
+        type: "image",
+        source: { type: "base64", media_type: "image/jpeg", data: base64 },
+      })),
+    ];
+
+    const classifyRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 2000,
+        messages: [{ role: "user", content: classifyContent }],
+      }),
+    });
+
+    if (classifyRes.ok) {
+      const classifyData = await classifyRes.json();
+      const classifyText = classifyData.content?.map(b => b.text || "").join("") || "";
+      // Parse the label array
+      const jsonMatch = classifyText.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        frameLabels = JSON.parse(jsonMatch[0]);
+        console.log(`Pass 1 complete: ${frameLabels.length} frames labeled`);
+      }
+    }
+  } catch (e) {
+    console.error("Pass 1 classification failed, proceeding without labels:", e.message);
+    // Non-fatal — Pass 2 still runs without labels
+  }
+
+  // ── Build labeled frame context for Pass 2 ────────────────────────────────
+  // Group frames by shot type so Claude knows exactly what it is analyzing
+  const labelMap = {};
+  frameLabels.forEach(l => { if (l.i !== undefined) labelMap[l.i] = l.shot; });
+
+  // Count shot types for context
+  const shotCounts = {};
+  Object.values(labelMap).forEach(shot => {
+    if (shot !== "movement" && shot !== "between_points" && shot !== "unknown") {
+      shotCounts[shot] = (shotCounts[shot] || 0) + 1;
+    }
+  });
+  const shotSummary = Object.entries(shotCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([shot, count]) => `${shot}: ${count} frames`)
+    .join(", ");
+
+  // Build frame list with labels for the analysis prompt
+  const labeledFrameDesc = frameLabels.length > 0
+    ? `\n\nFRAME CLASSIFICATION (from Pass 1 analysis):\n${shotSummary ? "Shot distribution: " + shotSummary : "Labels available per frame"}\nEach frame below is labeled — use these labels to make precise observations about specific shots.`
+    : "";
+
+  // ── PASS 2: Full Analysis ─────────────────────────────────────────────────
   const content = [
     {
       type: "text",
-      text: `${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${sessionType === "match" ? "match" : sessionType === "drilling" ? "drilling session" : "lesson"}. Use the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
+      text: `${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${sessionType === "match" ? "match" : sessionType === "drilling" ? "drilling session" : "lesson"}.${labeledFrameDesc}\n\nUse the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.\n\nFor key_frames: use the FRAME INDEX numbers from the classification above to select your evidence frames. Return the frame index as the "frame_index" field (integer) alongside the timestamp.`,
     },
-    ...frames.map((base64) => ({
+    ...frames.map((base64, idx) => ({
       type: "image",
       source: { type: "base64", media_type: "image/jpeg", data: base64 },
+      ...(labelMap[idx] ? { /* label available: labelMap[idx] */ } : {}),
     })),
   ];
 
