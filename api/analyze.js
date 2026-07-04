@@ -3,7 +3,7 @@
 // Sources: Elite coaching publications, world-leading books, biomechanics research,
 // methodology from leading coaches and conferences around the world
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const SESSION_CONTEXT = (sessionType) => {
   if (sessionType === "drilling") return `
@@ -539,6 +539,25 @@ Roger Federer: Built points around serve-plus-one combinations. Frequently attac
 Carlos Alcaraz: Aggressive returner who takes the return early. Attacks second serves. Changes direction comfortably and transitions forward whenever he creates an opening. Among the most complete point construction patterns on the current tour.
 
 ══════════════════════════════════════════════════════════════
+KEY FRAME SELECTION — MANDATORY
+══════════════════════════════════════════════════════════════
+
+After completing your analysis, select 3-5 frames that best SHOW the player's most important technical observations. These are the frames where the fault or strength is most clearly visible. Return these as the key_frames array with:
+- timestamp: the exact timestamp of the frame in seconds
+- label: a short 3-5 word label describing what is visible
+- observation: one specific sentence describing exactly what the frame shows and why it matters
+
+Choose frames that show:
+1. The single most important fault (e.g. the frame where the unit turn is clearly absent)
+2. A strength (e.g. the frame showing good leg drive on the serve)
+3. The contact point fault if present (e.g. the frame showing ball contact beside the hip)
+4. A movement fault if present (e.g. flat feet after contact)
+5. One positive observation to balance the report
+
+Do NOT select frames where the fault is ambiguous. Select the frames where what you are describing is unmistakably visible.
+IMPORTANT: key_frames observation strings must contain NO apostrophes, NO quotes, NO special characters. Write in plain descriptive language only.
+
+══════════════════════════════════════════════════════════════
 CONFIDENCE SCORING — MANDATORY FOR EVERY OBSERVATION
 ══════════════════════════════════════════════════════════════
 
@@ -814,7 +833,19 @@ All shot_distribution count fields must be integers not strings.
     "estimated_timeline": "Realistic honest estimate e.g. 6-8 weeks of focused practice",
     "milestone_marker": "How the player will know when they have reached the next level — what will feel different"
   },
-  "coach_verdict": "One direct honest sentence the kind a real coach says after watching film. Make it memorable — the kind of thing a player writes down and puts on their bag."
+  "coach_verdict": "One direct honest sentence the kind a real coach says after watching film. Make it memorable — the kind of thing a player writes down and puts on their bag.",
+  "key_frames": [
+    {
+      "timestamp": 14,
+      "label": "Late contact on forehand",
+      "observation": "Ball is contacted beside the hip rather than in front at arm extension"
+    },
+    {
+      "timestamp": 47,
+      "label": "Incomplete unit turn",
+      "observation": "Shoulders still facing net as swing begins indicating absent rotation"
+    }
+  ]
 }`.trim();
 
 // ─── Airtable Email Gate ───────────────────────────────────────────────────────
@@ -927,7 +958,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 16000,
+        max_tokens: 20000,
         system: SYSTEM_PROMPT(frames.length, durationLabel || "unknown-length", sessionType || "match"),
         messages: [{ role: "user", content }],
       }),
