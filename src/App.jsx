@@ -31,7 +31,7 @@ function FadeIn({ children, delay = 0, style = {} }) {
 const FRAME_INTERVAL = 2;
 const FRAME_W = 480;
 const FRAME_H = 270;
-const FRAME_QUALITY = 0.65;
+const FRAME_QUALITY = 0.55;
 const MAX_FRAMES = 120;
 
 const TENNIS_FACTS = [
@@ -338,6 +338,76 @@ const ShotBreakdown = ({ shotBreakdown }) => {
   );
 };
 
+// ── Key Frames Evidence Component ─────────────────────────────────────────────
+const KeyFrames = ({ keyFrames, capturedFrames }) => {
+  const [expanded, setExpanded] = useState(null);
+  if (!keyFrames?.length || !capturedFrames?.length) return null;
+
+  // Match each key frame timestamp to the closest captured frame
+  const matched = keyFrames.map(kf => {
+    const closest = capturedFrames.reduce((best, f) =>
+      Math.abs(f.timestamp - kf.timestamp) < Math.abs(best.timestamp - kf.timestamp) ? f : best,
+      capturedFrames[0]
+    );
+    return { ...kf, base64: closest?.base64 };
+  }).filter(f => f.base64);
+
+  if (!matched.length) return null;
+
+  return (
+    <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px", marginBottom: "10px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+        <span style={{ fontSize: "16px" }}>🎬</span>
+        <span style={{ fontSize: "11px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: "700" }}>Evidence frames</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        {matched.map((frame, i) => (
+          <div key={i} style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: "10px", overflow: "hidden" }}>
+            <div
+              onClick={() => setExpanded(expanded === i ? null : i)}
+              style={{ cursor: "pointer" }}
+            >
+              {/* Thumbnail row */}
+              <div style={{ display: "flex", gap: "12px", alignItems: "center", padding: "12px 14px" }}>
+                <div style={{
+                  flexShrink: 0, width: "90px", height: "51px",
+                  borderRadius: "6px", overflow: "hidden",
+                  border: "1px solid #1a1a1a",
+                  background: "#060606",
+                }}>
+                  <img
+                    src={`data:image/jpeg;base64,${frame.base64}`}
+                    alt={frame.label}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "12px", fontWeight: "700", color: "#e0e0e0", marginBottom: "3px" }}>{frame.label}</div>
+                  <div style={{ fontSize: "11px", color: "#555" }}>@ {frame.timestamp}s · tap to expand</div>
+                </div>
+                <div style={{ color: "#333", fontSize: "16px" }}>{expanded === i ? "−" : "+"}</div>
+              </div>
+              {/* Expanded view */}
+              {expanded === i && (
+                <div style={{ borderTop: "1px solid #141414" }}>
+                  <img
+                    src={`data:image/jpeg;base64,${frame.base64}`}
+                    alt={frame.label}
+                    style={{ width: "100%", display: "block" }}
+                  />
+                  <div style={{ padding: "12px 14px" }}>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#888", lineHeight: "1.7" }}>{frame.observation}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // ── Logo SVG ───────────────────────────────────────────────────────────────────
 const Logo = ({ size = 36 }) => {
   const h = size * (68 / 56);
@@ -382,14 +452,16 @@ export default function App() {
   const [level, setLevel] = useState("");
   const [gateError, setGateError] = useState("");
   const [sessionType, setSessionType] = useState("match");
+  const [capturedFrames, setCapturedFrames] = useState([]); // stores extracted frames for display in report
   const [dominantHand, setDominantHand] = useState("");
+  const [matchFormat, setMatchFormat] = useState("singles");
   const [backhandType, setBackhandType] = useState("");
   const fileRef = useRef();
   const factTimer = useRef(null);
   const wakeLock = useRef(null);
 
   const fmt = s => `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
-  const estFrames = d => Math.min(MAX_FRAMES, Math.floor(Math.max(0, d - 4) / FRAME_INTERVAL) + 1);
+  const estFrames = d => Math.min(MAX_FRAMES, Math.floor(Math.max(0, d - 4) / FRAME_INTERVAL) + 1); // kept for internal use
 
   useEffect(() => {
     if (stage === "working") {
@@ -468,6 +540,7 @@ export default function App() {
 
       setFramesDone(frames.length);
       setFramesTotal(frames.length);
+      setCapturedFrames(frames); // store for display in report
       setStatusMsg(phases[2]);
       setPct(58);
 
@@ -492,14 +565,20 @@ export default function App() {
       }, 900);
 
       const dLabel = duration > 60 ? `${Math.round(duration / 60)}-minute` : `${Math.round(duration)}-second`;
+      // Send max 60 frames to API to stay under Vercel 4.5MB payload limit
+      // Keep all frames in capturedFrames state for local display
+      const framesToSend = frames.length > 60
+        ? frames.filter((_, i) => i % Math.ceil(frames.length / 60) === 0).slice(0, 60)
+        : frames;
+
       const apiRes = await fetch(API_URL, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          frames: frames.map(f => f.base64),
+          frames: framesToSend.map(f => f.base64),
           context: context.trim(), playerId: playerId.trim(),
-          frameCount: frames.length, durationLabel: dLabel,
+          frameCount: framesToSend.length, durationLabel: dLabel,
           firstName: firstName.trim(), email: email.trim(), level, sessionType,
-          dominantHand, backhandType,
+          dominantHand, backhandType, matchFormat,
         }),
       });
 
@@ -545,7 +624,7 @@ export default function App() {
   const reset = () => {
     setStage("upload"); setVideoFile(null); setVideoUrl(null); setContext(""); setPlayerId("");
     setResult(null); setError(null); setPct(0); setFramesDone(0); setFramesTotal(0);
-    setDuration(0); setTab("technique"); setFirstName(""); setEmail(""); setLevel(""); setGateError(""); setSessionType("match"); setDominantHand(""); setBackhandType(""); setElapsedSecs(0); clearInterval(elapsedTimer.current);
+    setDuration(0); setTab("technique"); setFirstName(""); setEmail(""); setLevel(""); setGateError(""); setSessionType("match"); setDominantHand(""); setBackhandType(""); setMatchFormat("singles"); setCapturedFrames([]); setElapsedSecs(0); clearInterval(elapsedTimer.current);
   };
 
   const lc = l => !l ? "#888" : l.includes("Beginner") ? "#5bc85b" : l.includes("Developing") ? "#a3e635" : l.includes("Intermediate") ? "#f5c842" : "#f97316";
@@ -1066,11 +1145,8 @@ export default function App() {
               <div style={{ marginTop: "48px", background: "#080808", border: "1px solid #1a1a1a", borderRadius: "16px", padding: "28px 24px" }}>
                 <div style={{ fontSize: "13px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "20px" }}>Built by a coach</div>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: "18px", marginBottom: "20px" }}>
-                  <div style={{ flexShrink: 0, width: "44px", height: "44px", borderRadius: "50%", background: "#3b82f614", border: "1px solid #3b82f630", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                      <circle cx="11" cy="7" r="4" stroke="#3b82f6" strokeWidth="1.4" fill="none"/>
-                      <path d="M 3 20 C 3 15.5 7 13 11 13 C 15 13 19 15.5 19 20" stroke="#3b82f6" strokeWidth="1.4" fill="none" strokeLinecap="round"/>
-                    </svg>
+                  <div style={{ flexShrink: 0, width: "52px", height: "52px", borderRadius: "50%", overflow: "hidden", border: "2px solid #3b82f640" }}>
+                    <img src="data:image/jpeg;base64,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" alt="William Ayers" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }} />
                   </div>
                   <div>
                     <div style={{ fontSize: "16px", fontWeight: "900", color: "#e8e8e8", letterSpacing: "-0.02em", marginBottom: "3px" }}>William Ayers</div>
@@ -1103,10 +1179,10 @@ export default function App() {
                   <span style={{ fontSize: "14px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.15em" }}>Coming soon</span>
                 </div>
                 <h3 style={{ fontSize: "22px", fontWeight: "900", letterSpacing: "-0.02em", margin: "0 0 10px", color: "#e8e8e8" }}>
-                  Unlimited analyses. Progress tracking. Coach sharing.
+                  Unlimited analyses. Founding pricing. First access.
                 </h3>
                 <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#888", lineHeight: "1.7", maxWidth: "420px", marginLeft: "auto", marginRight: "auto" }}>
-                  Pro members get unlimited analyses, session history, progress tracking, and first access to every new capability as it launches.
+                  Pro members get unlimited analyses and lock in founding pricing before public launch. Session history and progress tracking coming with full Pro release.
                 </p>
                 <a href="https://tally.so/r/RG2pGj" target="_blank" rel="noopener noreferrer"
                   style={{ display: "inline-block", background: "#c8e63c", color: "#060606", borderRadius: "10px", padding: "13px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}>
@@ -1122,7 +1198,7 @@ export default function App() {
             <FadeIn delay={0}>
               <div style={{ marginTop: "32px", textAlign: "center", paddingBottom: "16px" }}>
                 <p style={{ margin: 0, fontSize: "14px", color: "#888", lineHeight: "1.9" }}>
-                  Made in Canada 🍁 by a Tennis Canada certified Club Pro<br />
+                  Made in Canada 🍁 · Tennis Canada Certified Club Pro<br />
                   <span style={{ fontStyle: "italic", color: "#888" }}>who got tired of guessing what was wrong with his game.</span>
                 </p>
                 <p style={{ margin: "16px 0 0", fontSize: "14px", color: "#888", lineHeight: "1.8" }}>
@@ -1159,23 +1235,39 @@ export default function App() {
               onLoadedMetadata={e => setDuration(e.target.duration)} />
 
             {duration > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px", marginBottom: "16px" }}>
-                {[
-                  { l: "Video length", v: fmt(duration) },
-                  { l: "Frames to extract", v: `~${estFrames(duration)}` },
-                  { l: "Data processed", v: `~${estFrames(duration) * 40}KB` },
-                ].map(s => (
-                  <div key={s.l} style={{ background: "#080808", border: "1px solid #141414", borderRadius: "10px", padding: "12px 14px" }}>
-                    <div style={{ fontSize: "13px", color: "#888", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "4px" }}>{s.l}</div>
-                    <div style={{ fontWeight: "900", fontSize: "18px", color: "#3b82f6", letterSpacing: "-0.02em" }}>{s.v}</div>
-                  </div>
-                ))}
+              <div style={{ background: "#080808", border: "1px solid #141414", borderRadius: "10px", padding: "12px 16px", marginBottom: "16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontSize: "13px", color: "#888", textTransform: "uppercase", letterSpacing: "0.15em" }}>Video length</div>
+                <div style={{ fontWeight: "900", fontSize: "18px", color: "#3b82f6", letterSpacing: "-0.02em" }}>{fmt(duration)}</div>
               </div>
             )}
 
             {/* ── PLAYER PROFILE ── */}
             <div style={{ background: "#080808", border: "1px solid #141414", borderRadius: "14px", padding: "16px 18px", marginBottom: "16px" }}>
               <div style={{ fontSize: "11px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: "14px" }}>Player profile — helps the engine analyse correctly</div>
+
+              <div style={{ marginBottom: "14px" }}>
+                <div style={{ fontSize: "11px", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "8px" }}>Match format</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  {[
+                    { id: "singles", label: "Singles" },
+                    { id: "doubles", label: "Doubles" },
+                  ].map(f => (
+                    <button key={f.id} onClick={() => setMatchFormat(f.id)} style={{
+                      background: matchFormat === f.id ? "#3b82f614" : "#060606",
+                      border: `1px solid ${matchFormat === f.id ? "#3b82f6" : "#1a1a1a"}`,
+                      borderRadius: "8px", padding: "10px 8px", cursor: "pointer",
+                      fontSize: "12px", fontWeight: "700",
+                      color: matchFormat === f.id ? "#3b82f6" : "#555",
+                      transition: "all 0.18s",
+                    }}>{f.label}</button>
+                  ))}
+                </div>
+                {matchFormat === "doubles" && (
+                  <div style={{ marginTop: "8px", fontSize: "12px", color: "#555", fontStyle: "italic" }}>
+                    Make sure to specify which player to focus on below.
+                  </div>
+                )}
+              </div>
 
               <div style={{ marginBottom: "14px" }}>
                 <div style={{ fontSize: "11px", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "8px" }}>Dominant hand</div>
@@ -1404,19 +1496,19 @@ export default function App() {
                   ][Math.floor(elapsedSecs / 25) % 5]}
                 </div>
               )}
-              {framesTotal > 0 && pct < 40 && (
+              {pct > 0 && pct < 40 && (
                 <div style={{ fontSize: "14px", color: "#999", marginBottom: "4px" }}>
-                  Scanning video for action moments…
+                  Scanning video for key moments…
                 </div>
               )}
               {pct >= 40 && pct < 96 && (
                 <div style={{ fontSize: "14px", color: "#999", marginBottom: "4px" }}>
-                  Capturing frame {framesDone} of {framesTotal}
+                  Extracting key moments from your video…
                 </div>
               )}
               {pct >= 96 && pct < 100 && (
                 <div style={{ fontSize: "14px", color: "#999" }}>
-                  {framesTotal} frames sent · Your coaching report is being built…
+                  Your coaching report is being built…
                 </div>
               )}
               <p style={{ color: "#888", fontSize: "14px", margin: "6px 0 0" }}>Keep this tab open and your screen unlocked</p>
@@ -1624,7 +1716,7 @@ export default function App() {
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
                   <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: lcolor, boxShadow: `0 0 10px ${lcolor}` }}/>
                   <span style={{ fontSize: "14px", color: lcolor, textTransform: "uppercase", letterSpacing: "0.2em" }}>
-                    {result.frames_analyzed || framesTotal} frames · {fmt(duration)}
+                    {fmt(duration)} analyzed
                   </span>
                 </div>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: lcolor + "14", border: `1px solid ${lcolor}30`, borderRadius: "8px", padding: "6px 16px", marginBottom: "20px" }}>
@@ -1647,6 +1739,9 @@ export default function App() {
               </div>
 
               <CourtLine />
+
+              {/* ── EVIDENCE FRAMES ── */}
+              <KeyFrames keyFrames={result.key_frames} capturedFrames={capturedFrames} />
 
               {result.priority_fixes?.length > 0 && (
                 <div style={{ marginBottom: "32px" }}>
@@ -1930,7 +2025,7 @@ export default function App() {
                   Forty Fifteen is free during beta.
                 </p>
                 <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#888", lineHeight: "1.6" }}>
-                  Pro features: unlimited analyses, session history, progress tracking, and coach sharing.
+                  Pro gives you unlimited analyses and founding pricing. Session history and progress tracking coming with full Pro release.
                 </p>
                 <a href="https://tally.so/r/RG2pGj" target="_blank" rel="noopener noreferrer"
                   style={{ display: "inline-block", background: "#c8e63c", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}>
