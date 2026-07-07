@@ -1883,9 +1883,31 @@ export default function App() {
 
               <div style={{ display: "flex", gap: "6px", marginBottom: "20px" }}>
                 {[
-                  { id: "technique", label: "Technique", icon: "🎯" },
-                  { id: "strategy", label: "Strategy", icon: "🧠" },
-                  { id: "training", label: "Training", icon: "🏋️" },
+                  { id: "technique", label: "Technique", icon: (active) => (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <circle cx="8" cy="8" r="6.5" stroke={active ? "#60a5fa" : "#444"} strokeWidth="1.3" fill="none"/>
+                      <circle cx="8" cy="8" r="3.5" stroke={active ? "#60a5fa" : "#444"} strokeWidth="1.3" fill="none"/>
+                      <circle cx="8" cy="8" r="1.2" fill={active ? "#60a5fa" : "#444"}/>
+                    </svg>
+                  )},
+                  { id: "strategy", label: "Strategy", icon: (active) => (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke={active ? "#f59e0b" : "#444"} strokeWidth="1.3" fill="none"/>
+                      <line x1="1.5" y1="8" x2="14.5" y2="8" stroke={active ? "#f59e0b" : "#444"} strokeWidth="1.3"/>
+                      <line x1="8" y1="1.5" x2="8" y2="14.5" stroke={active ? "#f59e0b" : "#444"} strokeWidth="1.3"/>
+                      <circle cx="5" cy="5" r="1.2" fill={active ? "#f59e0b" : "#444"}/>
+                      <circle cx="11" cy="11" r="1.2" fill={active ? "#f59e0b" : "#444"}/>
+                    </svg>
+                  )},
+                  { id: "training", label: "Training", icon: (active) => (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <circle cx="3.5" cy="8" r="2" stroke={active ? "#a78bfa" : "#444"} strokeWidth="1.3" fill="none"/>
+                      <circle cx="12.5" cy="8" r="2" stroke={active ? "#a78bfa" : "#444"} strokeWidth="1.3" fill="none"/>
+                      <line x1="5.5" y1="8" x2="10.5" y2="8" stroke={active ? "#a78bfa" : "#444"} strokeWidth="2.5" strokeLinecap="round"/>
+                      <line x1="1" y1="8" x2="2" y2="8" stroke={active ? "#a78bfa" : "#444"} strokeWidth="1.3" strokeLinecap="round"/>
+                      <line x1="14" y1="8" x2="15" y2="8" stroke={active ? "#a78bfa" : "#444"} strokeWidth="1.3" strokeLinecap="round"/>
+                    </svg>
+                  )},
                 ].map(t => (
                   <button key={t.id} onClick={() => setTab(t.id)} style={{
                     flex: 1, padding: "12px 8px",
@@ -1896,7 +1918,7 @@ export default function App() {
                     fontSize: "14px", fontWeight: "800", cursor: "pointer",
                     transition: "all 0.18s", letterSpacing: "0.02em",
                   }}>
-                    <span style={{ fontSize: "16px", display: "block", marginBottom: "3px" }}>{t.icon}</span>
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: "4px" }}>{typeof t.icon === "function" ? t.icon(activeTab === t.id) : t.icon}</div>
                     {t.label}
                   </button>
                 ))}
