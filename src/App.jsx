@@ -559,6 +559,28 @@ export default function App() {
     setElapsedSecs(0);
     elapsedTimer.current = setInterval(() => setElapsedSecs(s => s + 1), 1000);
 
+    // ── Duplicate video detection ─────────────────────────────────────────
+    // Hash first 512KB of file as a lightweight fingerprint
+    try {
+      const hashSlice = videoFile.slice(0, 512 * 1024);
+      const hashBuf = await hashSlice.arrayBuffer();
+      const hashArr = await crypto.subtle.digest("SHA-256", hashBuf);
+      const hashHex = Array.from(new Uint8Array(hashArr)).map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
+      const dupKey = `ff_analyzed_${hashHex}`;
+      const alreadyDone = localStorage.getItem(dupKey);
+      if (alreadyDone) {
+        clearInterval(elapsedTimer.current);
+        setStage("context");
+        setError("DUPLICATE_VIDEO");
+        return;
+      }
+      // Store hash after successful analysis — set in the success handler
+      window._currentVideoHash = dupKey;
+    } catch (e) {
+      // Hash failed silently — proceed without duplicate check
+      console.warn("Video hash failed:", e.message);
+    }
+
     try {
       if ('wakeLock' in navigator) {
         wakeLock.current = await navigator.wakeLock.request('screen');
@@ -665,6 +687,12 @@ export default function App() {
 
       const data = await apiRes.json();
       setResult(data);
+
+      // Store video hash to detect duplicates in future
+      if (window._currentVideoHash) {
+        localStorage.setItem(window._currentVideoHash, Date.now().toString());
+        window._currentVideoHash = null;
+      }
 
       // ── Completion moment — show 100% + checkmark before result ──
       setPct(100);
@@ -1394,7 +1422,20 @@ export default function App() {
 
             {error && (
               <div style={{ marginTop: "12px", background: "#120808", border: "1px solid #2e1010", borderRadius: "12px", padding: "18px 20px" }}>
-                {error.startsWith("NOT_TENNIS:") ? (
+                {error === "DUPLICATE_VIDEO" ? (
+                  <>
+                    <div style={{ fontSize: "20px", marginBottom: "8px" }}>📬</div>
+                    <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "8px" }}>
+                      We have already analyzed this video.
+                    </div>
+                    <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#888", lineHeight: "1.7" }}>
+                      Your report was sent to your email — search Forty Fifteen in your inbox to find it.
+                    </p>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#555" }}>
+                      Upload a video from a different session to get a fresh analysis.
+                    </p>
+                  </>
+                ) : error.startsWith("NOT_TENNIS:") ? (
                   <>
                     <div style={{ fontSize: "20px", marginBottom: "8px" }}>🎾</div>
                     <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "8px" }}>
@@ -1407,7 +1448,7 @@ export default function App() {
                       Upload a video of a tennis match, lesson, or drilling session — filmed from the side of the court or behind the baseline.
                     </p>
                   </>
-                ) : (
+                ) : error === "ANALYSIS_ERROR" || !error.startsWith("NOT_TENNIS:") ? (
                   <>
                     <div style={{ fontSize: "20px", marginBottom: "8px" }}>🎾</div>
                     <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "6px" }}>
@@ -1767,6 +1808,12 @@ export default function App() {
         )}
 
         {/* ══════════════════ RESULT ══════════════════ */}
+        {stage === "result" && !result && (
+          <div style={{ textAlign: "center", padding: "60px 20px" }}>
+            <p style={{ color: "#555", fontSize: "14px" }}>Something went wrong loading your report.</p>
+            <button onClick={() => setStage("upload")} style={{ marginTop: "16px", background: "none", border: "1px solid #1e1e1e", borderRadius: "8px", color: "#555", padding: "8px 20px", cursor: "pointer", fontSize: "13px" }}>Start over</button>
+          </div>
+        )}
         {stage === "result" && result && (() => {
           const tech = result.technique || {};
           const strat = result.strategy || {};
