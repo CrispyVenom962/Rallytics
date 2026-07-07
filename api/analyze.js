@@ -1071,23 +1071,6 @@ export default async function handler(req, res) {
 
     // ── Build labeled frame context for Pass 2 ────────────────────────────────
   // Group frames by shot type so Claude knows exactly what it is analyzing
-  const labelMap = {};
-  frameLabels.forEach(l => { if (l.i !== undefined) labelMap[l.i] = l.shot; });
-
-  // Count shot types for context
-  const shotCounts = {};
-  Object.values(labelMap).forEach(shot => {
-    if (shot !== "movement" && shot !== "between_points" && shot !== "unknown") {
-      shotCounts[shot] = (shotCounts[shot] || 0) + 1;
-    }
-  });
-  const shotSummary = Object.entries(shotCounts)
-    .sort((a, b) => b[1] - a[1])
-    .map(([shot, count]) => `${shot}: ${count} frames`)
-    .join(", ");
-
-  // Build frame list with labels for the analysis prompt
-  const labeledFrameDesc = frameLabels.length > 0
     ? `\n\nFRAME CLASSIFICATION (from Pass 1 analysis):\n${shotSummary ? "Shot distribution: " + shotSummary : "Labels available per frame"}\nEach frame below is labeled — use these labels to make precise observations about specific shots.`
     : "";
 
@@ -1100,7 +1083,7 @@ export default async function handler(req, res) {
     ...frames.map((base64, idx) => ({
       type: "image",
       source: { type: "base64", media_type: "image/jpeg", data: base64 },
-      ...(labelMap[idx] ? { /* label available: labelMap[idx] */ } : {}),
+
     })),
   ];
 
