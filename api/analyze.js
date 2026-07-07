@@ -922,20 +922,7 @@ All shot_distribution count fields must be integers not strings.
     "milestone_marker": "How the player will know when they have reached the next level — what will feel different"
   },
   "coach_verdict": "One direct honest sentence the kind a real coach says after watching film. Make it memorable — the kind of thing a player writes down and puts on their bag.",
-  "key_frames": [
-    {
-      "frame_index": 3,
-      "shot_type": "forehand_contact",
-      "label": "Late contact on forehand",
-      "observation": "Ball is contacted beside the hip rather than in front at arm extension"
-    },
-    {
-      "frame_index": 12,
-      "shot_type": "serve_trophy",
-      "label": "Strong serve trophy position",
-      "observation": "Both arms rise together with visible knee bend showing good leg drive loading"
-    }
-  ]
+  "key_frames": []
 }`.trim();
 
 // ─── Airtable Email Gate ───────────────────────────────────────────────────────
