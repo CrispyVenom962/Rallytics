@@ -35,16 +35,56 @@ const FRAME_QUALITY = 0.55;
 const MAX_FRAMES = 120;
 
 const TENNIS_FACTS = [
+  // Biomechanics
   "60% of club coaches say late contact point is the single most damaging habit they see — it forces arm-only swings and kills consistency.",
   "Research shows 73% of club-level unforced errors trace back to just 2–3 recurring habits. The same mistake, disguised in different shots.",
-  "Elite coaches spend 60% of film review time on positioning and recovery — not stroke mechanics. Where you are matters more than what you do.",
-  "The average 3.5–4.0 player makes contact 15–20cm behind the ideal contact point on their forehand — the root cause of most topspin problems.",
-  "Players who receive written coaching feedback retain 40% more of the advice after one week compared to verbal-only feedback.",
-  "On clay, the average rally at club level is 5–7 shots. On hard courts, it drops to 3–4. Your surface changes everything about shot selection.",
   "The kinetic chain — ground to racket — takes 0.08 seconds to fire. One broken link in that chain can cost you 20–30% of racket speed.",
-  "Top-ranked juniors watch an average of 45 minutes of their own match footage per week. Most club players watch zero.",
-  "Split step timing is the most undercoached skill in recreational tennis. Players who master it cover 30% more court with the same fitness.",
+  "The average 3.5–4.0 player makes contact 15–20cm behind the ideal contact point on their forehand — the root cause of most topspin problems.",
   "A 5cm shift in toss position changes a flat serve into a kick serve. Toss position is the most diagnostic tell in serve analysis.",
+  "The unit turn starts with the non-dominant shoulder — not the racket. Players who lead with the racket instead always arrive late.",
+  "Hip rotation generates 40% of forehand power at the professional level. Most club players generate less than 15% from their hips.",
+  "The contact point on the one-handed backhand should be 30–40cm in front of the front hip — further forward than most players think.",
+  "Pronation at contact is what separates a flat serve from a slice. The racket face should be rotating inward through the strike zone.",
+  "Follow-through is not just cosmetic — a complete follow-through is proof the swing accelerated all the way through contact.",
+  "The wrist should be firm at contact on the volley — not flexible. A loose wrist at the net produces pop-up volleys and misdirection.",
+  "Knee bend at the ready position lowers your center of gravity by 8–12cm — this alone measurably improves first-step reaction time.",
+  "Elbow height at the trophy position determines serve trajectory. Elbow below shoulder level almost always produces a flat or pushed serve.",
+  "The backswing loop on the forehand is not decorative — it creates stretch-reflex loading in the shoulder that adds pace without additional effort.",
+  "Eastern grip players naturally drive through the ball. Western grip players naturally brush over it. Neither is better — each requires different footwork.",
+  // Tactics and patterns
+  "Elite coaches spend 60% of film review time on positioning and recovery — not stroke mechanics. Where you are matters more than what you do.",
+  "On clay, the average rally at club level is 5–7 shots. On hard courts, it drops to 3–4. Your surface changes everything about shot selection.",
+  "The most effective first ball after the serve at club level is not a winner — it is a deep ball that pushes the opponent behind the baseline.",
+  "85% of points at club level end with an unforced error — not a winner. Reducing errors is more valuable than attacking harder.",
+  "The crosscourt rally is statistically safer than down the line by a factor of 3. The net is lower in the middle and the court is longer crosscourt.",
+  "Players who approach the net behind a deep ball win the point 68% of the time at club level. Players who approach behind a short ball win only 41%.",
+  "The second serve is the most important shot in recreational tennis. It is hit more than the first serve and lost more than any other single shot.",
+  "Recovery to the centre mark after every baseline shot reduces distance to cover by an average of 2.1m on the next ball.",
+  "Watching your opponent's racket face — not the ball — gives you 0.3–0.5 seconds more reaction time on their serve.",
+  "The lob is the most underused shot at club level. A well-executed lob over the net player in doubles wins the point 74% of the time.",
+  "Changing the height of the ball — high topspin then low slice — disrupts rhythm more effectively than changing direction alone.",
+  // Psychology and learning
+  "Players who receive written coaching feedback retain 40% more of the advice after one week compared to verbal-only feedback.",
+  "Top-ranked juniors watch an average of 45 minutes of their own match footage per week. Most club players watch zero.",
+  "Motor learning research shows that mental rehearsal of a stroke before physical practice accelerates skill acquisition by 20–30%.",
+  "The biggest predictor of improvement in recreational tennis is not talent — it is practice specificity. Random hitting improves less than structured drilling.",
+  "Players who focus on a process cue during a point — a single phrase like shoulder to net post — make fewer errors than players who think about outcomes.",
+  "Tension in the grip travels up the arm and into the shoulder. Players who grip tightly hit slower, not harder.",
+  "The between-point routine is the single highest-leverage mental skill in tennis. Players with a consistent routine recover faster after errors.",
+  "Research on elite performers shows that deliberate practice — focused, uncomfortable, with immediate feedback — produces results 3x faster than casual play.",
+  "Body language affects performance measurably. Players who maintain upright posture after errors win 23% more points in the next game than players who slump.",
+  "Choking under pressure is almost always caused by conscious attention to automatic movements. Trusting your technique rather than controlling it is the fix.",
+  // Split step and movement
+  "Split step timing is the most undercoached skill in recreational tennis. Players who master it cover 30% more court with the same fitness.",
+  "The split step should land as the opponent makes contact — not before, not after. A 0.2-second error in timing can cost a meter of court coverage.",
+  "The crossover step is 40% faster than the shuffle step for balls more than 2m away from your position. Most club players shuffle for every ball.",
+  "Recovery speed drops 18% when a player watches their shot instead of starting to move immediately after contact.",
+  "Footwork at the net in doubles is lateral — side to side. Players who think forward-back at the net miss the majority of poach opportunities.",
+  // Equipment and conditions
+  "String tension affects spin more than pace. Lower tension increases the dwell time on the strings — which means more spin at the same swing speed.",
+  "Playing into the sun reduces return accuracy by an average of 31% at club level. Toss adjustment on the serve is one of the least practiced skills.",
+  "Clay courts slow the ball by 20–25% and raise the bounce by 15–20cm compared to hard courts. The tactical adjustment is mandatory — not optional.",
+  "Racket weight affects stability at contact. A heavier racket twists less on off-centre hits — which is why control players prefer heavier frames.",
 ];
 
 // ── Motion-based frame extractor ─────────────────────────────────────────────
@@ -339,22 +379,17 @@ const ShotBreakdown = ({ shotBreakdown }) => {
 };
 
 // ── Key Frames Evidence Component ─────────────────────────────────────────────
-const KeyFrames = ({ keyFrames, capturedFrames }) => {
+const KeyFrames = ({ keyFrames, sentFrames }) => {
   const [expanded, setExpanded] = useState(null);
-  if (!keyFrames?.length || !capturedFrames?.length) return null;
+  if (!keyFrames?.length || !sentFrames?.length) return null;
 
-  // Match each key frame by index (exact) or fall back to timestamp
+  // Match by frame_index against sentFrames — exact same array Claude saw
+  // Claude numbers images starting from 0 in the order they were sent
   const matched = keyFrames.map(kf => {
     let frame = null;
-    if (kf.frame_index !== undefined && capturedFrames[kf.frame_index]) {
-      // Exact match by index — accurate
-      frame = capturedFrames[kf.frame_index];
-    } else if (kf.timestamp !== undefined) {
-      // Fallback: closest timestamp match
-      frame = capturedFrames.reduce((best, f) =>
-        Math.abs(f.timestamp - kf.timestamp) < Math.abs(best.timestamp - kf.timestamp) ? f : best,
-        capturedFrames[0]
-      );
+    if (kf.frame_index !== undefined && sentFrames[kf.frame_index]) {
+      // Direct index match — Claude's frame_index 3 = sentFrames[3]
+      frame = sentFrames[kf.frame_index];
     }
     return { ...kf, base64: frame?.base64 };
   }).filter(f => f.base64);
@@ -459,7 +494,8 @@ export default function App() {
   const [level, setLevel] = useState("");
   const [gateError, setGateError] = useState("");
   const [sessionType, setSessionType] = useState("match");
-  const [capturedFrames, setCapturedFrames] = useState([]); // stores extracted frames for display in report
+  const [capturedFrames, setCapturedFrames] = useState([]); // all 120 captured frames
+  const [sentFrames, setSentFrames] = useState([]); // exactly the 60 frames sent to Claude — index matches Claude's frame_index
   const [dominantHand, setDominantHand] = useState("");
   const [matchFormat, setMatchFormat] = useState("singles");
   const [backhandType, setBackhandType] = useState("");
@@ -577,6 +613,7 @@ export default function App() {
       const framesToSend = frames.length > 60
         ? frames.filter((_, i) => i % Math.ceil(frames.length / 60) === 0).slice(0, 60)
         : frames;
+      setSentFrames(framesToSend); // store exact frames sent so index matches Claude's frame_index
 
       const apiRes = await fetch(API_URL, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -631,7 +668,7 @@ export default function App() {
   const reset = () => {
     setStage("upload"); setVideoFile(null); setVideoUrl(null); setContext(""); setPlayerId("");
     setResult(null); setError(null); setPct(0); setFramesDone(0); setFramesTotal(0);
-    setDuration(0); setTab("technique"); setFirstName(""); setEmail(""); setLevel(""); setGateError(""); setSessionType("match"); setDominantHand(""); setBackhandType(""); setMatchFormat("singles"); setCapturedFrames([]); setElapsedSecs(0); clearInterval(elapsedTimer.current);
+    setDuration(0); setTab("technique"); setFirstName(""); setEmail(""); setLevel(""); setGateError(""); setSessionType("match"); setDominantHand(""); setBackhandType(""); setMatchFormat("singles"); setCapturedFrames([]); setSentFrames([]); setElapsedSecs(0); clearInterval(elapsedTimer.current);
   };
 
   const lc = l => !l ? "#888" : l.includes("Beginner") ? "#5bc85b" : l.includes("Developing") ? "#a3e635" : l.includes("Intermediate") ? "#f5c842" : "#f97316";
@@ -1733,6 +1770,45 @@ export default function App() {
                 <p style={{ fontSize: "15px", color: "#888", lineHeight: "1.75", margin: "0 0 20px", maxWidth: "580px" }}>
                   {result.match_overview}
                 </p>
+
+                {/* ── SHARE BUTTON ── */}
+                <button
+                  onClick={() => {
+                    const techScore = tech.score || 5;
+                    const techLabel = tech.headline || "Club Player";
+                    const shareText = `I just got my tennis coaching report from Forty Fifteen. Technique: ${techScore}/10 — "${techLabel}". See your game the way a coach does.`;
+                    if (navigator.share) {
+                      navigator.share({
+                        title: "My Forty Fifteen Coaching Report",
+                        text: shareText,
+                        url: "https://www.fortyfifteen.app",
+                      }).catch(() => {});
+                    } else {
+                      navigator.clipboard?.writeText(`${shareText} https://www.fortyfifteen.app`);
+                      alert("Link copied to clipboard!");
+                    }
+                  }}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "8px",
+                    background: "none", border: "1px solid #1e1e1e",
+                    borderRadius: "8px", padding: "9px 18px",
+                    color: "#555", fontSize: "13px", fontWeight: "700",
+                    cursor: "pointer", marginBottom: "24px",
+                    transition: "border-color 0.2s, color 0.2s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#3b82f6"; e.currentTarget.style.color = "#3b82f6"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e1e"; e.currentTarget.style.color = "#555"; }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <circle cx="11" cy="2.5" r="1.8" stroke="currentColor" strokeWidth="1.3" fill="none"/>
+                    <circle cx="11" cy="11.5" r="1.8" stroke="currentColor" strokeWidth="1.3" fill="none"/>
+                    <circle cx="3" cy="7" r="1.8" stroke="currentColor" strokeWidth="1.3" fill="none"/>
+                    <line x1="4.7" y1="6.1" x2="9.3" y2="3.4" stroke="currentColor" strokeWidth="1.3"/>
+                    <line x1="4.7" y1="7.9" x2="9.3" y2="10.6" stroke="currentColor" strokeWidth="1.3"/>
+                  </svg>
+                  Share my report
+                </button>
+
                 <div style={{ display: "flex", gap: "28px", marginBottom: "20px" }}>
                   <ScoreArc score={tech.score || 5} label="Technique" color="#60a5fa" />
                   <ScoreArc score={strat.score || 5} label="Strategy" color="#f59e0b" />
@@ -1747,8 +1823,10 @@ export default function App() {
 
               <CourtLine />
 
-              {/* ── EVIDENCE FRAMES — index alignment issue, disabled ── */}
-              {/* <KeyFrames keyFrames={result.key_frames} capturedFrames={capturedFrames} /> */}
+              {/* ── EVIDENCE FRAMES — admin debug mode only ── */}
+              {(["ayerswilliam@gmail.com","nimrodayers@gmail.com","rallyticshq@gmail.com"].includes(email) || new URLSearchParams(window.location.search).get("debug") === "true") && (
+                <KeyFrames keyFrames={result.key_frames} sentFrames={sentFrames} />
+              )}
 
               {result.priority_fixes?.length > 0 && (
                 <div style={{ marginBottom: "32px" }}>
