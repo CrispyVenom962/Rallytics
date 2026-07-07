@@ -1063,71 +1063,13 @@ export default async function handler(req, res) {
     matchFormat === "doubles" ? "⚠️ CONFIRMED: THIS IS A DOUBLES MATCH. Apply all doubles-specific rules from the session context. Focus only on the specified player. Net positioning and net approaches are EXPECTED and CORRECT in doubles — do not flag them as unusual. Tactical recovery is to the player's half of the court not the centre mark." : "",
   ].filter(Boolean).join(" ");
 
-  // ── PASS 1: Frame Classification ─────────────────────────────────────────────
-  // Cheap fast call — labels each frame by shot type and phase
-  // Returns frame_index so Pass 2 knows exactly which frame shows what
-  let frameLabels = [];
-  try {
-    // Use every other frame for Pass 1 — 30 frames is enough for classification
-    // This halves Pass 1 time while still covering the full video
-    const classifyFrames = frames.filter((_, i) => i % 2 === 0).slice(0, 30);
+  // Pass 1 removed — caused reliability issues with timeouts
+  // Pass 2 runs directly with all frames
+  const frameLabels = [];
+  const labelMap = {};
+  const labeledFrameDesc = "";
 
-    const classifyContent = [
-      {
-        type: "text",
-        text: `You are a tennis shot classifier. Label each frame with the index number and shot type.
-Return ONLY a JSON array. No other text.
-CRITICAL: Every frame has a label burned into the top-left corner such as F:0 or F:7 or F:23.
-Read that label exactly — do not count images yourself.
-Example: [{"i":0,"shot":"forehand_contact"},{"i":2,"shot":"serve_trophy"},{"i":4,"shot":"movement"}]
-
-Shot types: forehand_prep forehand_contact forehand_follow backhand_prep backhand_contact backhand_follow serve_trophy serve_contact serve_follow volley_contact overhead_contact movement between_points unknown
-
-${playerId ? `Focus only on: ${playerId}` : "Focus on the primary player."}
-Label all ${classifyFrames.length} frames shown. Read the F: label for each index.`,
-      },
-      ...classifyFrames.map((base64) => ({
-        type: "image",
-        source: { type: "base64", media_type: "image/jpeg", data: base64 },
-      })),
-    ];
-
-    // Pass 1 has a 45 second timeout — if it hangs, skip and proceed to Pass 2
-    const classifyController = new AbortController();
-    const classifyTimeout = setTimeout(() => classifyController.abort(), 45000);
-
-    const classifyRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      signal: classifyController.signal,
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 2000,
-        messages: [{ role: "user", content: classifyContent }],
-      }),
-    });
-    clearTimeout(classifyTimeout);
-
-    if (classifyRes.ok) {
-      const classifyData = await classifyRes.json();
-      const classifyText = classifyData.content?.map(b => b.text || "").join("") || "";
-      // Parse the label array
-      const jsonMatch = classifyText.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        frameLabels = JSON.parse(jsonMatch[0]);
-        console.log(`Pass 1 complete: ${frameLabels.length} frames labeled`);
-      }
-    }
-  } catch (e) {
-    console.error("Pass 1 classification failed, proceeding without labels:", e.message);
-    // Non-fatal — Pass 2 still runs without labels
-  }
-
-  // ── Build labeled frame context for Pass 2 ────────────────────────────────
+    // ── Build labeled frame context for Pass 2 ────────────────────────────────
   // Group frames by shot type so Claude knows exactly what it is analyzing
   const labelMap = {};
   frameLabels.forEach(l => { if (l.i !== undefined) labelMap[l.i] = l.shot; });
