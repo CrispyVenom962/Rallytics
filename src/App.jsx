@@ -1841,10 +1841,7 @@ export default function App() {
 
               <CourtLine />
 
-              {/* ── EVIDENCE FRAMES — admin only, burn-in labels active ── */}
-              {["ayerswilliam@gmail.com","nimrodayers@gmail.com","rallyticshq@gmail.com"].includes(email) && (
-                <KeyFrames keyFrames={result.key_frames} sentFrames={sentFrames} />
-              )}
+              {/* ── EVIDENCE FRAMES — disabled: requires sequence context, not single frames ── */}
 
               {result.priority_fixes?.length > 0 && (
                 <div style={{ marginBottom: "32px" }}>
