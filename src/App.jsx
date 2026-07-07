@@ -1947,7 +1947,7 @@ export default function App() {
                     fontSize: "14px", fontWeight: "800", cursor: "pointer",
                     transition: "all 0.18s", letterSpacing: "0.02em",
                   }}>
-                    <div style={{ display: "flex", justifyContent: "center", marginBottom: "4px" }}>{typeof t.icon === "function" ? t.icon(activeTab === t.id) : t.icon}</div>
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: "4px" }}>{typeof t.icon === "function" ? t.icon(tab === t.id) : t.icon}</div>
                     {t.label}
                   </button>
                 ))}
