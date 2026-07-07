@@ -214,9 +214,24 @@ function extractFrames(file, onProgress) {
 
         capVideo.addEventListener("seeked", () => {
           capCtx.drawImage(capVideo, 0, 0, FRAME_W, FRAME_H);
+
+          // ── Burn frame index into corner of image ──────────────────────
+          // This guarantees Claude's frame_index matches our array index exactly
+          // Claude sees "F:0" in corner → we know it means sentFrames[0]
+          const label = `F:${capIdx}`;
+          capCtx.font = "bold 14px monospace";
+          const tw = capCtx.measureText(label).width;
+          // Dark background pill
+          capCtx.fillStyle = "rgba(0,0,0,0.72)";
+          capCtx.fillRect(4, 4, tw + 10, 22);
+          // White text
+          capCtx.fillStyle = "#ffffff";
+          capCtx.fillText(label, 9, 19);
+
           frames.push({
             base64: capCanvas.toDataURL("image/jpeg", FRAME_QUALITY).split(",")[1],
             timestamp: Math.round(selected[capIdx]),
+            frameIndex: capIdx,
           });
 
           // Progress: pass 2 = 40-95%
@@ -383,13 +398,16 @@ const KeyFrames = ({ keyFrames, sentFrames }) => {
   const [expanded, setExpanded] = useState(null);
   if (!keyFrames?.length || !sentFrames?.length) return null;
 
-  // Match by frame_index against sentFrames — exact same array Claude saw
-  // Claude numbers images starting from 0 in the order they were sent
+  // Match by frameIndex property burned into the frame itself
+  // Claude reads "F:7" from the corner → returns frame_index: 7
+  // We find the frame where frame.frameIndex === 7 — exact guaranteed match
   const matched = keyFrames.map(kf => {
     let frame = null;
-    if (kf.frame_index !== undefined && sentFrames[kf.frame_index]) {
-      // Direct index match — Claude's frame_index 3 = sentFrames[3]
-      frame = sentFrames[kf.frame_index];
+    if (kf.frame_index !== undefined) {
+      // Find frame with matching burned-in frameIndex property
+      frame = sentFrames.find(f => f.frameIndex === kf.frame_index);
+      // Fallback to array position if frameIndex property missing
+      if (!frame) frame = sentFrames[kf.frame_index];
     }
     return { ...kf, base64: frame?.base64 };
   }).filter(f => f.base64);
@@ -1823,7 +1841,10 @@ export default function App() {
 
               <CourtLine />
 
-              {/* ── EVIDENCE FRAMES — disabled: index alignment not solved ── */}
+              {/* ── EVIDENCE FRAMES — admin only, burn-in labels active ── */}
+              {["ayerswilliam@gmail.com","nimrodayers@gmail.com","rallyticshq@gmail.com"].includes(email) && (
+                <KeyFrames keyFrames={result.key_frames} sentFrames={sentFrames} />
+              )}
 
               {result.priority_fixes?.length > 0 && (
                 <div style={{ marginBottom: "32px" }}>
