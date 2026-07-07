@@ -951,34 +951,37 @@ export default async function handler(req, res) {
   // Returns frame_index so Pass 2 knows exactly which frame shows what
   let frameLabels = [];
   try {
+    // Use every other frame for Pass 1 — 30 frames is enough for classification
+    // This halves Pass 1 time while still covering the full video
+    const classifyFrames = frames.filter((_, i) => i % 2 === 0).slice(0, 30);
+
     const classifyContent = [
       {
         type: "text",
         text: `You are a tennis shot classifier. Label each frame with the index number and shot type.
 Return ONLY a JSON array. No other text.
-CRITICAL: Every frame has a label burned into the top-left corner — "F:0", "F:1", "F:2" etc.
-Use the EXACT number from that label as the frame index. Do not count images yourself — read the label.
-Example: if a frame shows "F:7" in the corner, its index is 7.
-Return: [{"i":7,"shot":"forehand_contact"},{"i":12,"shot":"serve_trophy"}]
+CRITICAL: Every frame has a label burned into the top-left corner such as F:0 or F:7 or F:23.
+Read that label exactly — do not count images yourself.
+Example: [{"i":0,"shot":"forehand_contact"},{"i":2,"shot":"serve_trophy"},{"i":4,"shot":"movement"}]
 
-Shot types:
-forehand_prep, forehand_contact, forehand_follow
-backhand_prep, backhand_contact, backhand_follow
-serve_trophy, serve_contact, serve_follow
-volley_contact, overhead_contact
-movement, between_points, unknown
+Shot types: forehand_prep forehand_contact forehand_follow backhand_prep backhand_contact backhand_follow serve_trophy serve_contact serve_follow volley_contact overhead_contact movement between_points unknown
 
 ${playerId ? `Focus only on: ${playerId}` : "Focus on the primary player."}
-Label ALL ${frames.length} frames. Read the F: label in each corner for the index.`,
+Label all ${classifyFrames.length} frames shown. Read the F: label for each index.`,
       },
-      ...frames.map((base64) => ({
+      ...classifyFrames.map((base64) => ({
         type: "image",
         source: { type: "base64", media_type: "image/jpeg", data: base64 },
       })),
     ];
 
+    // Pass 1 has a 45 second timeout — if it hangs, skip and proceed to Pass 2
+    const classifyController = new AbortController();
+    const classifyTimeout = setTimeout(() => classifyController.abort(), 45000);
+
     const classifyRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
+      signal: classifyController.signal,
       headers: {
         "Content-Type": "application/json",
         "x-api-key": process.env.ANTHROPIC_API_KEY,
@@ -990,6 +993,7 @@ Label ALL ${frames.length} frames. Read the F: label in each corner for the inde
         messages: [{ role: "user", content: classifyContent }],
       }),
     });
+    clearTimeout(classifyTimeout);
 
     if (classifyRes.ok) {
       const classifyData = await classifyRes.json();
