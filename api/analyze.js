@@ -1069,10 +1069,7 @@ export default async function handler(req, res) {
   const labelMap = {};
   const labeledFrameDesc = "";
 
-    // ── Build labeled frame context for Pass 2 ────────────────────────────────
-  // Group frames by shot type so Claude knows exactly what it is analyzing
-    ? `\n\nFRAME CLASSIFICATION (from Pass 1 analysis):\n${shotSummary ? "Shot distribution: " + shotSummary : "Labels available per frame"}\nEach frame below is labeled — use these labels to make precise observations about specific shots.`
-    : "";
+
 
   // ── PASS 2: Full Analysis ─────────────────────────────────────────────────
   const content = [
