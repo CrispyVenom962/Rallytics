@@ -28,7 +28,14 @@ FOCUS ENTIRELY on technical quality of the shots being practiced. Identify the s
 Prescribe drills appropriate for a lesson setting with a coach feeding.`;
 
   return `
-This is MATCH FOOTAGE. Identify RECURRING PATTERNS across the entire match. Think like a coach who has watched thousands of hours of player film and can immediately identify the 2-3 root cause habits costing this player the most points.
+This is MATCH FOOTAGE — or at least that is what the player selected. Identify RECURRING PATTERNS across the entire match.
+
+SESSION TYPE VALIDATION — CHECK FIRST:
+Before analyzing, verify the footage actually matches the selected session type.
+MATCH INDICATORS: Two players on opposite sides of the net rallying competitively. Points being played. Both players trying to win.
+DRILLING INDICATORS: One player hitting repeatedly from the same position. Ball machine or coach feeding. No competitive point play.
+LESSON INDICATORS: Coach visibly feeding balls. Student hitting repetitively. No competitive rallying.
+If the footage does NOT match the selected type — for example the player selected Match but the video shows drilling or a lesson — note this clearly at the start of match_overview and adjust your analysis accordingly. Do not penalize a player for tactical patterns that are absent because it is actually a drilling session not a match. Think like a coach who has watched thousands of hours of player film and can immediately identify the 2-3 root cause habits costing this player the most points.
 
 DOUBLES DETECTION — CHECK FIRST:
 Before analyzing, count the number of players visible across frames. If you see 3 or 4 players on court simultaneously this is a DOUBLES match. Note this clearly in match_overview and apply the full doubles framework below.
@@ -948,9 +955,13 @@ export default async function handler(req, res) {
       {
         type: "text",
         text: `You are a tennis shot classifier. Label each frame with the index number and shot type.
-Return ONLY a JSON array. No other text. Example: [{"i":0,"shot":"forehand_contact"},{"i":1,"shot":"movement"}]
+Return ONLY a JSON array. No other text.
+CRITICAL: Every frame has a label burned into the top-left corner — "F:0", "F:1", "F:2" etc.
+Use the EXACT number from that label as the frame index. Do not count images yourself — read the label.
+Example: if a frame shows "F:7" in the corner, its index is 7.
+Return: [{"i":7,"shot":"forehand_contact"},{"i":12,"shot":"serve_trophy"}]
 
-Shot types to use:
+Shot types:
 forehand_prep, forehand_contact, forehand_follow
 backhand_prep, backhand_contact, backhand_follow
 serve_trophy, serve_contact, serve_follow
@@ -958,7 +969,7 @@ volley_contact, overhead_contact
 movement, between_points, unknown
 
 ${playerId ? `Focus only on: ${playerId}` : "Focus on the primary player."}
-Label all ${frames.length} frames. Return array of {"i": frame_index, "shot": shot_type} objects only.`,
+Label ALL ${frames.length} frames. Read the F: label in each corner for the index.`,
       },
       ...frames.map((base64) => ({
         type: "image",
@@ -1021,7 +1032,7 @@ Label all ${frames.length} frames. Return array of {"i": frame_index, "shot": sh
   const content = [
     {
       type: "text",
-      text: `${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${sessionType === "match" ? "match" : sessionType === "drilling" ? "drilling session" : "lesson"}.${labeledFrameDesc}\n\nUse the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.\n\nFor key_frames: use the FRAME INDEX numbers from the classification above to select your evidence frames. Return the frame index as the "frame_index" field (integer) alongside the timestamp.`,
+      text: `${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${sessionType === "match" ? "match" : sessionType === "drilling" ? "drilling session" : "lesson"}.${labeledFrameDesc}\n\nUse the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.\n\nFor key_frames: every frame has a label burned into the top-left corner — "F:0", "F:1" etc. Read that label to get the correct frame_index. Return the exact integer from the F: label as "frame_index". This guarantees the correct frame is shown to the player. Only select frames where the observation is unmistakably visible and the F: label is readable.`,
     },
     ...frames.map((base64, idx) => ({
       type: "image",
