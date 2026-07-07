@@ -560,7 +560,7 @@ export default function App() {
       "Cross-referencing pattern clusters…",
       "Writing your priority fixes…",
       "Building your coaching report…",
-      "Final review — almost there…",
+      "Final review · almost there…",
     ];
 
     let aiTimer = null;
@@ -1581,13 +1581,13 @@ export default function App() {
               {elapsedSecs >= 90 && elapsedSecs < 180 && (
                 <div style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "8px", background: "#07101f", border: "1px solid #0e1e3a", borderRadius: "8px", padding: "8px 16px", animation: "fadeUp 0.4s ease" }}>
                   <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#3b82f6", flexShrink: 0 }}/>
-                  <span style={{ fontSize: "13px", color: "#3b82f6" }}>Still processing — your report is being built. Normal timing.</span>
+                  <span style={{ fontSize: "13px", color: "#3b82f6" }}>Still processing · your report is being built. Normal timing.</span>
                 </div>
               )}
               {elapsedSecs >= 180 && elapsedSecs < 270 && (
                 <div style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "8px", background: "#0f0a00", border: "1px solid #2a1e00", borderRadius: "8px", padding: "8px 16px", animation: "fadeUp 0.4s ease" }}>
                   <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }}/>
-                  <span style={{ fontSize: "13px", color: "#f59e0b" }}>Still building your report — almost there.</span>
+                  <span style={{ fontSize: "13px", color: "#f59e0b" }}>Still building your report · almost there.</span>
                 </div>
               )}
               {elapsedSecs >= 270 && (
@@ -1823,10 +1823,7 @@ export default function App() {
 
               <CourtLine />
 
-              {/* ── EVIDENCE FRAMES — admin debug mode only ── */}
-              {(["ayerswilliam@gmail.com","nimrodayers@gmail.com","rallyticshq@gmail.com"].includes(email) || new URLSearchParams(window.location.search).get("debug") === "true") && (
-                <KeyFrames keyFrames={result.key_frames} sentFrames={sentFrames} />
-              )}
+              {/* ── EVIDENCE FRAMES — disabled: index alignment not solved ── */}
 
               {result.priority_fixes?.length > 0 && (
                 <div style={{ marginBottom: "32px" }}>
