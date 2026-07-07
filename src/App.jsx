@@ -1422,46 +1422,28 @@ export default function App() {
 
             {error && (
               <div style={{ marginTop: "12px", background: "#120808", border: "1px solid #2e1010", borderRadius: "12px", padding: "18px 20px" }}>
-                {error === "DUPLICATE_VIDEO" ? (
+                {error === "DUPLICATE_VIDEO" && (
                   <>
                     <div style={{ fontSize: "20px", marginBottom: "8px" }}>📬</div>
-                    <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "8px" }}>
-                      We have already analyzed this video.
-                    </div>
-                    <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#888", lineHeight: "1.7" }}>
-                      Your report was sent to your email — search Forty Fifteen in your inbox to find it.
-                    </p>
-                    <p style={{ margin: 0, fontSize: "13px", color: "#555" }}>
-                      Upload a video from a different session to get a fresh analysis.
-                    </p>
+                    <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "8px" }}>We have already analyzed this video.</div>
+                    <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#888", lineHeight: "1.7" }}>Your report was sent to your email — search Forty Fifteen in your inbox to find it.</p>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#555" }}>Upload a video from a different session to get a fresh analysis.</p>
                   </>
-                ) : error.startsWith("NOT_TENNIS:") ? (
+                )}
+                {error.startsWith("NOT_TENNIS:") && (
                   <>
                     <div style={{ fontSize: "20px", marginBottom: "8px" }}>🎾</div>
-                    <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "8px" }}>
-                      That does not look like tennis footage.
-                    </div>
-                    <p style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", lineHeight: "1.7" }}>
-                      {error.replace("NOT_TENNIS:", "").trim()}
-                    </p>
-                    <p style={{ margin: 0, fontSize: "13px", color: "#555", lineHeight: "1.6" }}>
-                      Upload a video of a tennis match, lesson, or drilling session — filmed from the side of the court or behind the baseline.
-                    </p>
+                    <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "8px" }}>That does not look like tennis footage.</div>
+                    <p style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", lineHeight: "1.7" }}>{error.replace("NOT_TENNIS:", "").trim()}</p>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#555", lineHeight: "1.6" }}>Upload a video of a tennis match, lesson, or drilling session — filmed from the side of the court or behind the baseline.</p>
                   </>
-                ) : error === "ANALYSIS_ERROR" || !error.startsWith("NOT_TENNIS:") ? (
+                )}
+                {error !== "DUPLICATE_VIDEO" && !error.startsWith("NOT_TENNIS:") && (
                   <>
                     <div style={{ fontSize: "20px", marginBottom: "8px" }}>🎾</div>
-                    <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "6px" }}>
-                      Oops — your coaching engine hit one into the net.
-                    </div>
-                    <p style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", lineHeight: "1.6" }}>
-                      Something went wrong during analysis. This is usually a one-time glitch — hit the button again and it should work.
-                    </p>
-                    <p style={{ margin: 0, fontSize: "14px", color: "#888", lineHeight: "1.6" }}>
-                      If this keeps happening, reach out at{" "}
-                      <a href="mailto:coach@fortyfifteen.app" style={{ color: "#3b82f6", textDecoration: "none" }}>coach@fortyfifteen.app</a>
-                      {" "}and we will sort it out.
-                    </p>
+                    <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "6px" }}>Oops — your coaching engine hit one into the net.</div>
+                    <p style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", lineHeight: "1.6" }}>Something went wrong during analysis. This is usually a one-time glitch — hit the button again and it should work.</p>
+                    <p style={{ margin: 0, fontSize: "14px", color: "#888", lineHeight: "1.6" }}>If this keeps happening, reach out at{" "}<a href="mailto:coach@fortyfifteen.app" style={{ color: "#3b82f6", textDecoration: "none" }}>coach@fortyfifteen.app</a>{" "}and we will sort it out.</p>
                   </>
                 )}
               </div>
