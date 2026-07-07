@@ -610,15 +610,8 @@ export default function App() {
 
       const frames = await extractFrames(videoFile, (pct, total, phase) => {
         setPct(pct);
-        if (phase === "scanning") {
-          setStatusMsg(phases[0]);
-          setFramesDone(0);
-          // Show consistent estimated frame count during scan
-          setFramesTotal(Math.min(MAX_FRAMES, Math.floor(Math.max(0, duration - 4) / FRAME_INTERVAL) + 1));
-        } else {
-          if (pct < 65) setStatusMsg(phases[1]);
-          else setStatusMsg(phases[2]);
-        }
+        if (pct < 65) setStatusMsg(phases[1]);
+        else setStatusMsg(phases[2]);
       });
 
       setFramesDone(frames.length);
