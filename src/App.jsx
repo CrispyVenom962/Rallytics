@@ -362,7 +362,7 @@ const ShotBreakdown = ({ shotBreakdown }) => {
         // Nested object (e.g. forehand_topspin, serve, backhand_volley etc.)
         if (typeof v === "object" && v !== null) {
           const confidence = v.confidence || "";
-          const framesStr = v.frames_seen !== undefined ? ` · ${v.frames_seen} frames seen` : "";
+          const framesStr = ""; // frames_seen removed from display
           // Skip if not seen
           if (confidence === "not_seen") return null;
           // Build display value from assessment + key fields
@@ -547,7 +547,11 @@ export default function App() {
   const proceedToGate = () => { setGateError(""); setStage("gate"); };
 
   const proceedToAnalysis = () => {
-    if (!firstName.trim()) { setGateError("Please enter your first name."); return; }
+    const cleanName = firstName.trim();
+    if (!cleanName) { setGateError("Please enter your first name."); return; }
+    if (cleanName.length < 2) { setGateError("Please enter your full first name."); return; }
+    if (/www|http|\.com|\.app|\.net|@/.test(cleanName.toLowerCase())) { setGateError("Please enter your first name, not a website."); return; }
+    if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(cleanName)) { setGateError("Please enter a valid first name."); return; }
     if (!email.trim() || !email.includes("@")) { setGateError("Please enter a valid email address."); return; }
     if (!level) { setGateError("Please select your playing level."); return; }
     setGateError("");
@@ -654,7 +658,7 @@ export default function App() {
           frames: framesToSend.map(f => f.base64),
           context: context.trim(), playerId: playerId.trim(),
           frameCount: framesToSend.length, durationLabel: dLabel,
-          firstName: firstName.trim(), email: email.trim(), level, sessionType,
+          firstName: firstName.trim().replace(/\b\w/g, c => c.toUpperCase()), email: email.trim(), level, sessionType,
           dominantHand, backhandType, matchFormat,
         }),
       });
@@ -2143,7 +2147,7 @@ export default function App() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
                     <div style={{ background: "#060606", border: "1px solid #141414", borderRadius: "10px", padding: "14px" }}>
                       <div style={{ fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6px" }}>Current estimate</div>
-                      <div style={{ fontSize: "15px", fontWeight: "900", color: "#e0e0e0", letterSpacing: "-0.02em" }}>{result.ntrp_milestone.current_estimate?.split(" ").slice(0,3).join(" ")}</div>
+                      <div style={{ fontSize: "13px", fontWeight: "700", color: "#e0e0e0", lineHeight: "1.5" }}>{result.ntrp_milestone.current_estimate}</div>
                     </div>
                     <div style={{ background: "#060606", border: "1px solid #141414", borderRadius: "10px", padding: "14px" }}>
                       <div style={{ fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6px" }}>Timeline to next level</div>
