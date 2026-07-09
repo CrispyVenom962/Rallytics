@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#060606;color:#e0e0e0;">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#060606">
+<title>Forty Fifteen — Pro</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: #060606 !important;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(6,6,6,0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid #111;
+    padding: 0 24px; height: 58px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { font-size: 17px; font-weight: 900; letter-spacing: -0.03em; }
+  .forty { color: #c8e63c; }
+  .dot, .fifteen { color: #3b82f6; }
+  .fifteen { font-weight: 300; }
+  .nav-back {
+    background: none; border: 1px solid #1e1e1e;
+    border-radius: 8px; color: #555;
+    font-size: 12px; padding: 7px 16px; cursor: pointer;
+  }
+
+  /* ── MAIN ── */
+  main { max-width: 680px; margin: 0 auto; padding: 64px 20px 100px; }
+
+  /* ── EYEBROW ── */
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.15);
+    border-radius: 20px; padding: 5px 14px; margin-bottom: 20px;
+    font-size: 10px; color: #3b82f6;
+    text-transform: uppercase; letter-spacing: 0.18em;
+  }
+  .pulse {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #3b82f6; animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes glowMove { 0%,100%{opacity:0.7} 50%{opacity:1} }
+
+  /* ── HERO ── */
+  .hero { text-align: center; margin-bottom: 52px; animation: fadeUp 0.4s ease; }
+  .hero h1 {
+    font-size: clamp(30px, 8vw, 48px); font-weight: 900;
+    letter-spacing: -0.04em; line-height: 0.95; margin-bottom: 18px;
+    color: #c8e63c;
+  }
+  .hero h1 em { color: #e0e0e0; font-style: normal; }
+  .hero p { font-size: 15px; color: #777; line-height: 1.7; max-width: 420px; margin: 0 auto; }
+
+  /* ── TOGGLE ── */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; margin-bottom: 32px;
+  }
+  .t-lbl { font-size: 13px; color: #444; cursor: pointer; }
+  .t-lbl.on { color: #e0e0e0; font-weight: 600; }
+  .t-switch {
+    width: 44px; height: 24px; background: #1a1a1a;
+    border-radius: 12px; border: none; cursor: pointer;
+    position: relative; transition: background 0.2s; flex-shrink: 0;
+  }
+  .t-switch.on { background: #3b82f6; }
+  .t-switch::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 18px; height: 18px; border-radius: 50%; background: #fff;
+    transition: transform 0.2s;
+  }
+  .t-switch.on::after { transform: translateX(20px); }
+  .save-pill {
+    background: #0a1f08; border: 1px solid #1a3810;
+    border-radius: 20px; padding: 3px 10px;
+    font-size: 10px; color: #5bc85b; font-weight: 700;
+  }
+
+  /* ── CARDS ── */
+  .cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 48px; }
+
+  .card {
+    background: #0a0a0a; border: 1px solid #1a1a1a;
+    border-radius: 16px; padding: 24px;
+    position: relative;
+  }
+  .card-free { opacity: 0.6; }
+
+  /* Pro card — clean border glow via box-shadow, no stacking issues */
+  .card-pro {
+    background: #07101f;
+    border: 1px solid #3b82f6;
+    box-shadow: 0 0 0 1px #3b82f640, 0 0 24px #3b82f620;
+    animation: glowMove 2.5s ease infinite;
+    position: relative;
+  }
+  .card-pro-glow { display: contents; }
+  .card-pro-inner { padding: 0; }
+
+  .card-badge {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: #3b82f6; color: #fff; z-index: 2;
+    font-size: 10px; font-weight: 900; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 4px 14px; border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  .plan-label {
+    font-size: 10px; font-weight: 700; color: #444;
+    text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 10px;
+  }
+  .plan-label-pro { color: #3b82f6; }
+  .price {
+    font-size: 48px; font-weight: 900; letter-spacing: -0.04em;
+    line-height: 1; color: #e0e0e0; margin-bottom: 4px;
+  }
+  .price sup { font-size: 20px; color: #555; vertical-align: top; margin-top: 8px; display: inline-block; }
+  .price .per { font-size: 14px; font-weight: 400; color: #444; }
+  .price-alt { display: none; }
+  .plan-sub { font-size: 13px; color: #666; margin-bottom: 22px; margin-top: 4px; }
+
+  .feats { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
+  .feats li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: #888; line-height: 1.5; }
+  .feats li.hi { color: #e8e8e8; font-size: 14px; }
+  .ic {
+    flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; margin-top: 1px;
+  }
+  .ic-y { background: rgba(59,130,246,0.12); color: #3b82f6; }
+  .ic-n { background: #111; color: #2a2a2a; }
+
+  .ann-note { display: none; text-align: center; font-size: 12px; color: #5bc85b; margin-bottom: 14px; }
+
+  .btn {
+    display: block; width: 100%; padding: 14px;
+    border-radius: 10px; border: none;
+    font-size: 15px; font-weight: 900; cursor: pointer;
+    text-align: center; letter-spacing: -0.01em;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-lime { background: #c8e63c; color: #060606; }
+  .btn-ghost { background: transparent; border: 1px solid #1a1a1a; color: #444; font-weight: 600; }
+
+  /* ── WAITLIST CAPTURE ── */
+  .wl-form { display: flex; flex-direction: column; gap: 10px; }
+  .wl-row { display: flex; gap: 8px; }
+  .wl-input {
+    flex: 1; background: #0a0a0a; border: 1px solid #1e1e1e;
+    border-radius: 10px; padding: 13px 14px; color: #e8e8e8;
+    font-size: 14px; font-family: inherit; outline: none;
+    transition: border-color 0.2s;
+  }
+  .wl-input:focus { border-color: #3b82f6; }
+  .wl-input::placeholder { color: #3a3a3a; }
+  .wl-btn {
+    background: #c8e63c; color: #060606; border: none;
+    border-radius: 10px; padding: 13px 22px; font-weight: 900;
+    font-size: 14px; cursor: pointer; white-space: nowrap;
+    transition: opacity 0.2s; flex-shrink: 0;
+  }
+  .wl-btn:hover { opacity: 0.85; }
+  .wl-btn:disabled { opacity: 0.5; cursor: default; }
+  .wl-msg { font-size: 12px; margin: 0; line-height: 1.5; }
+  .wl-msg.err { color: #f59e0b; }
+  .wl-msg.ok { color: #5bc85b; }
+  .wl-success {
+    display: none; text-align: center; padding: 8px 0;
+  }
+  .wl-success.show { display: block; }
+  .wl-success .wl-check {
+    width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 10px;
+    background: rgba(91,200,91,0.12); border: 1px solid rgba(91,200,91,0.3);
+    display: flex; align-items: center; justify-content: center;
+    color: #5bc85b; font-size: 18px;
+  }
+
+  /* ── VALUE ANCHOR ── */
+  .value-anchor {
+    background: #0a0a0a; border: 1px solid #1a1a1a;
+    border-radius: 16px; padding: 28px 24px; margin-bottom: 40px;
+    animation: fadeUp 0.4s ease;
+  }
+  .va-label {
+    font-size: 9px; color: #c8e63c; text-transform: uppercase;
+    letter-spacing: 0.2em; text-align: center; margin-bottom: 14px;
+  }
+  .va-head {
+    font-size: 19px; font-weight: 900; letter-spacing: -0.02em;
+    text-align: center; color: #e8e8e8; line-height: 1.35; margin-bottom: 20px;
+  }
+  .va-head em { color: #c8e63c; font-style: normal; }
+  .va-compare { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .va-box { flex: 1; text-align: center; padding: 16px 10px; border-radius: 12px; }
+  .va-box-a { background: #111; border: 1px solid #1e1e1e; }
+  .va-box-b { background: #0a1f08; border: 1px solid #1a3810; }
+  .va-num { font-size: 26px; font-weight: 900; letter-spacing: -0.03em; line-height: 1; margin-bottom: 6px; }
+  .va-box-a .va-num { color: #666; }
+  .va-box-b .va-num { color: #5bc85b; }
+  .va-sub { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.08em; }
+  .va-vs {
+    flex-shrink: 0; font-size: 11px; color: #333; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .va-note { font-size: 13px; color: #888; line-height: 1.7; text-align: center; margin: 0; }
+  .va-note strong { color: #c8e63c; }
+
+  /* ── DIVIDER ── */
+  .divider {
+    display: flex; align-items: center; gap: 10px; margin: 40px 0;
+  }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #111; }
+  .divider-dot { width: 6px; height: 6px; border-radius: 50%; background: #3b82f6; box-shadow: 0 0 8px #3b82f6; }
+
+  /* ── COMPARISON ── */
+  .sec-label {
+    font-size: 9px; color: #3b82f6; text-transform: uppercase;
+    letter-spacing: 0.2em; margin-bottom: 18px; text-align: center;
+  }
+  .cmp-head { display: flex; justify-content: flex-end; gap: 32px; padding-bottom: 10px; border-bottom: 1px solid #111; }
+  .ch { width: 58px; text-align: center; font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.1em; }
+  .ch.pro { color: #3b82f6; }
+  .cmp-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #0c0c0c; gap: 12px; }
+  .cmp-row:last-child { border-bottom: none; }
+  .cf { flex: 1; }
+  .cf strong { font-size: 14px; color: #e8e8e8; font-weight: 600; display: block; margin-bottom: 2px; }
+  .cf span { font-size: 12px; color: #555; }
+  .ccs { display: flex; gap: 32px; flex-shrink: 0; }
+  .cc { width: 58px; text-align: center; }
+  .dy { width: 20px; height: 20px; border-radius: 50%; background: rgba(59,130,246,0.12); margin: 0 auto; display: flex; align-items: center; justify-content: center; color: #3b82f6; font-size: 11px; }
+  .dn { width: 20px; height: 20px; border-radius: 50%; background: #111; margin: 0 auto; display: flex; align-items: center; justify-content: center; color: #2a2a2a; font-size: 11px; }
+
+  /* ── TRUST ── */
+  .trust {
+    background: #0a0a0a; border: 1px solid #1a1a1a;
+    border-radius: 14px; padding: 24px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  }
+  .ti { display: flex; align-items: flex-start; gap: 10px; }
+  .ti-icon {
+    flex-shrink: 0; margin-top: 1px;
+    width: 36px; height: 36px;
+    background: rgba(59,130,246,0.08);
+    border: 1px solid rgba(59,130,246,0.15);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ti strong { font-size: 14px; color: #e8e8e8; display: block; margin-bottom: 3px; }
+  .ti span { font-size: 12px; color: #666; line-height: 1.55; }
+
+  /* ── FAQ ── */
+  .faq-item { border-bottom: 1px solid #0c0c0c; padding: 16px 0; }
+  .faq-item:last-child { border-bottom: none; }
+  .fq { font-size: 15px; font-weight: 700; color: #e8e8e8; margin-bottom: 8px; }
+  .fa { font-size: 14px; color: #777; line-height: 1.7; }
+
+  /* ── FINAL CTA ── */
+  .final {
+    text-align: center; background: #07101f;
+    border: 1px solid #0e1e3a; border-radius: 16px; padding: 40px 24px;
+  }
+  .final h2 { font-size: clamp(20px, 5vw, 30px); font-weight: 900; letter-spacing: -0.03em; margin-bottom: 10px; color: #c8e63c; }
+  .final h2 em { color: #e0e0e0; font-style: normal; }
+  .final p { font-size: 14px; color: #777; line-height: 1.7; margin-bottom: 24px; max-width: 380px; margin-left: auto; margin-right: auto; }
+  .final-btn {
+    display: inline-block; background: #c8e63c; color: #060606;
+    border-radius: 10px; padding: 14px 36px;
+    font-weight: 900; font-size: 15px; transition: opacity 0.2s;
+  }
+  .final-btn:hover { opacity: 0.88; }
+  .final-sub { margin-top: 14px; font-size: 12px; color: #2a2a2a; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; padding: 28px 20px;
+    font-size: 12px; color: #555;
+    border-top: 1px solid #0c0c0c; line-height: 1.9;
+  }
+  footer a { color: #3b82f6; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://fortyfifteen.app" class="logo">
+    <span class="forty">forty</span><span class="dot">.</span><span class="fifteen">fifteen</span>
+  </a>
+  <a href="https://fortyfifteen.app" class="nav-back">← Back to app</a>
+</nav>
+
+<main>
+
+  <div class="hero">
+    <div class="eyebrow"><div class="pulse"></div>Forty Fifteen Pro</div>
+    <h1>Understand your tennis.<br><em>Match after match.</em></h1>
+    <p>Two free analyses to get started. Pro gives you a generous monthly allowance — built for players who train and compete regularly.</p>
+  </div>
+
+  <div class="value-anchor">
+    <div class="va-label">The Math</div>
+    <div class="va-head">One court session with a coach costs more than <em>a full year</em> of Pro.</div>
+    <div class="va-compare">
+      <div class="va-box va-box-a">
+        <div class="va-num">$80–100</div>
+        <div class="va-sub">One hour, one lesson</div>
+      </div>
+      <div class="va-vs">vs</div>
+      <div class="va-box va-box-b">
+        <div class="va-num">$120</div>
+        <div class="va-sub">Pro, billed annually</div>
+      </div>
+    </div>
+    <p class="va-note">Forty Fifteen runs the same coaching frameworks — biomechanics, tactical pattern recognition, drill prescription — on every match you upload, all year, for less than one hour on the court. It is not a replacement for your coach. It is what you bring to your next session already knowing.</p>
+  </div>
+
+  <div class="toggle-row">
+    <span class="t-lbl on" id="lm">Monthly</span>
+    <button class="t-switch" id="tog" onclick="flip()"></button>
+    <span class="t-lbl" id="la">Annual</span>
+    <span class="save-pill">2 months free</span>
+  </div>
+
+  <div class="cards">
+
+    <div class="card card-free">
+      <div class="plan-label">Free</div>
+      <div class="price">$0</div>
+      <div class="plan-sub">2 full analyses. No card needed.</div>
+      <ul class="feats">
+        <li><div class="ic ic-y">✓</div>2 complete coaching reports</li>
+        <li><div class="ic ic-y">✓</div>Technique, tactics and mental game</li>
+        <li><div class="ic ic-y">✓</div>Drill prescriptions and on-court cues</li>
+        <li><div class="ic ic-y">✓</div>Report emailed to you</li>
+        <li><div class="ic ic-n">–</div>Higher monthly allowance</li>
+        <li><div class="ic ic-n">–</div>Session history</li>
+        <li><div class="ic ic-n">–</div>Progress tracking</li>
+        <li><div class="ic ic-n">–</div>Coach sharing</li>
+      </ul>
+      <a href="https://fortyfifteen.app" class="btn btn-ghost">Start for free</a>
+    </div>
+
+    <div class="card card-pro">
+      <div class="card-badge">Most popular</div>
+      <div class="plan-label plan-label-pro">Pro</div>
+      <div class="price" id="pm"><sup>$</sup>12<span class="per">/month</span></div>
+      <div class="price price-alt" id="pa"><sup>$</sup>10<span class="per">/month</span></div>
+      <div class="plan-sub" id="psub">Billed monthly. Cancel anytime.</div>
+      <ul class="feats">
+        <li class="hi"><div class="ic ic-y">✓</div>A generous monthly analysis allowance</li>
+        <li class="hi"><div class="ic ic-y">✓</div>Session history — every past report</li>
+        <li class="hi"><div class="ic ic-y">✓</div>Progress tracking across matches</li>
+        <li class="hi"><div class="ic ic-y">✓</div>Full coaching report every upload</li>
+        <li class="hi"><div class="ic ic-y">✓</div>Drill prescriptions and on-court cues</li>
+        <li class="hi"><div class="ic ic-y">✓</div>Coach sharing</li>
+        <li class="hi"><div class="ic ic-y">✓</div>First access to every new feature</li>
+      </ul>
+      <div class="ann-note" id="an">Billed as $120/year — you save $24</div>
+
+      <form class="wl-form" id="wlForm" onsubmit="return submitWaitlist(event)">
+        <div class="wl-row">
+          <input class="wl-input" id="wlEmail" type="email" placeholder="you@email.com" required autocomplete="email">
+          <button class="wl-btn" id="wlBtn" type="submit">Get early access →</button>
+        </div>
+        <p class="wl-msg" id="wlMsg"></p>
+      </form>
+      <div class="wl-success" id="wlSuccess">
+        <div class="wl-check">✓</div>
+        <div style="font-size:15px;font-weight:800;color:#e8e8e8;margin-bottom:4px;">You're on the list.</div>
+        <p style="margin:0;font-size:13px;color:#777;">We will email you the moment Pro launches. Founding pricing locked in.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="divider"><div class="divider-dot"></div></div>
+
+  <div class="sec-label">What is included</div>
+  <div class="cmp-head">
+    <div class="ch">Free</div>
+    <div class="ch pro">Pro</div>
+  </div>
+  <div class="cmp-row"><div class="cf"><strong>Full coaching report</strong><span>Technique, tactics, mental game, training plan</span></div><div class="ccs"><div class="cc"><div class="dy">✓</div></div><div class="cc"><div class="dy">✓</div></div></div></div>
+  <div class="cmp-row"><div class="cf"><strong>Shot classification</strong><span>Every shot type identified with confidence labels</span></div><div class="ccs"><div class="cc"><div class="dy">✓</div></div><div class="cc"><div class="dy">✓</div></div></div></div>
+  <div class="cmp-row"><div class="cf"><strong>Match, Drills and Lesson modes</strong><span>Report adapts to your session type</span></div><div class="ccs"><div class="cc"><div class="dy">✓</div></div><div class="cc"><div class="dy">✓</div></div></div></div>
+  <div class="cmp-row"><div class="cf"><strong>Monthly analysis allowance</strong><span>How many videos you can submit each month</span></div><div class="ccs"><div class="cc"><div class="dn" style="font-size:10px;">2</div></div><div class="cc"><div class="dy" style="font-size:11px;">✓</div></div></div></div>
+  <div class="cmp-row"><div class="cf"><strong>Session history</strong><span>Access all past reports anytime</span></div><div class="ccs"><div class="cc"><div class="dn">–</div></div><div class="cc"><div class="dy">✓</div></div></div></div>
+  <div class="cmp-row"><div class="cf"><strong>Progress tracking</strong><span>See how your scores change over time</span></div><div class="ccs"><div class="cc"><div class="dn">–</div></div><div class="cc"><div class="dy">✓</div></div></div></div>
+  <div class="cmp-row"><div class="cf"><strong>Coach sharing</strong><span>Send your report directly to your coach</span></div><div class="ccs"><div class="cc"><div class="dn">–</div></div><div class="cc"><div class="dy">✓</div></div></div></div>
+
+  <div class="divider"><div class="divider-dot"></div></div>
+
+  <div class="trust">
+
+    <div class="ti">
+      <div class="ti-icon">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="4" y="9" width="12" height="9" rx="2" stroke="#3b82f6" stroke-width="1.4" fill="none"/>
+          <path d="M 6.5 9 V 6.5 A 3.5 3.5 0 0 1 13.5 6.5 V 9" stroke="#3b82f6" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+          <circle cx="10" cy="13.5" r="1.2" fill="#3b82f6"/>
+        </svg>
+      </div>
+      <div><strong>Cancel anytime</strong><span>No contracts. No lock-in. Stop whenever.</span></div>
+    </div>
+
+    <div class="ti">
+      <div class="ti-icon">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <circle cx="10" cy="6" r="3" stroke="#3b82f6" stroke-width="1.4" fill="none"/>
+          <path d="M 4 18 C 4 14.5 6.5 12.5 10 12.5 C 13.5 12.5 16 14.5 16 18" stroke="#3b82f6" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+          <path d="M 13 4.5 L 14.5 6 L 17 3" stroke="#3b82f6" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div><strong>Coach-built</strong><span>Tennis Canada certified. Built by someone who plays.</span></div>
+    </div>
+
+    <div class="ti">
+      <div class="ti-icon">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="4" width="16" height="12" rx="2" stroke="#3b82f6" stroke-width="1.4" fill="none"/>
+          <path d="M 2 6 L 10 11 L 18 6" stroke="#3b82f6" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div><strong>Emailed to you</strong><span>Take it to the court. Reference it on the day.</span></div>
+    </div>
+
+    <div class="ti">
+      <div class="ti-icon">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <polyline points="2,15 7,9 11,12 18,4" stroke="#3b82f6" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="14,4 18,4 18,8" stroke="#3b82f6" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div><strong>Gets sharper</strong><span>More uploads means better pattern recognition.</span></div>
+    </div>
+
+  </div>
+
+  <div class="divider"><div class="divider-dot"></div></div>
+
+  <div class="sec-label">Common questions</div>
+  <div class="faq-item"><div class="fq">Does this replace my coach?</div><div class="fa">No — and it is not trying to. Forty Fifteen surfaces patterns and gives you structured observations. A good coach applies real-time judgment. This gives you and your coach better information to work with.</div></div>
+  <div class="faq-item"><div class="fq">How accurate is the analysis?</div><div class="fa">The engine identifies recurring technical and tactical patterns with strong accuracy on good quality video. Uncertain observations are labelled as "possible" rather than claiming false precision. Best results come from 10–20 minute videos filmed side-on at 720p or higher.</div></div>
+  <div class="faq-item"><div class="fq">Can I use it for lessons and drills?</div><div class="fa">Yes. Forty Fifteen has three modes — Match, Drills, and Lesson. The entire report adapts to what you select. Lesson mode focuses entirely on technique. Drills mode goes deep on the specific shot being practiced.</div></div>
+  <div class="faq-item"><div class="fq">What happens to my video?</div><div class="fa">Your video is processed to extract frames and then discarded. We do not store your footage. Frames are analyzed and deleted once your report is generated.</div></div>
+  <div class="faq-item"><div class="fq">Can I cancel my Pro subscription?</div><div class="fa">Yes. Cancel anytime from your account settings. No fees, no questions. You keep access until the end of your billing period.</div></div>
+
+  <div class="divider"><div class="divider-dot"></div></div>
+
+  <div class="final">
+    <h2>Start free.<br><em>Upgrade when you are ready.</em></h2>
+    <p>No credit card required. Upload your first match and see what your game has been telling you.</p>
+    <a href="https://fortyfifteen.app" class="final-btn">Upload your first match →</a>
+    <div class="final-sub">Free forever · No card required · Cancel Pro anytime</div>
+  </div>
+
+</main>
+
+<footer>
+  <p>© 2025 Forty Fifteen. Made in Canada 🍁 by a Tennis Canada certified Club Pro.</p>
+  <p>Questions? <a href="mailto:coach@fortyfifteen.app">coach@fortyfifteen.app</a> · Even Federer asked his coach things.</p>
+</footer>
+
+<script>
+  let annual = false;
+  function flip() {
+    annual = !annual;
+    document.getElementById('tog').classList.toggle('on', annual);
+    document.getElementById('lm').classList.toggle('on', !annual);
+    document.getElementById('la').classList.toggle('on', annual);
+    document.getElementById('pm').style.display = annual ? 'none' : 'block';
+    document.getElementById('pa').style.display = annual ? 'block' : 'none';
+    document.getElementById('an').style.display = annual ? 'block' : 'none';
+    document.getElementById('psub').textContent = annual
+      ? 'Billed as $120/year. Cancel anytime.'
+      : 'Billed monthly. Cancel anytime.';
+  }
+
+  async function submitWaitlist(event) {
+    event.preventDefault();
+    const emailInput = document.getElementById('wlEmail');
+    const btn = document.getElementById('wlBtn');
+    const msg = document.getElementById('wlMsg');
+    const email = emailInput.value.trim();
+
+    msg.textContent = '';
+    msg.className = 'wl-msg';
+
+    if (!email || !email.includes('@')) {
+      msg.textContent = 'Please enter a valid email address.';
+      msg.className = 'wl-msg err';
+      return false;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Joining…';
+
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        msg.textContent = data.message || 'Something went wrong. Please try again.';
+        msg.className = 'wl-msg err';
+        btn.disabled = false;
+        btn.textContent = 'Get early access →';
+        return false;
+      }
+
+      document.getElementById('wlForm').style.display = 'none';
+      document.getElementById('wlSuccess').classList.add('show');
+    } catch (e) {
+      msg.textContent = 'Could not reach the server. Please check your connection and try again.';
+      msg.className = 'wl-msg err';
+      btn.disabled = false;
+      btn.textContent = 'Get early access →';
+    }
+    return false;
+  }
+</script>
+</body>
+</html>
