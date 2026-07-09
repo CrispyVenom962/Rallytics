@@ -3,6 +3,8 @@
 // Sources: Elite coaching publications, world-leading books, biomechanics research,
 // methodology from leading coaches and conferences around the world
 
+import { createHash } from "node:crypto";
+
 export const maxDuration = 300;
 
 const SESSION_CONTEXT = (sessionType) => {
@@ -282,7 +284,7 @@ Before returning your response, read the coach_verdict, the technique headline, 
 END UNIQUENESS ENFORCEMENT
 ══════════════════════════════════════════════════════════════ Your knowledge comes from the world's leading coaching publications, world-leading books, peer-reviewed biomechanics research, and methodology from elite coaches and conferences around the globe. You have deep knowledge of professional player biomechanics, playing styles, and technical signatures — use this to make accurate, specific pro player comparisons where clearly applicable. Every observation must include honest confidence scoring based on how many frames confirmed it. Write like a great coach talking — specific, visual, and memorable.
 
-You are analyzing ${frameCount} frame samples extracted from a ${durationLabel} tennis session. Frames are captured at high-motion moments detected by a motion analysis system — frames are selected where significant movement is occurring rather than at fixed time intervals. This means frames are biased toward actual shot moments rather than dead time between points. Most major shots should be represented. Use the evidence you see across these frames to make confident, specific observations. Where a shot type has few frames, note this and adjust your confidence accordingly.
+You are analyzing a ${durationLabel} tennis session. Visual samples have been captured at high-motion moments throughout the session — focusing on actual shot moments rather than dead time between points. Use the visual evidence you see to make confident, specific observations. Where a shot type has limited visual evidence, note this and adjust your confidence accordingly.
 
 TENNIS VALIDATION — MANDATORY FIRST STEP:
 Before producing any analysis, examine the frames and confirm this is tennis footage.
@@ -633,7 +635,10 @@ Carlos Alcaraz: Aggressive returner who takes the return early. Attacks second s
 KEY FRAME SELECTION — MANDATORY RULES
 ══════════════════════════════════════════════════════════════
 
-After completing your analysis, select 3-5 frames that CLEARLY show a specific coaching observation. Every frame you select must pass ALL validity checks below. If fewer than 3 frames pass the validity checks, return only the valid ones — never force invalid frames just to reach 3.
+FRAME IDENTIFICATION — READ THIS FIRST:
+Every one of the ${frameCount} frames has a small label burned into the top-left corner reading "F:" followed by a number, for example F:0, F:1, F:7. This number is that frame's exact frame_index. When you select a frame as evidence, you MUST report the integer from its burned-in F: label as frame_index — read it directly off the image, do not guess or estimate based on position in the sequence. This number is used to retrieve the exact frame later, so it must be exact.
+
+After completing your analysis, select 3-5 frames that CLEARLY show a specific coaching observation. For each one, pick the single frame that best captures the moment itself (e.g. the contact frame, not the whole swing) — the app will automatically display the frame immediately before and after it for motion context, so you only need to identify the one best moment. Every frame you select must pass ALL validity checks below. If fewer than 3 frames pass the validity checks, return only the valid ones — never force invalid frames just to reach 3.
 
 SHOT PHASE DEFINITIONS — identify the phase before selecting any frame:
 PHASE 1 READY: Player in ready position or split step. Valid for: split step timing, ready position, court position.
@@ -664,12 +669,12 @@ SIDE-ON: Valid for contact point depth, swing path, follow-through, unit turn.
 BEHIND-BASELINE: Valid for court position, recovery, footwork width. NOT valid for contact point depth.
 FRONT-ON: Valid for footwork and split step. NOT valid for contact point or swing path.
 
-MINIMUM EVIDENCE THRESHOLDS — before HIGH confidence in key_frames:
-- Unit turn: minimum 4 preparation phase frames
-- Contact point: minimum 5 frames with ball near contact zone
-- Follow-through: minimum 4 post-contact frames showing racket path
-- Recovery: minimum 4 post-shot movement frames
-If fewer frames available, note limited evidence and use MEDIUM confidence.
+MINIMUM EVIDENCE THRESHOLDS — before HIGH confidence:
+- Unit turn: minimum 4 preparation phase observations
+- Contact point: minimum 5 observations with ball near contact zone
+- Follow-through: minimum 4 post-contact observations showing racket path
+- Recovery: minimum 4 post-shot movement observations
+If fewer observations available, note limited evidence and use MEDIUM confidence.
 
 SHOT DIRECTION — RIGHT HANDED PLAYER:
 - Forehand follow-through finishes over or near the LEFT shoulder
@@ -688,11 +693,9 @@ FOR EACH FRAME YOU SELECT — verify all of these:
 5. Confirm evidence threshold is met
 Return fewer frames rather than invalid ones.
 
-key_frames fields:
-- frame_index: integer from the F: label burned in the corner
-- shot_type: phase and shot e.g. forehand_contact or serve_follow
-- label: 3-5 words describing what is specifically visible
-- observation: one sentence — NO apostrophes, NO quotes, NO special characters
+key_frames OUTPUT — for each frame you select, return an object with exactly these three fields:
+{ "frame_index": (integer read from the frame's burned-in F: label — not its position in your reasoning), "label": "3-5 word description of what this shows e.g. Late contact point - forehand", "observation": "1-2 sentences describing exactly what is visible in this frame and why it supports the coaching point made elsewhere in this report" }
+Return 3-5 of these objects in the key_frames array. Return fewer than 3 only if fewer pass the validity checks above — never fabricate a frame_index that was not visible in the actual footage.
 
 ══════════════════════════════════════════════════════════════
 CONFIDENCE SCORING — MANDATORY FOR EVERY OBSERVATION
@@ -701,14 +704,14 @@ CONFIDENCE SCORING — MANDATORY FOR EVERY OBSERVATION
 Every significant technical observation must include a confidence level and evidence count. This builds trust and honest reporting.
 
 CONFIDENCE LEVELS:
-HIGH = observed clearly in 70%+ of relevant frames. State as fact.
-MEDIUM = observed in 40-69% of relevant frames or partially visible. Use "appears to" or "suggests".
-LOW = observed in fewer than 40% of frames or key evidence obscured. Use "possible" or "camera angle limits certainty".
+HIGH = observed clearly across the majority of relevant shots. State as fact.
+MEDIUM = observed in roughly half of relevant shots or partially visible. Use "appears to" or "suggests".
+LOW = observed in a minority of shots or key evidence obscured. Use "possible" or "camera angle limits certainty".
 
-EVIDENCE COUNT FORMAT: Always state how many frames confirmed the observation out of how many relevant frames were analyzed.
-Example: "Late contact observed in 18 of 24 forehand frames (HIGH confidence)."
-Example: "Grip appears semi-western based on 6 of 14 forehand frames where grip was visible (MEDIUM confidence)."
-Example: "Serve toss position difficult to assess — only 3 serve frames captured (LOW confidence)."
+EVIDENCE FORMAT: State how many shots confirmed the observation.
+Example: "Late contact observed on 18 of 24 forehand shots analyzed (HIGH confidence)."
+Example: "Grip appears semi-western based on shots where grip was visible (MEDIUM confidence)."
+Example: "Serve toss position difficult to assess from available footage (LOW confidence)."
 
 CAMERA ANGLE LIMITATIONS — ALWAYS ACKNOWLEDGE:
 Side-on camera: excellent for contact point, swing path, and follow-through. Limited for grip and court depth.
@@ -754,7 +757,7 @@ All shot_distribution count fields must be integers not strings.
   "match_overview": "2-3 honest sentences: player type biggest strength biggest limiting factor",
   "player_level": "Beginner | Developing | Intermediate | Advanced Club | High Performance",
   "surface_detected": "Clay | Hard | Grass | Unknown",
-  "frames_analyzed": ${frameCount},
+  "duration_analyzed": "${durationLabel}",
   "shot_distribution": {
     "serves_detected": 0,
     "forehand_groundstrokes": 0,
@@ -965,53 +968,89 @@ All shot_distribution count fields must be integers not strings.
     "mental_cue": "One between-point self-talk phrase personalised to this player"
   },
   "ntrp_milestone": {
-    "current_estimate": "Honest NTRP estimate with one sentence justification",
+    "current_estimate": "NTRP level only e.g. 3.5 or Between 3.5 and 4.0 — keep it to 6 words max",
     "next_milestone": "The single skill whose consistent execution would move this player to the next NTRP level",
     "estimated_timeline": "Realistic honest estimate e.g. 6-8 weeks of focused practice",
     "milestone_marker": "How the player will know when they have reached the next level — what will feel different"
   },
   "coach_verdict": "One direct honest sentence the kind a real coach says after watching film. Make it memorable — the kind of thing a player writes down and puts on their bag.",
-  "key_frames": []
+  "key_frames": [
+    {
+      "frame_index": 0,
+      "label": "3-5 word description e.g. Late contact point - forehand",
+      "observation": "1-2 sentences describing exactly what is visible and why it matters"
+    }
+  ]
 }`.trim();
+
+// ─── Server-Side Duplicate Video Detection ─────────────────────────────────────
+// Client-side localStorage hashing (in App.jsx) is only a fast UX pre-check —
+// it's trivially bypassed (incognito, different browser, clearing storage, or
+// hitting this endpoint directly). This is the real gate: it runs against the
+// actual frames sent, keyed to the user's email in Airtable, and rejects BEFORE
+// the Anthropic API call fires so a repeat upload never costs API tokens.
+function hashFrames(frames) {
+  // Hash the actual frame content sent to Claude, not the original file bytes —
+  // this also catches re-exported/re-encoded copies of the same source clip.
+  const hash = createHash("sha256");
+  for (const f of frames) hash.update(f);
+  return hash.digest("hex").slice(0, 32);
+}
+
+function parseVideoHashes(field) {
+  if (!field) return [];
+  try {
+    const arr = JSON.parse(field);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
 
 // ─── Airtable Email Gate ───────────────────────────────────────────────────────
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 const AIRTABLE_TABLE = "Analysis";
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 const MAX_FREE = 2;
+const MAX_STORED_HASHES = 20; // cap per-record list length, oldest dropped first
 const ADMIN_EMAILS = ["ayerswilliam@gmail.com", "nimrodayers@gmail.com", "rallyticshq@gmail.com"];
 
 async function checkEmailUsage(email) {
-  if (!AIRTABLE_BASE_ID || !AIRTABLE_API_KEY) return { count: 0, recordId: null };
+  if (!AIRTABLE_BASE_ID || !AIRTABLE_API_KEY) return { count: 0, recordId: null, videoHashes: [] };
   try {
     const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}?filterByFormula=${encodeURIComponent(`{Email}="${email}"`)}`;
     const r = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` } });
     const data = await r.json();
     if (data.records && data.records.length > 0) {
       const record = data.records[0];
-      return { count: record.fields.Count || 0, recordId: record.id };
+      return {
+        count: record.fields.Count || 0,
+        recordId: record.id,
+        videoHashes: parseVideoHashes(record.fields.VideoHashes),
+      };
     }
-    return { count: 0, recordId: null };
+    return { count: 0, recordId: null, videoHashes: [] };
   } catch (e) {
     console.error("Airtable check error:", e.message);
-    return { count: 0, recordId: null };
+    return { count: 0, recordId: null, videoHashes: [] };
   }
 }
 
-async function incrementEmailUsage(email, firstName, level, recordId, currentCount) {
+async function incrementEmailUsage(email, firstName, level, recordId, currentCount, videoHashes, newHash) {
   if (!AIRTABLE_BASE_ID || !AIRTABLE_API_KEY) return;
+  const updatedHashes = [...videoHashes, newHash].slice(-MAX_STORED_HASHES);
   try {
     if (recordId) {
       await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}/${recordId}`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ fields: { Count: currentCount + 1 } }),
+        body: JSON.stringify({ fields: { Count: currentCount + 1, VideoHashes: JSON.stringify(updatedHashes) } }),
       });
     } else {
       await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ fields: { Email: email, FirstName: firstName, Level: level, Count: 1 } }),
+        body: JSON.stringify({ fields: { Email: email, FirstName: firstName, Level: level, Count: 1, VideoHashes: JSON.stringify(updatedHashes) } }),
       });
     }
   } catch (e) {
@@ -1032,15 +1071,32 @@ export default async function handler(req, res) {
 
   let emailRecordId = null;
   let emailCount = 0;
+  let emailVideoHashes = [];
   const emailNorm = email?.toLowerCase().trim() || "";
   const isAdmin = ADMIN_EMAILS.includes(emailNorm);
 
-  if (email && !isAdmin) {
+  // Hash the exact frames being sent — used for both usage lookup and duplicate check
+  const videoHash = hashFrames(frames);
+
+  if (email) {
     try {
       const usage = await checkEmailUsage(emailNorm);
       emailCount = usage.count;
       emailRecordId = usage.recordId;
-      if (emailCount >= MAX_FREE) {
+      emailVideoHashes = usage.videoHashes;
+
+      // Duplicate check is skipped for admin emails — testing accuracy requires
+      // re-running the same clip repeatedly, and admins already bypass the
+      // free-tier limit for the same reason. Everyone else is gated normally
+      // since this exists to stop wasted API spend from repeat uploads.
+      if (!isAdmin && emailVideoHashes.includes(videoHash)) {
+        return res.status(409).json({
+          error: "DUPLICATE_VIDEO",
+          message: "This exact video has already been analyzed with this email. Check your inbox for the report, or upload a different clip.",
+        });
+      }
+
+      if (!isAdmin && emailCount >= MAX_FREE) {
         return res.status(403).json({
           error: "EMAIL_LIMIT_REACHED",
           message: `You have already used your ${MAX_FREE} free analyses with this email. Join the Pro waitlist for unlimited access.`,
@@ -1075,7 +1131,7 @@ export default async function handler(req, res) {
   const content = [
     {
       type: "text",
-      text: `${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${sessionType === "match" ? "match" : sessionType === "drilling" ? "drilling session" : "lesson"}.${labeledFrameDesc}\n\nUse the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.\n\nFor key_frames: every frame has a label burned into the top-left corner — "F:0", "F:1" etc. Read that label to get the correct frame_index. Return the exact integer from the F: label as "frame_index". This guarantees the correct frame is shown to the player. Only select frames where the observation is unmistakably visible and the F: label is readable.`,
+      text: `${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${sessionType === "match" ? "match" : sessionType === "drilling" ? "drilling session" : "lesson"}.${labeledFrameDesc}\n\nUse the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
     },
     ...frames.map((base64, idx) => ({
       type: "image",
@@ -1156,8 +1212,8 @@ export default async function handler(req, res) {
       });
     }
 
-    if (!isAdmin) {
-      await incrementEmailUsage(emailNorm, firstName, level, emailRecordId, emailCount);
+    if (email) {
+      await incrementEmailUsage(emailNorm, firstName, level, emailRecordId, emailCount, emailVideoHashes, videoHash);
     }
 
     await sendResultsEmail({ firstName, email, level, result: parsed });
@@ -1247,10 +1303,89 @@ async function sendResultsEmail({ firstName, email, level, result }) {
     ${shotDist.net_game_visible === false ? `<div style="margin-top:6px;font-size:12px;color:#444;">Net game: <span style="color:#f59e0b;">not seen in this match</span></div>` : ""}
   </td></tr>` : "";
 
+  // ── Strengths chips — mirrors the "What is working" section on the platform ──
+  const strengthsHtml = (strengths, color) => {
+    if (!strengths?.length) return "";
+    const chips = strengths.map(s => `<span style="display:inline-block;background:#080e1f;border:1px solid #1a2a4a;border-radius:6px;padding:6px 12px;font-size:12px;color:${color};font-weight:600;margin:0 6px 6px 0;">✓ ${s}</span>`).join("");
+    return `<div style="margin-bottom:4px;">${chips}</div>`;
+  };
+
+  // ── Shot-by-shot breakdown — mirrors the platform's ShotBreakdown component.
+  // This is where backhand_topspin, backhand_slice, and backhand_type live —
+  // the platform report shows these and the email previously did not.
+  const shotBreakdownHtml = (sb) => {
+    if (!sb) return "";
+    const rows = Object.entries(sb).map(([key, val]) => {
+      const label = key.replace(/_/g, " ");
+      if (typeof val === "string") {
+        const formatted = val
+          .replace("one_handed", "One-handed")
+          .replace("two_handed", "Two-handed")
+          .replace("both_seen", "Both seen")
+          .replace("not_visible", "Not visible")
+          .replace("not_seen", "Not seen");
+        return `<div style="background:#0e0e0e;border:1px solid #181818;border-radius:8px;padding:12px 14px;margin-bottom:8px;"><div style="font-size:11px;color:#3a3a3a;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:5px;">${label}</div><p style="margin:0;font-size:13px;color:#aaa;line-height:1.6;">${formatted}</p></div>`;
+      }
+      if (typeof val === "boolean") {
+        return `<div style="background:#0e0e0e;border:1px solid #181818;border-radius:8px;padding:12px 14px;margin-bottom:8px;"><div style="font-size:11px;color:#3a3a3a;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:5px;">${label}</div><p style="margin:0;font-size:13px;color:#aaa;line-height:1.6;">${val ? "Yes" : "No"}</p></div>`;
+      }
+      if (typeof val === "object" && val !== null) {
+        if (val.confidence === "not_seen") return "";
+        const assessment = val.assessment || "";
+        const keyFields = Object.entries(val)
+          .filter(([fk, fv]) => typeof fv === "string" && fk !== "assessment" && fk !== "confidence" && fv !== "Not visible" && fv !== "not_seen" && fv !== "Unknown")
+          .map(([fk, fv]) => `${fk.replace(/_/g, " ")}: ${fv}`)
+          .join(" · ");
+        const displayVal = assessment
+          ? `${assessment}${val.confidence ? ` (${val.confidence})` : ""}${keyFields ? " — " + keyFields : ""}`
+          : keyFields || null;
+        if (!displayVal) return "";
+        return `<div style="background:#0e0e0e;border:1px solid #181818;border-radius:8px;padding:12px 14px;margin-bottom:8px;"><div style="font-size:11px;color:#3a3a3a;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:5px;">${label}</div><p style="margin:0;font-size:13px;color:#aaa;line-height:1.6;">${displayVal}</p></div>`;
+      }
+      return "";
+    }).join("");
+    return rows ? `
+    <div style="background:#080808;border:1px solid #111;border-radius:12px;padding:18px;margin-bottom:12px;">
+      <div style="font-size:9px;color:#60a5fa;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:14px;">🎾 Shot-by-shot breakdown</div>
+      ${rows}
+    </div>` : "";
+  };
+
+  // ── Recurring patterns — technique (with biomechanical_cause/downstream_effects/drill)
+  // and strategy (with what_it_looks_like/impact/fix) use slightly different fields,
+  // so render whichever are present rather than assuming the full technique shape.
+  const patternsHtml = (patterns, accentColor) => {
+    if (!patterns?.length) return "";
+    const items = patterns.map(p => `
+      <div style="background:#0e0e0e;border:1px solid #1e1e1e;border-radius:10px;padding:16px 18px;margin-bottom:10px;">
+        <div style="font-size:15px;font-weight:800;color:#e0e0e0;margin-bottom:8px;">${p.pattern || ""}</div>
+        ${p.frequency ? `<div style="font-size:12px;color:#888;margin-bottom:10px;">${p.frequency}</div>` : ""}
+        ${p.what_it_looks_like ? `<div style="margin-bottom:8px;"><div style="font-size:10px;color:#3a3a3a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">What I see</div><p style="margin:0;font-size:13px;color:#aaa;line-height:1.6;">${p.what_it_looks_like}</p></div>` : ""}
+        ${p.biomechanical_cause ? `<div style="margin-bottom:8px;"><div style="font-size:10px;color:#3a3a3a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Root cause</div><p style="margin:0;font-size:13px;color:#aaa;line-height:1.6;">${p.biomechanical_cause}</p></div>` : ""}
+        ${p.downstream_effects ? `<div style="margin-bottom:8px;"><div style="font-size:10px;color:#3a3a3a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Downstream effects</div><p style="margin:0;font-size:13px;color:#aaa;line-height:1.6;">${p.downstream_effects}</p></div>` : ""}
+        ${p.impact ? `<div style="margin-bottom:8px;"><div style="font-size:10px;color:#3a3a3a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Impact</div><p style="margin:0;font-size:13px;color:#aaa;line-height:1.6;">${p.impact}</p></div>` : ""}
+        ${p.fix ? `<div style="background:#080e1f;border-left:2px solid ${accentColor};padding:8px 12px;border-radius:0 6px 6px 0;margin-top:4px;"><div style="font-size:10px;color:${accentColor};text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;">The fix</div><p style="margin:0;font-size:13px;color:#c8e8c8;line-height:1.6;">${p.fix}</p></div>` : ""}
+        ${p.drill ? `<div style="margin-top:8px;font-size:12px;color:#666;"><span style="color:${accentColor};text-transform:uppercase;letter-spacing:0.08em;font-size:10px;">Drill: </span>${p.drill}</div>` : ""}
+      </div>`).join("");
+    return items;
+  };
+
+  const patternCorrelationsHtml = (correlations) => {
+    if (!correlations?.length) return "";
+    return correlations.map(c => `
+      <div style="background:#0e0e0e;border:1px solid #1e1535;border-radius:10px;padding:16px 18px;margin-bottom:10px;">
+        <div style="font-size:15px;font-weight:800;color:#e0e0e0;margin-bottom:8px;">${c.correlation || ""}</div>
+        ${c.explanation ? `<div style="margin-bottom:8px;"><div style="font-size:10px;color:#3a3a3a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">How they interact</div><p style="margin:0;font-size:13px;color:#aaa;line-height:1.6;">${c.explanation}</p></div>` : ""}
+        ${c.combined_impact ? `<div style="background:#080e1f;border-left:2px solid #a78bfa;padding:8px 12px;border-radius:0 6px 6px 0;"><div style="font-size:10px;color:#a78bfa;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;">Combined impact</div><p style="margin:0;font-size:13px;color:#c8e8c8;line-height:1.6;">${c.combined_impact}</p></div>` : ""}
+      </div>`).join("");
+  };
+
   const html = `<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#111111;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
+<!-- Preheader text — controls inbox preview snippet -->
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">Your coaching report is ready — technique scores, top fixes, drills, and on-court cues inside.&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#111111;">
 <tr><td align="center" style="padding:32px 16px 48px;">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
@@ -1305,6 +1440,62 @@ async function sendResultsEmail({ firstName, email, level, result }) {
     <p style="color:#888;font-size:14px;margin:0;line-height:1.75;">${result.technique.pro_style_comparison}</p>
   </td></tr>` : ""}
 
+  ${tech.strengths?.length > 0 ? `
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    <div style="font-size:9px;color:#5bc85b;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:12px;">What is working — technique</div>
+    ${strengthsHtml(tech.strengths, "#5bc85b")}
+  </td></tr>` : ""}
+
+  ${tech.camera_note ? `
+  <tr><td style="background:#0a0a0a;padding:14px 28px;border-bottom:1px solid #1a1a1a;">
+    <p style="margin:0;font-size:12px;color:#555;line-height:1.6;font-style:italic;">📷 ${tech.camera_note}</p>
+  </td></tr>` : ""}
+
+  ${tech.root_fault ? `
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    <div style="background:#080e1f;border:1px solid #0e1e3a;border-radius:10px;padding:16px 18px;">
+      <div style="font-size:9px;color:#3b82f6;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:8px;">Root fault</div>
+      <p style="margin:0;font-size:14px;color:#ccc;font-weight:600;line-height:1.6;">${tech.root_fault}</p>
+    </div>
+  </td></tr>` : ""}
+
+  ${tech.shot_breakdown ? `
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    ${shotBreakdownHtml(tech.shot_breakdown)}
+  </td></tr>` : ""}
+
+  ${tech.patterns?.length > 0 ? `
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    <div style="font-size:9px;color:#3b82f6;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:14px;">Recurring technical patterns</div>
+    ${patternsHtml(tech.patterns, "#3b82f6")}
+  </td></tr>` : ""}
+
+  ${result.pattern_correlations?.length > 0 ? `
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    <div style="font-size:9px;color:#a78bfa;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:14px;">Pattern correlations</div>
+    ${patternCorrelationsHtml(result.pattern_correlations)}
+  </td></tr>` : ""}
+
+  ${strat.headline ? `
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    <div style="font-size:9px;color:#f59e0b;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:8px;">Playing style</div>
+    <div style="font-size:20px;font-weight:900;color:#e8e8e8;letter-spacing:-0.02em;margin-bottom:6px;">${strat.headline}</div>
+    ${strat.surface_note ? `<p style="margin:8px 0 0;font-size:13px;color:#777;line-height:1.6;">${strat.surface_note}</p>` : ""}
+    ${strat.net_game_tendency ? `<p style="margin:10px 0 0;font-size:13px;color:#888;"><span style="color:#444;text-transform:uppercase;letter-spacing:0.08em;font-size:10px;">Net game: </span>${strat.net_game_tendency}</p>` : ""}
+  </td></tr>` : ""}
+
+  ${strat.strengths?.length > 0 ? `
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    <div style="font-size:9px;color:#5bc85b;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:12px;">What is working — strategy</div>
+    ${strengthsHtml(strat.strengths, "#5bc85b")}
+  </td></tr>` : ""}
+
+  ${strat.patterns?.length > 0 ? `
+  <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
+    <div style="font-size:9px;color:#f59e0b;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:14px;">Tactical patterns</div>
+    ${patternsHtml(strat.patterns, "#f59e0b")}
+  </td></tr>` : ""}
+
   <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
     <div style="font-size:9px;color:#3b82f6;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:16px;">Your top 3 technical fixes</div>
     ${fixesHtml}
@@ -1313,7 +1504,12 @@ async function sendResultsEmail({ firstName, email, level, result }) {
   ${mental.psychological_tip || mental.observation ? `
   <tr><td style="background:#0a0a0a;padding:20px 28px;border-bottom:1px solid #1a1a1a;">
     <div style="font-size:9px;color:#a78bfa;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:12px;">Mental game insight</div>
+    ${mental.headline ? `<div style="font-size:16px;font-weight:800;color:#e0e0e0;margin-bottom:10px;">${mental.headline}</div>` : ""}
     ${mental.observation ? `<p style="color:#666;font-size:13px;margin:0 0 12px;line-height:1.7;">${mental.observation}</p>` : ""}
+    ${mental.failure_mode && mental.failure_mode !== "None Visible" ? `<div style="margin-bottom:10px;font-size:12px;color:#888;"><span style="color:#444;text-transform:uppercase;letter-spacing:0.08em;font-size:10px;">Failure mode: </span>${mental.failure_mode}</div>` : ""}
+    ${mental.between_point_routine ? `<div style="margin-bottom:10px;"><div style="font-size:10px;color:#3a3a3a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Between-point routine</div><p style="margin:0;font-size:13px;color:#aaa;line-height:1.6;">${mental.between_point_routine}</p></div>` : ""}
+    ${mental.momentum_pattern ? `<div style="margin-bottom:10px;"><div style="font-size:10px;color:#3a3a3a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Momentum pattern</div><p style="margin:0;font-size:13px;color:#aaa;line-height:1.6;">${mental.momentum_pattern}</p></div>` : ""}
+    ${mental.mental_strength ? `<div style="margin-bottom:10px;background:#080e1f;border-left:2px solid #5bc85b;padding:8px 12px;border-radius:0 6px 6px 0;"><span style="font-size:10px;color:#5bc85b;text-transform:uppercase;letter-spacing:0.1em;">Mental strength: </span><span style="font-size:13px;color:#c8e8c8;">${mental.mental_strength}</span></div>` : ""}
     ${mental.psychological_tip ? `
     <div style="background:#0d0a1a;border:1px solid #1e1535;border-radius:10px;padding:14px 16px;">
       <div style="font-size:9px;color:#a78bfa;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;">This week's psychological tip</div>
