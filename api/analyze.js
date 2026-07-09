@@ -632,70 +632,12 @@ Roger Federer: Built points around serve-plus-one combinations. Frequently attac
 Carlos Alcaraz: Aggressive returner who takes the return early. Attacks second serves. Changes direction comfortably and transitions forward whenever he creates an opening. Among the most complete point construction patterns on the current tour.
 
 ══════════════════════════════════════════════════════════════
-KEY FRAME SELECTION — MANDATORY RULES
+KEY FRAME SELECTION — DISABLED
 ══════════════════════════════════════════════════════════════
 
-FRAME IDENTIFICATION — READ THIS FIRST:
-Every one of the ${frameCount} frames has a small label burned into the top-left corner reading "F:" followed by a number, for example F:0, F:1, F:7. This number is that frame's exact frame_index. When you select a frame as evidence, you MUST report the integer from its burned-in F: label as frame_index — read it directly off the image, do not guess or estimate based on position in the sequence. This number is used to retrieve the exact frame later, so it must be exact.
+Evidence frames are disabled pending a redesign. Three attempts at having you read a burned-in frame number and report it back accurately have produced wrong shot-type identifications and evidence frames that do not match the coaching text. Do not attempt frame selection.
 
-After completing your analysis, select 3-5 frames that CLEARLY show a specific coaching observation. For each one, pick the single frame that best captures the moment itself (e.g. the contact frame, not the whole swing) — the app will automatically display the frame immediately before and after it for motion context, so you only need to identify the one best moment. Every frame you select must pass ALL validity checks below. If fewer than 3 frames pass the validity checks, return only the valid ones — never force invalid frames just to reach 3.
-
-SHOT PHASE DEFINITIONS — identify the phase before selecting any frame:
-PHASE 1 READY: Player in ready position or split step. Valid for: split step timing, ready position, court position.
-PHASE 2 PREPARATION: Player rotating for unit turn, racket taking back. Valid for: unit turn completeness, backswing shape.
-PHASE 3 FORWARD SWING: Racket moving toward contact. Valid for: swing path, elbow position.
-PHASE 4 CONTACT: Ball at or very near strings. Valid for: contact point depth, arm extension, body position.
-PHASE 5 FOLLOW THROUGH: Racket past contact. Valid for: follow-through height and direction, finish position.
-BETWEEN POINTS: Player walking, standing idle, bouncing ball. NEVER valid for technique observations.
-
-INVALID FRAMES — NEVER SELECT:
-- Player walking between points — normal tennis, not a fault
-- Player sprinting wide on a defensive ball — unit turn and contact point cannot be assessed on full sprint
-- Player facing directly away from camera — swing mechanics not visible
-- Ball not visible near the player — cannot assess contact point
-- Phase cannot be identified — if unclear which phase, do not use
-- Between rallies — player at baseline waiting, walking back, bouncing ball
-- Observation requires a different phase than what the frame shows
-
-VALID FRAMES — ONLY SELECT WHEN ALL ARE TRUE:
-- Player is clearly mid-swing or at contact — in-point action visible
-- The specific body part relevant to the observation is clearly visible
-- Camera angle supports the observation
-- The phase of the shot is identifiable
-- What you are describing is unmistakably visible not inferred
-
-CAMERA ANGLE RULES:
-SIDE-ON: Valid for contact point depth, swing path, follow-through, unit turn.
-BEHIND-BASELINE: Valid for court position, recovery, footwork width. NOT valid for contact point depth.
-FRONT-ON: Valid for footwork and split step. NOT valid for contact point or swing path.
-
-MINIMUM EVIDENCE THRESHOLDS — before HIGH confidence:
-- Unit turn: minimum 4 preparation phase observations
-- Contact point: minimum 5 observations with ball near contact zone
-- Follow-through: minimum 4 post-contact observations showing racket path
-- Recovery: minimum 4 post-shot movement observations
-If fewer observations available, note limited evidence and use MEDIUM confidence.
-
-SHOT DIRECTION — RIGHT HANDED PLAYER:
-- Forehand follow-through finishes over or near the LEFT shoulder
-- One-handed backhand follow-through extends toward net then rises
-- Serve follow-through finishes toward right hip or thigh
-A frame showing racket over the wrong shoulder is NOT that shot.
-
-BETWEEN POINT FRAMES — STRICT:
-Player walking back or bouncing ball is NOT showing a recovery fault or tactical fault. Do not select these frames to illustrate technique issues.
-
-FOR EACH FRAME YOU SELECT — verify all of these:
-1. Identify the phase
-2. Confirm it passes all valid criteria
-3. Confirm it fails none of the invalid criteria
-4. Confirm camera angle supports the observation
-5. Confirm evidence threshold is met
-Return fewer frames rather than invalid ones.
-
-key_frames OUTPUT — for each frame you select, return an object with exactly these three fields:
-{ "frame_index": (integer read from the frame's burned-in F: label — not its position in your reasoning), "label": "3-5 word description of what this shows e.g. Late contact point - forehand", "observation": "1-2 sentences describing exactly what is visible in this frame and why it supports the coaching point made elsewhere in this report" }
-Return 3-5 of these objects in the key_frames array. Return fewer than 3 only if fewer pass the validity checks above — never fabricate a frame_index that was not visible in the actual footage.
+key_frames: leave as empty array — evidence frames are disabled
 
 ══════════════════════════════════════════════════════════════
 CONFIDENCE SCORING — MANDATORY FOR EVERY OBSERVATION
@@ -974,13 +916,7 @@ All shot_distribution count fields must be integers not strings.
     "milestone_marker": "How the player will know when they have reached the next level — what will feel different"
   },
   "coach_verdict": "One direct honest sentence the kind a real coach says after watching film. Make it memorable — the kind of thing a player writes down and puts on their bag.",
-  "key_frames": [
-    {
-      "frame_index": 0,
-      "label": "3-5 word description e.g. Late contact point - forehand",
-      "observation": "1-2 sentences describing exactly what is visible and why it matters"
-    }
-  ]
+  "key_frames": []
 }`.trim();
 
 // ─── Server-Side Duplicate Video Detection ─────────────────────────────────────
