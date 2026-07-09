@@ -804,6 +804,16 @@ export default function App() {
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <a href="/pricing.html" style={{
+            color: "#888", fontSize: "14px", padding: "7px 16px",
+            textDecoration: "none", letterSpacing: "0.04em",
+            transition: "color 0.2s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.color = "#3b82f6"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "#888"; }}
+          >
+            Pricing
+          </a>
           {!["upload", "working"].includes(stage) && (
             <button onClick={reset} style={{
               background: "none", border: "1px solid #1e1e1e", borderRadius: "8px",
@@ -1315,12 +1325,12 @@ export default function App() {
                   <span style={{ fontSize: "14px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.15em" }}>Coming soon</span>
                 </div>
                 <h3 style={{ fontSize: "22px", fontWeight: "900", letterSpacing: "-0.02em", margin: "0 0 10px", color: "#e8e8e8" }}>
-                  Unlimited analyses. Founding pricing. First access.
+                  A generous monthly allowance. Founding pricing. First access.
                 </h3>
                 <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#888", lineHeight: "1.7", maxWidth: "420px", marginLeft: "auto", marginRight: "auto" }}>
-                  Pro members get unlimited analyses and lock in founding pricing before public launch. Session history and progress tracking coming with full Pro release.
+                  Pro members get a generous monthly allowance and lock in founding pricing before public launch. Session history and progress tracking coming with full Pro release.
                 </p>
-                <a href="https://tally.so/r/RG2pGj" target="_blank" rel="noopener noreferrer"
+                <a href="/pricing.html"
                   style={{ display: "inline-block", background: "#c8e63c", color: "#060606", borderRadius: "10px", padding: "13px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}>
                   Get early access to Forty Fifteen Pro
                 </a>
@@ -2224,9 +2234,9 @@ export default function App() {
                   Forty Fifteen is free during beta.
                 </p>
                 <p style={{ margin: "0 0 18px", fontSize: "13px", color: "#888", lineHeight: "1.6" }}>
-                  Pro gives you unlimited analyses and founding pricing. Session history and progress tracking coming with full Pro release.
+                  Pro gives you a generous monthly allowance and founding pricing. Session history and progress tracking coming with full Pro release.
                 </p>
-                <a href="https://tally.so/r/RG2pGj" target="_blank" rel="noopener noreferrer"
+                <a href="/pricing.html"
                   style={{ display: "inline-block", background: "#c8e63c", color: "#060606", borderRadius: "10px", padding: "12px 28px", fontWeight: "900", fontSize: "14px", textDecoration: "none", letterSpacing: "0.01em" }}>
                   Get early access to Forty Fifteen Pro
                 </a>
