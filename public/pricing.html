@@ -67,31 +67,6 @@
   .hero h1 em { color: #e0e0e0; font-style: normal; }
   .hero p { font-size: 15px; color: #777; line-height: 1.7; max-width: 420px; margin: 0 auto; }
 
-  /* ── TOGGLE ── */
-  .toggle-row {
-    display: flex; align-items: center; justify-content: center;
-    gap: 12px; margin-bottom: 32px;
-  }
-  .t-lbl { font-size: 13px; color: #444; cursor: pointer; }
-  .t-lbl.on { color: #e0e0e0; font-weight: 600; }
-  .t-switch {
-    width: 44px; height: 24px; background: #1a1a1a;
-    border-radius: 12px; border: none; cursor: pointer;
-    position: relative; transition: background 0.2s; flex-shrink: 0;
-  }
-  .t-switch.on { background: #3b82f6; }
-  .t-switch::after {
-    content: ''; position: absolute; top: 3px; left: 3px;
-    width: 18px; height: 18px; border-radius: 50%; background: #fff;
-    transition: transform 0.2s;
-  }
-  .t-switch.on::after { transform: translateX(20px); }
-  .save-pill {
-    background: #0a1f08; border: 1px solid #1a3810;
-    border-radius: 20px; padding: 3px 10px;
-    font-size: 10px; color: #5bc85b; font-weight: 700;
-  }
-
   /* ── CARDS ── */
   .cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 48px; }
 
@@ -132,7 +107,6 @@
   }
   .price sup { font-size: 20px; color: #555; vertical-align: top; margin-top: 8px; display: inline-block; }
   .price .per { font-size: 14px; font-weight: 400; color: #444; }
-  .price-alt { display: none; }
   .plan-sub { font-size: 13px; color: #666; margin-bottom: 22px; margin-top: 4px; }
 
   .feats { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
@@ -145,8 +119,6 @@
   }
   .ic-y { background: rgba(59,130,246,0.12); color: #3b82f6; }
   .ic-n { background: #111; color: #2a2a2a; }
-
-  .ann-note { display: none; text-align: center; font-size: 12px; color: #5bc85b; margin-bottom: 14px; }
 
   .btn {
     display: block; width: 100%; padding: 14px;
@@ -315,7 +287,7 @@
 
   <div class="value-anchor">
     <div class="va-label">The Math</div>
-    <div class="va-head">One court session with a coach costs more than <em>a full year</em> of Pro.</div>
+    <div class="va-head">One court session with a coach costs <em>more than six months</em> of Pro.</div>
     <div class="va-compare">
       <div class="va-box va-box-a">
         <div class="va-num">$80–100</div>
@@ -323,18 +295,11 @@
       </div>
       <div class="va-vs">vs</div>
       <div class="va-box va-box-b">
-        <div class="va-num">$120</div>
-        <div class="va-sub">Pro, billed annually</div>
+        <div class="va-num">$12</div>
+        <div class="va-sub">Pro, per month</div>
       </div>
     </div>
-    <p class="va-note">Forty Fifteen runs the same coaching frameworks — biomechanics, tactical pattern recognition, drill prescription — on every match you upload, all year, for less than one hour on the court. It is not a replacement for your coach. It is what you bring to your next session already knowing.</p>
-  </div>
-
-  <div class="toggle-row">
-    <span class="t-lbl on" id="lm">Monthly</span>
-    <button class="t-switch" id="tog" onclick="flip()"></button>
-    <span class="t-lbl" id="la">Annual</span>
-    <span class="save-pill">2 months free</span>
+    <p class="va-note">Forty Fifteen runs the same coaching frameworks — biomechanics, tactical pattern recognition, drill prescription — on every match you upload, every month, for a fraction of one hour on the court. It is not a replacement for your coach. It is what you bring to your next session already knowing.</p>
   </div>
 
   <div class="cards">
@@ -349,9 +314,6 @@
         <li><div class="ic ic-y">✓</div>Drill prescriptions and on-court cues</li>
         <li><div class="ic ic-y">✓</div>Report emailed to you</li>
         <li><div class="ic ic-n">–</div>Higher monthly allowance</li>
-        <li><div class="ic ic-n">–</div>Session history</li>
-        <li><div class="ic ic-n">–</div>Progress tracking</li>
-        <li><div class="ic ic-n">–</div>Coach sharing</li>
       </ul>
       <a href="https://fortyfifteen.app" class="btn btn-ghost">Start for free</a>
     </div>
@@ -359,24 +321,20 @@
     <div class="card card-pro">
       <div class="card-badge">Most popular</div>
       <div class="plan-label plan-label-pro">Pro</div>
-      <div class="price" id="pm"><sup>$</sup>12<span class="per">/month</span></div>
-      <div class="price price-alt" id="pa"><sup>$</sup>10<span class="per">/month</span></div>
-      <div class="plan-sub" id="psub">Billed monthly. Cancel anytime.</div>
+      <div class="price"><sup>$</sup>12<span class="per">/month</span></div>
+      <div class="plan-sub">Billed monthly. Cancel anytime.</div>
       <ul class="feats">
         <li class="hi"><div class="ic ic-y">✓</div>A generous monthly analysis allowance</li>
-        <li class="hi"><div class="ic ic-y">✓</div>Session history — every past report</li>
-        <li class="hi"><div class="ic ic-y">✓</div>Progress tracking across matches</li>
         <li class="hi"><div class="ic ic-y">✓</div>Full coaching report every upload</li>
         <li class="hi"><div class="ic ic-y">✓</div>Drill prescriptions and on-court cues</li>
-        <li class="hi"><div class="ic ic-y">✓</div>Coach sharing</li>
         <li class="hi"><div class="ic ic-y">✓</div>First access to every new feature</li>
       </ul>
-      <div class="ann-note" id="an">Billed as $120/year — you save $24</div>
+      <p style="font-size:11px;color:#3a3a3a;margin:0 0 18px;line-height:1.6;font-style:italic;">On the roadmap: session history, progress tracking, coach sharing.</p>
 
       <form class="wl-form" id="wlForm" onsubmit="return submitWaitlist(event)">
         <div class="wl-row">
           <input class="wl-input" id="wlEmail" type="email" placeholder="you@email.com" required autocomplete="email">
-          <button class="wl-btn" id="wlBtn" type="submit">Get early access →</button>
+          <button class="wl-btn" id="wlBtn" type="submit">Join the waitlist →</button>
         </div>
         <p class="wl-msg" id="wlMsg"></p>
       </form>
@@ -400,9 +358,8 @@
   <div class="cmp-row"><div class="cf"><strong>Shot classification</strong><span>Every shot type identified with confidence labels</span></div><div class="ccs"><div class="cc"><div class="dy">✓</div></div><div class="cc"><div class="dy">✓</div></div></div></div>
   <div class="cmp-row"><div class="cf"><strong>Match, Drills and Lesson modes</strong><span>Report adapts to your session type</span></div><div class="ccs"><div class="cc"><div class="dy">✓</div></div><div class="cc"><div class="dy">✓</div></div></div></div>
   <div class="cmp-row"><div class="cf"><strong>Monthly analysis allowance</strong><span>How many videos you can submit each month</span></div><div class="ccs"><div class="cc"><div class="dn" style="font-size:10px;">2</div></div><div class="cc"><div class="dy" style="font-size:11px;">✓</div></div></div></div>
-  <div class="cmp-row"><div class="cf"><strong>Session history</strong><span>Access all past reports anytime</span></div><div class="ccs"><div class="cc"><div class="dn">–</div></div><div class="cc"><div class="dy">✓</div></div></div></div>
-  <div class="cmp-row"><div class="cf"><strong>Progress tracking</strong><span>See how your scores change over time</span></div><div class="ccs"><div class="cc"><div class="dn">–</div></div><div class="cc"><div class="dy">✓</div></div></div></div>
-  <div class="cmp-row"><div class="cf"><strong>Coach sharing</strong><span>Send your report directly to your coach</span></div><div class="ccs"><div class="cc"><div class="dn">–</div></div><div class="cc"><div class="dy">✓</div></div></div></div>
+
+  <p style="text-align:center;font-size:11px;color:#333;margin-top:16px;font-style:italic;">On the roadmap for Pro: session history, progress tracking, coach sharing.</p>
 
   <div class="divider"><div class="divider-dot"></div></div>
 
@@ -478,20 +435,6 @@
 </footer>
 
 <script>
-  let annual = false;
-  function flip() {
-    annual = !annual;
-    document.getElementById('tog').classList.toggle('on', annual);
-    document.getElementById('lm').classList.toggle('on', !annual);
-    document.getElementById('la').classList.toggle('on', annual);
-    document.getElementById('pm').style.display = annual ? 'none' : 'block';
-    document.getElementById('pa').style.display = annual ? 'block' : 'none';
-    document.getElementById('an').style.display = annual ? 'block' : 'none';
-    document.getElementById('psub').textContent = annual
-      ? 'Billed as $120/year. Cancel anytime.'
-      : 'Billed monthly. Cancel anytime.';
-  }
-
   async function submitWaitlist(event) {
     event.preventDefault();
     const emailInput = document.getElementById('wlEmail');
