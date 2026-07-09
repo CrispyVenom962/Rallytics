@@ -394,25 +394,35 @@ const ShotBreakdown = ({ shotBreakdown }) => {
 };
 
 // ── Key Frames Evidence Component ─────────────────────────────────────────────
+// Claude returns ONE frame_index per observation (read from the burned-in "F:N" label).
+// We build a 3-frame before/moment/after sequence client-side so the player sees
+// motion context around the moment Claude identified, without asking Claude to
+// guess at neighbouring indices itself.
 const KeyFrames = ({ keyFrames, sentFrames }) => {
   const [expanded, setExpanded] = useState(null);
   if (!keyFrames?.length || !sentFrames?.length) return null;
 
-  // Match by frameIndex property burned into the frame itself
-  // Claude reads "F:7" from the corner → returns frame_index: 7
-  // We find the frame where frame.frameIndex === 7 — exact guaranteed match
-  const matched = keyFrames.map(kf => {
-    let frame = null;
-    if (kf.frame_index !== undefined) {
-      // Find frame with matching burned-in frameIndex property
-      frame = sentFrames.find(f => f.frameIndex === kf.frame_index);
-      // Fallback to array position if frameIndex property missing
-      if (!frame) frame = sentFrames[kf.frame_index];
-    }
-    return { ...kf, base64: frame?.base64 };
-  }).filter(f => f.base64);
+  const sequences = keyFrames.map(kf => {
+    if (kf.frame_index === undefined || kf.frame_index === null) return null;
+    // Match on the burned-in frameIndex, which is what Claude actually read off the image
+    const pos = sentFrames.findIndex(f => f.frameIndex === kf.frame_index);
+    if (pos === -1) return null; // Claude misread the label — skip rather than show a wrong frame
+    const moment = sentFrames[pos];
+    // Neighbors by ARRAY POSITION within sentFrames, not frameIndex ± 1 — when more than
+    // 60 frames are captured, framesToSend is a subsampled subset, so frameIndex values
+    // aren't guaranteed to be adjacent (e.g. only even indices survive). Position in the
+    // actual sent array is what corresponds to real temporal adjacency.
+    const before = pos > 0 ? sentFrames[pos - 1] : null;
+    const after = pos < sentFrames.length - 1 ? sentFrames[pos + 1] : null;
+    const frames = [
+      before ? { ...before, role: "before" } : null,
+      { ...moment, role: "moment" },
+      after ? { ...after, role: "after" } : null,
+    ].filter(Boolean);
+    return { ...kf, frames };
+  }).filter(Boolean);
 
-  if (!matched.length) return null;
+  if (!sequences.length) return null;
 
   return (
     <div style={{ background: "#080808", border: "1px solid #111", borderRadius: "12px", padding: "18px", marginBottom: "10px" }}>
@@ -421,48 +431,71 @@ const KeyFrames = ({ keyFrames, sentFrames }) => {
         <span style={{ fontSize: "11px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: "700" }}>Evidence frames</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        {matched.map((frame, i) => (
-          <div key={i} style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: "10px", overflow: "hidden" }}>
-            <div
-              onClick={() => setExpanded(expanded === i ? null : i)}
-              style={{ cursor: "pointer" }}
-            >
-              {/* Thumbnail row */}
-              <div style={{ display: "flex", gap: "12px", alignItems: "center", padding: "12px 14px" }}>
-                <div style={{
-                  flexShrink: 0, width: "90px", height: "51px",
-                  borderRadius: "6px", overflow: "hidden",
-                  border: "1px solid #1a1a1a",
-                  background: "#060606",
-                }}>
-                  <img
-                    src={`data:image/jpeg;base64,${frame.base64}`}
-                    alt={frame.label}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "12px", fontWeight: "700", color: "#e0e0e0", marginBottom: "3px" }}>{frame.label}</div>
-                  <div style={{ fontSize: "11px", color: "#555" }}>@ {frame.timestamp}s · tap to expand</div>
-                </div>
-                <div style={{ color: "#333", fontSize: "16px" }}>{expanded === i ? "−" : "+"}</div>
-              </div>
-              {/* Expanded view */}
-              {expanded === i && (
-                <div style={{ borderTop: "1px solid #141414" }}>
-                  <img
-                    src={`data:image/jpeg;base64,${frame.base64}`}
-                    alt={frame.label}
-                    style={{ width: "100%", display: "block" }}
-                  />
-                  <div style={{ padding: "12px 14px" }}>
-                    <p style={{ margin: 0, fontSize: "13px", color: "#888", lineHeight: "1.7" }}>{frame.observation}</p>
+        {sequences.map((seq, i) => {
+          const moment = seq.frames.find(f => f.role === "moment");
+          return (
+            <div key={i} style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: "10px", overflow: "hidden" }}>
+              <div onClick={() => setExpanded(expanded === i ? null : i)} style={{ cursor: "pointer" }}>
+                {/* Thumbnail strip — before / moment / after */}
+                <div style={{ display: "flex", gap: "12px", alignItems: "center", padding: "12px 14px" }}>
+                  <div style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
+                    {seq.frames.map((f, fi) => (
+                      <div key={fi} style={{
+                        width: f.role === "moment" ? "58px" : "30px",
+                        height: "34px",
+                        borderRadius: "5px",
+                        overflow: "hidden",
+                        border: `1px solid ${f.role === "moment" ? "#3b82f6" : "#1a1a1a"}`,
+                        opacity: f.role === "moment" ? 1 : 0.5,
+                        background: "#060606",
+                        flexShrink: 0,
+                        transition: "all 0.2s",
+                      }}>
+                        <img
+                          src={`data:image/jpeg;base64,${f.base64}`}
+                          alt={f.role}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      </div>
+                    ))}
                   </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: "12px", fontWeight: "700", color: "#e0e0e0", marginBottom: "3px" }}>{seq.label}</div>
+                    <div style={{ fontSize: "11px", color: "#555" }}>@ {moment?.timestamp}s · {seq.frames.length}-frame sequence · tap to expand</div>
+                  </div>
+                  <div style={{ color: "#333", fontSize: "16px" }}>{expanded === i ? "−" : "+"}</div>
                 </div>
-              )}
+                {/* Expanded view — before / moment / after side by side */}
+                {expanded === i && (
+                  <div style={{ borderTop: "1px solid #141414" }}>
+                    <div style={{ display: "flex", gap: "2px", background: "#000" }}>
+                      {seq.frames.map((f, fi) => (
+                        <div key={fi} style={{ flex: 1, position: "relative", opacity: f.role === "moment" ? 1 : 0.7 }}>
+                          <img
+                            src={`data:image/jpeg;base64,${f.base64}`}
+                            alt={f.role}
+                            style={{ width: "100%", display: "block" }}
+                          />
+                          <div style={{
+                            position: "absolute", bottom: "5px", left: "5px",
+                            fontSize: "9px", fontWeight: "700", color: f.role === "moment" ? "#3b82f6" : "#fff",
+                            background: "rgba(0,0,0,0.7)", padding: "2px 7px", borderRadius: "4px",
+                            textTransform: "uppercase", letterSpacing: "0.1em",
+                          }}>
+                            {f.role}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ padding: "12px 14px" }}>
+                      <p style={{ margin: 0, fontSize: "13px", color: "#888", lineHeight: "1.7" }}>{seq.observation}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -558,13 +591,22 @@ export default function App() {
     analyze();
   };
 
+  // Mirrors ADMIN_EMAILS in api/analyze.js — kept in sync manually since this
+  // is just a fast client-side pre-check; the server list is the real gate.
+  const ADMIN_EMAILS = ["ayerswilliam@gmail.com", "nimrodayers@gmail.com", "rallyticshq@gmail.com"];
+
   const analyze = async () => {
     setStage("working"); setPct(0); setError(null); setFramesDone(0); setStatusPhase(0);
     setElapsedSecs(0);
     elapsedTimer.current = setInterval(() => setElapsedSecs(s => s + 1), 1000);
 
+    const isAdminUser = ADMIN_EMAILS.includes(email.trim().toLowerCase());
+
     // ── Duplicate video detection ─────────────────────────────────────────
-    // Hash first 512KB of file as a lightweight fingerprint
+    // Skipped for admin emails — testing accuracy requires re-running the same
+    // clip repeatedly. Non-admins still get the fast local pre-check; the real
+    // gate is server-side in analyze.js regardless.
+    if (!isAdminUser) {
     try {
       const hashSlice = videoFile.slice(0, 512 * 1024);
       const hashBuf = await hashSlice.arrayBuffer();
@@ -583,6 +625,7 @@ export default function App() {
     } catch (e) {
       // Hash failed silently — proceed without duplicate check
       console.warn("Video hash failed:", e.message);
+    }
     }
 
     try {
@@ -671,6 +714,12 @@ export default function App() {
           if (aiTimer) clearInterval(aiTimer);
           setStage("gate");
           setGateError(e.message || "You have already used your 2 free analyses. Get early access to Forty Fifteen Pro.");
+          return;
+        }
+        if (e.error === "DUPLICATE_VIDEO") {
+          if (aiTimer) clearInterval(aiTimer);
+          setStage("context");
+          setError("DUPLICATE_VIDEO");
           return;
         }
         if (e.error === "NOT_TENNIS") {
@@ -1976,6 +2025,8 @@ export default function App() {
                       <p style={{ margin: 0, fontSize: "12px", color: "#555", lineHeight: "1.6", fontStyle: "italic" }}>{tech.camera_note}</p>
                     </div>
                   )}
+
+                  <KeyFrames keyFrames={result.key_frames} sentFrames={sentFrames} />
 
                   {/* ── FIXED: Shot breakdown handles nested objects safely ── */}
                   {tech.shot_breakdown && (
