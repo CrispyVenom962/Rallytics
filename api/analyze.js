@@ -1180,7 +1180,15 @@ async function sendResultsEmail({ firstName, email, level, result }) {
   try {
     const KIT_API_KEY = process.env.KIT_API_KEY;
     if (KIT_API_KEY) {
-      await fetch("https://api.convertkit.com/v3/subscribers", {
+      // Was previously POST /v3/subscribers, which is not a real ConvertKit
+      // endpoint — confirmed via Vercel logs returning {"error":"Not Found"}
+      // on the near-identical waitlist.js call. This means report-completion
+      // signups have likely never actually reached Kit until this fix.
+      // Using the same Form ID as waitlist.js ("Charlotte form", 9667255)
+      // since it's the only form that currently exists on this account — if
+      // report recipients should be a separate segment from the Pro
+      // waitlist, create a second form in Kit and swap the ID below.
+      const kitRes = await fetch("https://api.convertkit.com/v3/forms/9667255/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1190,6 +1198,10 @@ async function sendResultsEmail({ firstName, email, level, result }) {
           fields: { level: level || "unknown" },
         }),
       });
+      if (!kitRes.ok) {
+        const err = await kitRes.json().catch(() => ({}));
+        console.error("Kit error: subscribe failed:", err);
+      }
     }
   } catch (e) {
     console.error("Kit error:", e.message);
