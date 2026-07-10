@@ -6,6 +6,11 @@
 
 const KIT_API_KEY_ENV = "KIT_API_KEY";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// "Charlotte form" — confirmed via GET /v3/forms on 2026-07-09 that this
+// account's V3 key is active and this is the only form that exists. Created
+// specifically to serve as a subscribe target for this endpoint; its
+// design/copy is irrelevant since it's never shown to anyone.
+const KIT_FORM_ID = "9667255";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -26,7 +31,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const kitRes = await fetch("https://api.convertkit.com/v3/subscribers", {
+    const kitRes = await fetch(`https://api.convertkit.com/v3/forms/${KIT_FORM_ID}/subscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
