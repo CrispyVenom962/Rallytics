@@ -805,12 +805,13 @@ export default function App() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <a href="/pricing.html" style={{
-            color: "#888", fontSize: "14px", padding: "7px 16px",
+            background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: "8px",
+            color: "#7db4f7", fontSize: "14px", padding: "7px 16px",
             textDecoration: "none", letterSpacing: "0.04em",
-            transition: "color 0.2s",
+            transition: "background 0.2s, border-color 0.2s, color 0.2s",
           }}
-            onMouseEnter={e => { e.currentTarget.style.color = "#3b82f6"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "#888"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(59,130,246,0.22)"; e.currentTarget.style.borderColor = "#3b82f6"; e.currentTarget.style.color = "#a8cdfb"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(59,130,246,0.12)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.3)"; e.currentTarget.style.color = "#7db4f7"; }}
           >
             Pricing
           </a>
@@ -1516,6 +1517,12 @@ export default function App() {
                 onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
                 Get my coaching report →
               </button>
+            </div>
+
+            <div style={{ textAlign: "center", marginTop: "18px" }}>
+              <a href="/pricing.html" style={{ color: "#444", fontSize: "12px", textDecoration: "underline", letterSpacing: "0.02em" }}>
+                See Pro pricing
+              </a>
             </div>
           </div>
         )}
