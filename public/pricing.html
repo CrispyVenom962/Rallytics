@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#060606">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="alternate icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Forty Fifteen — Pro</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -28,7 +31,7 @@
     padding: 0 24px; height: 58px;
     display: flex; align-items: center; justify-content: space-between;
   }
-  .logo { font-size: 17px; font-weight: 900; letter-spacing: -0.03em; }
+  .logo { display: flex; align-items: center; gap: 11px; font-size: 17px; font-weight: 900; letter-spacing: -0.03em; }
   .forty { color: #c8e63c; }
   .dot, .fifteen { color: #3b82f6; }
   .fifteen { font-weight: 300; }
@@ -272,7 +275,19 @@
 
 <nav>
   <a href="https://fortyfifteen.app" class="logo">
-    <span class="forty">forty</span><span class="dot">.</span><span class="fifteen">fifteen</span>
+    <svg width="32" height="38.86" viewBox="0 0 56 68" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="56" height="68" rx="10" fill="#3b82f6"/>
+      <rect x="5" y="5" width="46" height="58" fill="none" stroke="white" stroke-width="1.2"/>
+      <line x1="11" y1="5"  x2="11" y2="63" stroke="white" stroke-width="0.8"/>
+      <line x1="45" y1="5"  x2="45" y2="63" stroke="white" stroke-width="0.8"/>
+      <line x1="5"  y1="34" x2="51" y2="34" stroke="white" stroke-width="2"/>
+      <line x1="11" y1="18" x2="45" y2="18" stroke="white" stroke-width="0.8"/>
+      <line x1="11" y1="50" x2="45" y2="50" stroke="white" stroke-width="0.8"/>
+      <line x1="28" y1="18" x2="28" y2="50" stroke="white" stroke-width="0.8"/>
+      <line x1="28" y1="5"  x2="28" y2="9"  stroke="white" stroke-width="0.8"/>
+      <line x1="28" y1="59" x2="28" y2="63" stroke="white" stroke-width="0.8"/>
+    </svg>
+    <span class="wordmark"><span class="forty">forty</span><span class="dot">.</span><span class="fifteen">fifteen</span></span>
   </a>
   <a href="https://fortyfifteen.app" class="nav-back">← Back to app</a>
 </nav>
