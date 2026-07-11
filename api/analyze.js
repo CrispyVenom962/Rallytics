@@ -963,12 +963,13 @@ async function checkEmailUsage(email) {
         count: record.fields.Count || 0,
         recordId: record.id,
         videoHashes: parseVideoHashes(record.fields.VideoHashes),
+        subscriptionStatus: record.fields.SubscriptionStatus || null,
       };
     }
-    return { count: 0, recordId: null, videoHashes: [] };
+    return { count: 0, recordId: null, videoHashes: [], subscriptionStatus: null };
   } catch (e) {
     console.error("Airtable check error:", e.message);
-    return { count: 0, recordId: null, videoHashes: [] };
+    return { count: 0, recordId: null, videoHashes: [], subscriptionStatus: null };
   }
 }
 
@@ -1021,6 +1022,20 @@ export default async function handler(req, res) {
       emailRecordId = usage.recordId;
       emailVideoHashes = usage.videoHashes;
 
+      // Pro-tier bypass — mirrors the existing admin bypass exactly. Free-tier
+      // behavior (2 lifetime analyses) is completely unchanged for everyone
+      // who isn't an active subscriber; this only ADDS an exemption on top,
+      // it never restricts anything that currently works.
+      //
+      // NOTE: this is a placeholder bypass, not yet a true "monthly allowance."
+      // The pricing page promises a monthly-resetting allowance, but Count in
+      // Airtable is a lifetime counter, not month-scoped — building an actual
+      // monthly reset (separate field + reset date logic) is a deliberate next
+      // step once a real number is decided, not assumed here. For now, active
+      // subscribers are treated the same as admins: exempt from the cap
+      // entirely, so paying actually means something today rather than nothing.
+      const isPro = usage.subscriptionStatus === "active";
+
       // Duplicate check is skipped for admin emails — testing accuracy requires
       // re-running the same clip repeatedly, and admins already bypass the
       // free-tier limit for the same reason. Everyone else is gated normally
@@ -1032,10 +1047,10 @@ export default async function handler(req, res) {
         });
       }
 
-      if (!isAdmin && emailCount >= MAX_FREE) {
+      if (!isAdmin && !isPro && emailCount >= MAX_FREE) {
         return res.status(403).json({
           error: "EMAIL_LIMIT_REACHED",
-          message: `You have already used your ${MAX_FREE} free analyses with this email. Join the Pro waitlist for unlimited access.`,
+          message: `You have already used your ${MAX_FREE} free analyses with this email. Join Pro for a generous monthly allowance.`,
         });
       }
     } catch (e) {
