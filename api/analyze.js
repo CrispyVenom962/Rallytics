@@ -984,6 +984,85 @@ const MAX_FREE = 2;
 const MAX_STORED_HASHES = 20; // cap per-record list length, oldest dropped first
 const ADMIN_EMAILS = ["ayerswilliam@gmail.com", "nimrodayers@gmail.com", "rallyticshq@gmail.com"];
 
+// ── NEUTRAL FOOTAGE CLASSIFIER (Pass 1) ─────────────────────────────────────
+// Why this exists: the main coaching call is primed to see tennis matches —
+// it carries a large coaching brain soaked in rally/match language plus the
+// user's declared session type. Testing proved (Jul 12) that this priming can
+// make it hallucinate rallies and groundstrokes in serve-only footage, and no
+// prompt rule survives that misperception because the corruption happens at
+// the perception level. This pass strips ALL of that away: a tiny neutral
+// prompt, no coaching brain, no session label, no expectations — just "what
+// is literally in these frames." Its answer then becomes authoritative for
+// the coaching pass.
+// Fail-open by design: a previous Pass 1 was removed for causing timeouts, so
+// this one has a hard abort and the report proceeds without it on any failure.
+const CLASSIFIER_PROMPT = `You are a neutral video-frame classifier. You know nothing about the purpose of this footage and must not assume it. Look only at what is literally visible in the frames.
+
+Count conservatively: only count a shot when you can clearly see the stroke being executed with a ball. A player walking, bouncing a ball, collecting balls, standing, or stretching is NOT a shot. If you cannot clearly distinguish what a movement is, do not count it. Undercounting is acceptable; inventing is not.
+
+Respond with ONLY a valid JSON object, no other text:
+{
+  "session_description": "One factual sentence describing what the frames show, e.g. 'A single player repeatedly serving from the baseline with no opponent and no rallies.'",
+  "players_actively_hitting": 1,
+  "serves_seen": 0,
+  "forehands_seen": 0,
+  "backhands_seen": 0,
+  "volleys_or_net_play_seen": 0,
+  "rally_exchange_visible": false,
+  "activity_type": "serve_practice | rally_drill | match_play | lesson | mixed | unclear"
+}`;
+
+async function classifyFootage(frames, ts, fmtTime) {
+  try {
+    // Subsample: up to 24 frames is enough to characterize a session and keeps
+    // this pass fast and cheap.
+    const step = Math.max(1, Math.ceil(frames.length / 24));
+    const indices = frames.map((_, i) => i).filter((i) => i % step === 0).slice(0, 24);
+    const content = [
+      { type: "text", text: "Classify what is literally visible in these frames." },
+      ...indices.flatMap((i) => {
+        const img = { type: "image", source: { type: "base64", media_type: "image/jpeg", data: frames[i] } };
+        return ts ? [{ type: "text", text: `Frame at ${fmtTime(ts[i])}` }, img] : [img];
+      }),
+    ];
+
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 50000); // hard cap: never let Pass 1 sink the report
+    let resp;
+    try {
+      resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 700,
+          system: CLASSIFIER_PROMPT,
+          messages: [{ role: "user", content }],
+        }),
+        signal: ac.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const raw = data.content?.map((b) => b.text || "").join("") || "";
+    const s = raw.indexOf("{"), e = raw.lastIndexOf("}");
+    if (s === -1 || e <= s) return null;
+    const inv = JSON.parse(raw.slice(s, e + 1));
+    // Minimal sanity: must have the fields we rely on
+    if (typeof inv.session_description !== "string" || typeof inv.rally_exchange_visible !== "boolean") return null;
+    return inv;
+  } catch (err) {
+    console.error("Footage classifier failed (proceeding without):", err.message);
+    return null;
+  }
+}
+
 async function checkEmailUsage(email) {
   if (!AIRTABLE_BASE_ID || !AIRTABLE_API_KEY) return { count: 0, recordId: null, videoHashes: [] };
   try {
@@ -1111,21 +1190,35 @@ export default async function handler(req, res) {
 
 
 
+  // ── PASS 1: Neutral footage inventory ────────────────────────────────────
+  const ts = Array.isArray(frameTimestamps) && frameTimestamps.length === frames.length ? frameTimestamps : null;
+  const fmtTime = (secs) => {
+    const m = Math.floor(secs / 60), s = Math.round(secs % 60);
+    return `${m}:${String(s).padStart(2, "0")}`;
+  };
+
+  const inventory = await classifyFootage(frames, ts, fmtTime);
+
+  // The coaching brain is selected from what the footage ACTUALLY shows, not
+  // from the user's menu selection — testing proved users mislabel sessions
+  // and the match-primed brain then fabricates match content.
+  const activityMap = { match_play: "match", serve_practice: "drilling", rally_drill: "drilling", lesson: "lesson" };
+  const effectiveSessionType = (inventory && activityMap[inventory.activity_type]) || sessionType || "match";
+
+  const inventoryBlock = inventory
+    ? `AUTHORITATIVE VISUAL INVENTORY — a neutral first-pass scan of this exact footage, performed with no knowledge of the declared session type, found the following:\n"${inventory.session_description}"\nShots clearly observed: ${inventory.serves_seen || 0} serves, ${inventory.forehands_seen || 0} forehands, ${inventory.backhands_seen || 0} backhands, ${inventory.volleys_or_net_play_seen || 0} volleys/net. Rally exchanges visible: ${inventory.rally_exchange_visible ? "YES" : "NO"}. Players actively hitting: ${inventory.players_actively_hitting ?? "unknown"}.\nTHIS INVENTORY IS GROUND TRUTH and overrides the declared session type. Your observed_evidence must be consistent with it. Any shot family it reports as 0 must be not_seen in your report and must not be coached anywhere. If rally exchanges are NO, your report must contain no rally, point-construction, or opponent-pattern content whatsoever — report on what is actually present.\n\n`
+    : "";
+
   // ── PASS 2: Full Analysis ─────────────────────────────────────────────────
   // Interleave a small timestamp label before each frame when the client
   // provides them — this grounds temporal reasoning (fatigue, momentum,
   // "late in the session" observations) that raw unlabeled images cannot
   // support. Falls back to plain images if timestamps are missing or
   // mismatched (older clients), so this is fully backward compatible.
-  const ts = Array.isArray(frameTimestamps) && frameTimestamps.length === frames.length ? frameTimestamps : null;
-  const fmtTime = (secs) => {
-    const m = Math.floor(secs / 60), s = Math.round(secs % 60);
-    return `${m}:${String(s).padStart(2, "0")}`;
-  };
   const content = [
     {
       type: "text",
-      text: `${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${sessionType === "match" ? "match" : sessionType === "drilling" ? "drilling session" : "lesson"}.${ts ? " Each frame is preceded by its timestamp within the session — use these to ground any observations about fatigue, momentum, or how patterns evolve over time." : ""}${labeledFrameDesc}\n\nUse the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
+      text: `${inventoryBlock}${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${effectiveSessionType === "match" ? "match" : effectiveSessionType === "drilling" ? "drilling session" : "lesson"}.${ts ? " Each frame is preceded by its timestamp within the session — use these to ground any observations about fatigue, momentum, or how patterns evolve over time." : ""}${labeledFrameDesc}\n\nUse the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
     },
     ...frames.flatMap((base64, idx) => {
       const img = { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } };
@@ -1152,7 +1245,7 @@ export default async function handler(req, res) {
         system: [
           {
             type: "text",
-            text: SYSTEM_PROMPT(sessionType || "match"),
+            text: SYSTEM_PROMPT(effectiveSessionType),
             cache_control: { type: "ephemeral" },
           },
         ],
@@ -1215,6 +1308,19 @@ export default async function handler(req, res) {
         }
       });
     }
+
+    // Coerce scores to integers in case the model returned strings, and clamp 1-10
+    ["technique", "strategy"].forEach((k) => {
+      if (parsed[k] && parsed[k].score !== undefined) {
+        const n = parseInt(parsed[k].score, 10);
+        parsed[k].score = Number.isFinite(n) ? Math.max(1, Math.min(10, n)) : 5;
+      }
+    });
+
+    // Attach the neutral Pass 1 inventory for transparency/debugging — the UI
+    // ignores unknown fields, but it's visible in the network response and in
+    // any stored payload, which makes fabrication regressions diagnosable.
+    if (inventory) parsed.footage_inventory = inventory;
 
     if (email) {
       await incrementEmailUsage(emailNorm, firstName, level, emailRecordId, emailCount, emailVideoHashes, videoHash);
