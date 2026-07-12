@@ -29,9 +29,14 @@ function FadeIn({ children, delay = 0, style = {} }) {
 }
 
 const FRAME_INTERVAL = 2;
-const FRAME_W = 480;
-const FRAME_H = 270;
-const FRAME_QUALITY = 0.55;
+const FRAME_W = 768;
+const FRAME_H = 432;
+const FRAME_QUALITY = 0.7;
+// Per-frame base64 budget: 60 frames must fit Vercel's 4.5MB request limit
+// with JSON overhead. 56KB × 60 ≈ 3.4MB — safe margin. If a busy frame
+// (clay texture, crowds) exceeds this at q0.7, it re-encodes at lower quality.
+const FRAME_B64_BUDGET = 56 * 1024;
+const FRAME_QUALITY_FALLBACK = 0.5;
 const MAX_FRAMES = 120;
 
 const TENNIS_FACTS = [
@@ -228,8 +233,16 @@ function extractFrames(file, onProgress) {
           capCtx.fillStyle = "#ffffff";
           capCtx.fillText(label, 9, 19);
 
+          let b64 = capCanvas.toDataURL("image/jpeg", FRAME_QUALITY).split(",")[1];
+          // Busy frames (clay texture, crowds, foliage) can exceed the
+          // per-frame budget at q0.7 — re-encode at fallback quality rather
+          // than risk the whole request blowing Vercel's 4.5MB payload limit.
+          if (b64.length > FRAME_B64_BUDGET) {
+            b64 = capCanvas.toDataURL("image/jpeg", FRAME_QUALITY_FALLBACK).split(",")[1];
+          }
+
           frames.push({
-            base64: capCanvas.toDataURL("image/jpeg", FRAME_QUALITY).split(",")[1],
+            base64: b64,
             timestamp: Math.round(selected[capIdx]),
             frameIndex: capIdx,
           });
@@ -699,6 +712,7 @@ export default function App() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           frames: framesToSend.map(f => f.base64),
+          frameTimestamps: framesToSend.map(f => f.timestamp),
           context: context.trim(), playerId: playerId.trim(),
           frameCount: framesToSend.length, durationLabel: dLabel,
           firstName: firstName.trim().replace(/\b\w/g, c => c.toUpperCase()), email: email.trim(), level, sessionType,
