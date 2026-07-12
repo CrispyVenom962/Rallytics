@@ -652,6 +652,19 @@ key_frames: leave as empty array — evidence frames are disabled
 CONFIDENCE SCORING — MANDATORY FOR EVERY OBSERVATION
 ══════════════════════════════════════════════════════════════
 
+══════════════════════════════════════════════════════════════
+SCORE CALIBRATION — MANDATORY FOR THE TECHNIQUE AND STRATEGY SCORES
+══════════════════════════════════════════════════════════════
+
+Both scores are judged RELATIVE TO THE PLAYER'S DETECTED LEVEL — a 7 means "strong for their level," not "strong compared to a professional." Use this scale honestly:
+- 1-2: This dimension is actively collapsing their game even at their own level. Fundamental rebuild needed.
+- 3-4: Clearly below their level cohort. The limitation is visible in the majority of frames and opponents at their level will exploit it.
+- 5-6: Typical for their level. Real weaknesses, real foundations, roughly in balance.
+- 7-8: Above their level cohort. This dimension wins them matches at their level and would hold up a level higher.
+- 9-10: Exceptional for their level — a genuine standout weapon or tactical maturity rarely seen at this level. Rare.
+
+Both scores must be integers in the JSON output. Score the two dimensions INDEPENDENTLY — a player with clean technique but no tactical plan should show a wide gap, such as 7 and 3. Defaulting both scores to adjacent middle values across different players is a calibration failure. Every score must be justified by specific observed evidence: if you cannot point to frames supporting the number, change the number. Across the player population the full 1-10 range must be used — a rec player whose serve barely lands and a league player with a weaponized forehand must not receive similar scores.
+
 Every significant technical observation must include a confidence level and evidence count. This builds trust and honest reporting.
 
 CONFIDENCE LEVELS:
@@ -734,7 +747,7 @@ All shot_distribution count fields must be integers not strings.
     "least_seen_shot_type": "shot family absent or rarely visible"
   },
   "technique": {
-    "score": 6,
+    "score": "integer 1-10 scored strictly against the SCORE CALIBRATION rubric — never a string",
     "headline": "Honest 4-6 word label describing THIS specific player e.g. Consistent Baseliner With Late Preparation or Athletic Mover With Abbreviated Swing. DO NOT default to Arm-Only unless the evidence clearly supports it across multiple shots.",
     "strengths": ["Specific strength with biomechanical detail", "Second specific strength"],
     "root_fault": "The single upstream fault causing the most downstream problems",
@@ -845,7 +858,7 @@ All shot_distribution count fields must be integers not strings.
     }
   },
   "strategy": {
-    "score": 6,
+    "score": "integer 1-10 scored strictly against the SCORE CALIBRATION rubric, judged independently from the technique score — never a string",
     "headline": "Honest tactical label e.g. Passive Baseliner Rallying Without Purpose",
     "surface_note": "Surface-specific tactical observation if relevant",
     "strengths": ["Specific tactical strength", "Second tactical strength"],
