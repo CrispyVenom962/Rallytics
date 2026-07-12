@@ -242,7 +242,7 @@ END DOUBLES FRAMEWORK
 `;
 };
 
-const SYSTEM_PROMPT = (frameCount, durationLabel, sessionType = "match") => `
+const SYSTEM_PROMPT = (sessionType = "match") => `
 You are the most knowledgeable tennis coaching AI ever built. Every player you analyze is UNIQUE. Your job is to produce a report that could only have been written for this specific player based on what you see in their frames — not a template with their name swapped in.
 
 ══════════════════════════════════════════════════════════════
@@ -280,11 +280,14 @@ Coaching cues must be written as if you are standing next to this specific playe
 RULE 8 — FINAL CHECK BEFORE RETURNING JSON:
 Before returning your response, read the coach_verdict, the technique headline, and the first fix. Ask yourself: could these three things appear in a report for a completely different player with different faults? If yes, rewrite them until they could not.
 
+RULE 9 — SHOT BREAKDOWN MUST ONLY COVER SHOTS ACTUALLY SEEN:
+For every entry in shot_breakdown, only write a technical assessment for a shot type you actually observed in the frames. If a shot type does not appear anywhere in the footage — for example this is a serve-only session and no groundstrokes are visible, or a volleys-only session with no serve — set that shot's confidence to "not_seen" and its assessment to exactly "Not seen in this session." Do not infer or fabricate an assessment for a shot type based on how the player hits a different shot, even if you have a strong intuition about it from what you did see. A serve-only session should return a fully detailed serve breakdown and every other shot type explicitly marked not_seen — never padded with invented content to make the report look more complete than the footage actually supports.
+
 ══════════════════════════════════════════════════════════════
 END UNIQUENESS ENFORCEMENT
 ══════════════════════════════════════════════════════════════ Your knowledge comes from the world's leading coaching publications, world-leading books, peer-reviewed biomechanics research, and methodology from elite coaches and conferences around the globe. You have deep knowledge of professional player biomechanics, playing styles, and technical signatures — use this to make accurate, specific pro player comparisons where clearly applicable. Every observation must include honest confidence scoring based on how many frames confirmed it. Write like a great coach talking — specific, visual, and memorable.
 
-You are analyzing a ${durationLabel} tennis session. Visual samples have been captured at high-motion moments throughout the session — focusing on actual shot moments rather than dead time between points. Use the visual evidence you see to make confident, specific observations. Where a shot type has limited visual evidence, note this and adjust your confidence accordingly.
+You are analyzing a tennis session — its duration and frame count are stated in the user message. Visual samples have been captured at high-motion moments throughout the session — focusing on actual shot moments rather than dead time between points. Use the visual evidence you see to make confident, specific observations. Where a shot type has limited visual evidence, note this and adjust your confidence accordingly.
 
 TENNIS VALIDATION — MANDATORY FIRST STEP:
 Before producing any analysis, examine the frames and confirm this is tennis footage.
@@ -699,7 +702,7 @@ All shot_distribution count fields must be integers not strings.
   "match_overview": "2-3 honest sentences: player type biggest strength biggest limiting factor",
   "player_level": "Beginner | Developing | Intermediate | Advanced Club | High Performance",
   "surface_detected": "Clay | Hard | Grass | Unknown",
-  "duration_analyzed": "${durationLabel}",
+  "duration_analyzed": "the session duration exactly as stated in the user message, e.g. 12-minute",
   "shot_distribution": {
     "serves_detected": 0,
     "forehand_groundstrokes": 0,
@@ -1000,7 +1003,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { frames, context, playerId, frameCount, durationLabel, firstName, email, level, sessionType, dominantHand, backhandType, matchFormat } = req.body;
+  const { frames, context, playerId, frameCount, durationLabel, firstName, email, level, sessionType, dominantHand, backhandType, matchFormat, frameTimestamps } = req.body;
 
   if (!frames || !Array.isArray(frames) || frames.length === 0) {
     return res.status(400).json({ error: "No frames provided" });
@@ -1079,16 +1082,25 @@ export default async function handler(req, res) {
 
 
   // ── PASS 2: Full Analysis ─────────────────────────────────────────────────
+  // Interleave a small timestamp label before each frame when the client
+  // provides them — this grounds temporal reasoning (fatigue, momentum,
+  // "late in the session" observations) that raw unlabeled images cannot
+  // support. Falls back to plain images if timestamps are missing or
+  // mismatched (older clients), so this is fully backward compatible.
+  const ts = Array.isArray(frameTimestamps) && frameTimestamps.length === frames.length ? frameTimestamps : null;
+  const fmtTime = (secs) => {
+    const m = Math.floor(secs / 60), s = Math.round(secs % 60);
+    return `${m}:${String(s).padStart(2, "0")}`;
+  };
   const content = [
     {
       type: "text",
-      text: `${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${sessionType === "match" ? "match" : sessionType === "drilling" ? "drilling session" : "lesson"}.${labeledFrameDesc}\n\nUse the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
+      text: `${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${sessionType === "match" ? "match" : sessionType === "drilling" ? "drilling session" : "lesson"}.${ts ? " Each frame is preceded by its timestamp within the session — use these to ground any observations about fatigue, momentum, or how patterns evolve over time." : ""}${labeledFrameDesc}\n\nUse the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
     },
-    ...frames.map((base64, idx) => ({
-      type: "image",
-      source: { type: "base64", media_type: "image/jpeg", data: base64 },
-
-    })),
+    ...frames.flatMap((base64, idx) => {
+      const img = { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } };
+      return ts ? [{ type: "text", text: `Frame ${idx} — ${fmtTime(ts[idx])}` }, img] : [img];
+    }),
   ];
 
   try {
@@ -1102,7 +1114,18 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: 20000,
-        system: SYSTEM_PROMPT(frames.length, durationLabel || "unknown-length", sessionType || "match"),
+        // System prompt is now fully static per session type (duration/frame
+        // count moved to the user message), so cache_control gives a cache hit
+        // on every report after the first per session type — the coaching
+        // brain is by far the largest input cost, so this is a major saving
+        // that funds the higher-resolution frames the client now sends.
+        system: [
+          {
+            type: "text",
+            text: SYSTEM_PROMPT(sessionType || "match"),
+            cache_control: { type: "ephemeral" },
+          },
+        ],
         messages: [{ role: "user", content }],
       }),
     });
