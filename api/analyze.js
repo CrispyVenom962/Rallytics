@@ -1012,12 +1012,20 @@ Respond with ONLY a valid JSON object, no other text:
   "activity_type": "serve_practice | rally_drill | match_play | lesson | mixed | unclear"
 }`;
 
-async function classifyFootage(frames, ts, fmtTime) {
+async function classifyFootage(frames, ts, fmtTime, isAudioPairs) {
   try {
     // Subsample: up to 24 frames is enough to characterize a session and keeps
-    // this pass fast and cheap.
-    const step = Math.max(1, Math.ceil(frames.length / 24));
-    const indices = frames.map((_, i) => i).filter((i) => i % step === 0).slice(0, 24);
+    // this pass fast and cheap. With audio pairs, frames alternate
+    // [preparation, contact] — prefer the contact instants (odd indices),
+    // which are the most informative for shot identification.
+    let indices;
+    if (isAudioPairs) {
+      indices = frames.map((_, i) => i).filter((i) => i % 2 === 1).slice(0, 24);
+      if (!indices.length) indices = frames.map((_, i) => i).slice(0, 24);
+    } else {
+      const step = Math.max(1, Math.ceil(frames.length / 24));
+      indices = frames.map((_, i) => i).filter((i) => i % step === 0).slice(0, 24);
+    }
     const content = [
       { type: "text", text: "Classify what is literally visible in these frames." },
       ...indices.flatMap((i) => {
@@ -1112,7 +1120,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { frames, context, playerId, frameCount, durationLabel, firstName, email, level, sessionType, dominantHand, backhandType, matchFormat, frameTimestamps } = req.body;
+  const { frames, context, playerId, frameCount, durationLabel, firstName, email, level, sessionType, dominantHand, backhandType, matchFormat, frameTimestamps, frameMethod } = req.body;
 
   if (!frames || !Array.isArray(frames) || frames.length === 0) {
     return res.status(400).json({ error: "No frames provided" });
@@ -1197,7 +1205,8 @@ export default async function handler(req, res) {
     return `${m}:${String(s).padStart(2, "0")}`;
   };
 
-  const inventory = await classifyFootage(frames, ts, fmtTime);
+  const inventory = await classifyFootage(frames, ts, fmtTime, frameMethod === "audio_pairs");
+  console.log("FRAME_METHOD:", frameMethod || "motion(legacy)");
   console.log("FOOTAGE_INVENTORY:", inventory ? JSON.stringify(inventory) : "CLASSIFIER_FAILED_OR_TIMED_OUT");
 
   // The coaching brain is selected from what the footage ACTUALLY shows, not
@@ -1219,7 +1228,7 @@ export default async function handler(req, res) {
   const content = [
     {
       type: "text",
-      text: `${inventoryBlock}${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${effectiveSessionType === "match" ? "match" : effectiveSessionType === "drilling" ? "drilling session" : "lesson"}.${ts ? " Each frame is preceded by its timestamp within the session — use these to ground any observations about fatigue, momentum, or how patterns evolve over time." : ""}${labeledFrameDesc}\n\nUse the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
+      text: `${inventoryBlock}${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${effectiveSessionType === "match" ? "match" : effectiveSessionType === "drilling" ? "drilling session" : "lesson"}.${frameMethod === "audio_pairs" ? " Frames were captured as PAIRS around detected ball-contact sounds: for each shot, a preparation frame (~0.35s before contact) immediately followed by the contact-instant frame. Read consecutive frames as one swing sequence — preparation then contact — when identifying shot types." : ""}${ts ? " Each frame is preceded by its timestamp within the session — use these to ground any observations about fatigue, momentum, or how patterns evolve over time." : ""}${labeledFrameDesc}\n\nUse the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
     },
     ...frames.flatMap((base64, idx) => {
       const img = { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } };
