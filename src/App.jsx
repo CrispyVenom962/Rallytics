@@ -36,7 +36,6 @@ const FRAME_QUALITY = 0.7;
 // with JSON overhead. 56KB × 60 ≈ 3.4MB — safe margin. If a busy frame
 // (clay texture, crowds) exceeds this at q0.7, it re-encodes at lower quality.
 const FRAME_B64_BUDGET = 56 * 1024;
-const FRAME_QUALITY_FALLBACK = 0.5;
 const MAX_FRAMES = 120;
 
 const TENNIS_FACTS = [
@@ -233,12 +232,15 @@ function extractFrames(file, onProgress) {
           capCtx.fillStyle = "#ffffff";
           capCtx.fillText(label, 9, 19);
 
-          let b64 = capCanvas.toDataURL("image/jpeg", FRAME_QUALITY).split(",")[1];
-          // Busy frames (clay texture, crowds, foliage) can exceed the
-          // per-frame budget at q0.7 — re-encode at fallback quality rather
-          // than risk the whole request blowing Vercel's 4.5MB payload limit.
-          if (b64.length > FRAME_B64_BUDGET) {
-            b64 = capCanvas.toDataURL("image/jpeg", FRAME_QUALITY_FALLBACK).split(",")[1];
+          // Quality ladder: step down until the frame fits its budget. Real
+          // court footage (clay texture, fencing, foliage) compresses far
+          // worse than estimated — the previous single-fallback version could
+          // still push an oversized frame, which blew Vercel's 4.5MB request
+          // limit in production (FUNCTION_PAYLOAD_TOO_LARGE, Jul 12).
+          let b64 = null;
+          for (const q of [FRAME_QUALITY, 0.55, 0.42, 0.32]) {
+            b64 = capCanvas.toDataURL("image/jpeg", q).split(",")[1];
+            if (b64.length <= FRAME_B64_BUDGET) break;
           }
 
           frames.push({
@@ -703,9 +705,20 @@ export default function App() {
       const dLabel = duration > 60 ? `${Math.round(duration / 60)}-minute` : `${Math.round(duration)}-second`;
       // Send max 60 frames to API to stay under Vercel 4.5MB payload limit
       // Keep all frames in capturedFrames state for local display
-      const framesToSend = frames.length > 60
+      let framesToSend = frames.length > 60
         ? frames.filter((_, i) => i % Math.ceil(frames.length / 60) === 0).slice(0, 60)
         : frames;
+
+      // Global payload guard: per-frame budgets should keep us under the
+      // limit, but this is the hard backstop — if the total is still too
+      // big, progressively thin the frame set (evenly, preserving temporal
+      // spread) until it fits. 3.5MB of base64 leaves comfortable headroom
+      // for JSON overhead within Vercel's 4.5MB request cap.
+      const PAYLOAD_BUDGET = 3.5 * 1024 * 1024;
+      const totalSize = (fs) => fs.reduce((s, f) => s + f.base64.length, 0);
+      while (totalSize(framesToSend) > PAYLOAD_BUDGET && framesToSend.length > 20) {
+        framesToSend = framesToSend.filter((_, i) => i % 6 !== 5); // drop every 6th
+      }
       setSentFrames(framesToSend); // store exact frames sent so index matches Claude's frame_index
 
       const apiRes = await fetch(API_URL, {
