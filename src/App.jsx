@@ -261,15 +261,25 @@ function extractFrames(file, onProgress) {
     // ── PASS 2: Smart frame capture ─────────────────────────────────────────
     function startCapture(dur, audioStrikes) {
       let selected;
+      let usedAudioPairs = false;
       if (audioStrikes) {
-        // Audio path: strongest strikes first, captured AT the contact
-        // instant — that's the money moment (contact point, extension,
-        // trophy just before). No CONTEXT_BEFORE offset here: the strike
-        // time IS the shot.
+        // Strongest strikes only: the filmed player's own contacts are the
+        // loudest (closest to the mic). Weaker transients are other people's
+        // hits and bounces — frames at those instants show the player idle,
+        // which diluted the frame set and misled the model (validated on the
+        // Jul 12 serve-drill footage). For each strong strike capture a
+        // 2-frame micro-burst: preparation (~0.35s before) + the contact
+        // instant. Sequential pairs make the shot type unmistakable — for a
+        // serve that's toss/trophy then overhead contact.
+        usedAudioPairs = true;
         const byStrength = [...audioStrikes].sort((a, b) => b.score - a.score);
-        selected = byStrength.slice(0, MAX_FRAMES)
-          .map(p => Math.min(Math.max(0.5, p.t), Math.max(0.5, dur - 0.5)))
-          .sort((a, b) => a - b);
+        const strongest = byStrength.slice(0, 30);
+        const times = [];
+        for (const p of strongest) {
+          const tC = Math.min(Math.max(0.5, p.t), Math.max(0.5, dur - 0.5));
+          times.push(Math.max(0.5, tC - 0.35), tC);
+        }
+        selected = [...new Set(times.map(t => Math.round(t * 100) / 100))].sort((a, b) => a - b);
       } else {
       // Find motion peaks
       const peaks = [];
@@ -312,6 +322,7 @@ function extractFrames(file, onProgress) {
         const doCapture = () => {
           if (capIdx >= selected.length) {
             URL.revokeObjectURL(url);
+            frames.method = usedAudioPairs ? "audio_pairs" : "motion";
             resolve(frames);
             return;
           }
@@ -828,6 +839,7 @@ export default function App() {
         body: JSON.stringify({
           frames: framesToSend.map(f => f.base64),
           frameTimestamps: framesToSend.map(f => f.timestamp),
+          frameMethod: frames.method || "motion",
           context: context.trim(), playerId: playerId.trim(),
           frameCount: framesToSend.length, durationLabel: dLabel,
           firstName: firstName.trim().replace(/\b\w/g, c => c.toUpperCase()), email: email.trim(), level, sessionType,
