@@ -653,11 +653,11 @@ export default function App() {
 
     const phases = [
       "Extracting frames from your video…",
-      "Sampling key moments across the match…",
+      "Sampling key moments across your session…",
       "Sending frames to your coaching engine…",
       "Reading your technique patterns…",
-      "Analyzing forehand & backhand mechanics…",
-      "Checking serve mechanics and footwork…",
+      "Identifying the shots in your footage…",
+      "Analyzing technique and footwork…",
       "Identifying tactical habits…",
       "Cross-referencing pattern clusters…",
       "Writing your priority fixes…",
@@ -793,10 +793,10 @@ export default function App() {
   const lc = l => !l ? "#888" : l.includes("Beginner") ? "#5bc85b" : l.includes("Developing") ? "#a3e635" : l.includes("Intermediate") ? "#f5c842" : "#f97316";
 
   const analysisBars = [
-    { label: "Forehand mechanics", color: "#60a5fa", activePhase: 4, donePhase: 6 },
-    { label: "Backhand mechanics", color: "#60a5fa", activePhase: 4, donePhase: 6 },
-    { label: "Serve & footwork", color: "#f59e0b", activePhase: 5, donePhase: 7 },
-    { label: "Tactical patterns", color: "#f59e0b", activePhase: 6, donePhase: 8 },
+    { label: "Reading your frames", color: "#60a5fa", activePhase: 4, donePhase: 6 },
+    { label: "Identifying your shots", color: "#60a5fa", activePhase: 4, donePhase: 6 },
+    { label: "Technique & footwork", color: "#f59e0b", activePhase: 5, donePhase: 7 },
+    { label: "Patterns & habits", color: "#f59e0b", activePhase: 6, donePhase: 8 },
     { label: "Building your report", color: "#a78bfa", activePhase: 8, donePhase: 11 },
   ];
 
