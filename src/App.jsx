@@ -91,6 +91,85 @@ const TENNIS_FACTS = [
   "Racket weight affects stability at contact. A heavier racket twists less on off-centre hits — which is why control players prefer heavier frames.",
 ];
 
+// ── Audio contact detection ──────────────────────────────────────────────────
+// Ball strikes are sharp broadband audio transients. Detecting them and
+// capturing frames AT those instants guarantees the frames show actual shot
+// moments — contact, not walking or ball collection. This was built after a
+// serve-drill video (Jul 12) exposed the motion scanner's blind spot: the
+// player served far from the camera (low pixel motion, below threshold) and
+// collected balls near it (high motion), so the model received zero serve
+// frames and fabricated a match report from walking postures. Audio analysis
+// of that same video found 83 strikes; frames at those instants showed
+// unmistakable overhead serve contact. Thresholds below are the ones
+// validated on that footage.
+// Fail-open: any error, missing audio track, or too few transients returns
+// null and the motion pipeline runs exactly as before.
+async function detectAudioStrikes(file) {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    const buf = await file.arrayBuffer();
+    const ac = new AC();
+    let decoded;
+    try {
+      decoded = await ac.decodeAudioData(buf);
+    } finally {
+      ac.close?.();
+    }
+    if (!decoded || !decoded.length) return null;
+    const data = decoded.getChannelData(0);
+    const sr = decoded.sampleRate;
+
+    // 10ms RMS energy windows
+    const win = Math.round(0.01 * sr);
+    const n = Math.floor(data.length / win);
+    if (n < 200) return null; // too short to be meaningful
+    const rms = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      let s = 0;
+      const off = i * win;
+      for (let j = 0; j < win; j++) { const v = data[off + j]; s += v * v; }
+      rms[i] = Math.sqrt(s / win);
+    }
+
+    // Contrast vs local background (median over ~1s of windows) — a strike is
+    // a spike relative to its neighborhood, which stays robust across quiet
+    // courts, wind, and background chatter.
+    const BG = 101, half = 50;
+    const contrast = new Float32Array(n);
+    const scratch = new Float32Array(BG);
+    for (let i = 0; i < n; i++) {
+      const a = Math.max(0, i - half), b = Math.min(n, i + half + 1);
+      const len = b - a;
+      scratch.set(rms.subarray(a, b));
+      const view = scratch.subarray(0, len);
+      // median via sort of the small window copy
+      const sorted = Array.prototype.slice.call(view).sort((x, y) => x - y);
+      const bg = sorted[len >> 1] || 1e-6;
+      contrast[i] = rms[i] / (bg + 1e-6);
+    }
+
+    // Peak pick: validated thresholds — contrast ≥ 4, ≥ 2s apart
+    const MIN_CONTRAST = 4.0, MIN_GAP_S = 2.0;
+    const strikes = [];
+    for (let i = 1; i < n - 1; i++) {
+      if (contrast[i] >= MIN_CONTRAST && contrast[i] >= contrast[i - 1] && contrast[i] >= contrast[i + 1]) {
+        const t = i * 0.01;
+        if (!strikes.length || t - strikes[strikes.length - 1].t >= MIN_GAP_S) {
+          strikes.push({ t, score: contrast[i] });
+        }
+      }
+    }
+    // Require enough strikes to trust the audio picture of the session —
+    // otherwise fall back to motion (silent video, music dubbed over, etc.)
+    if (strikes.length < 15) return null;
+    return strikes;
+  } catch (e) {
+    console.warn("Audio strike detection unavailable, falling back to motion:", e?.message);
+    return null;
+  }
+}
+
 // ── Motion-based frame extractor ─────────────────────────────────────────────
 // Pass 1: Scan at low resolution using seeked events to detect motion peaks
 // Pass 2: Capture high-quality frames at the detected action moments
@@ -124,9 +203,20 @@ function extractFrames(file, onProgress) {
     let scanIdx = 0;
     let prevPixels = null;
 
-    // ── PASS 1: Motion scanning ─────────────────────────────────────────────
-    scanVideo.addEventListener("loadedmetadata", () => {
+    // ── PASS 1: Audio-first, motion fallback ───────────────────────────────
+    scanVideo.addEventListener("loadedmetadata", async () => {
       const dur = scanVideo.duration;
+
+      // Try audio contact detection first — it finds actual shot moments
+      // (contact instants) instead of pixel motion, which testing proved can
+      // completely miss the shots (player far from camera) while firing on
+      // walking (player near camera). Also much faster: no 1000+ video seeks.
+      const strikes = await detectAudioStrikes(file);
+      if (strikes && strikes.length) {
+        onProgress?.(40, 100, "scanning");
+        startCapture(dur, strikes);
+        return;
+      }
 
       for (let t = 1; t < dur - 1; t += SCAN_INTERVAL) {
         scanTimes.push(parseFloat(t.toFixed(1)));
@@ -169,7 +259,18 @@ function extractFrames(file, onProgress) {
     });
 
     // ── PASS 2: Smart frame capture ─────────────────────────────────────────
-    function startCapture(dur) {
+    function startCapture(dur, audioStrikes) {
+      let selected;
+      if (audioStrikes) {
+        // Audio path: strongest strikes first, captured AT the contact
+        // instant — that's the money moment (contact point, extension,
+        // trophy just before). No CONTEXT_BEFORE offset here: the strike
+        // time IS the shot.
+        const byStrength = [...audioStrikes].sort((a, b) => b.score - a.score);
+        selected = byStrength.slice(0, MAX_FRAMES)
+          .map(p => Math.min(Math.max(0.5, p.t), Math.max(0.5, dur - 0.5)))
+          .sort((a, b) => a - b);
+      } else {
       // Find motion peaks
       const peaks = [];
       for (let i = 1; i < motionScores.length - 1; i++) {
@@ -198,9 +299,10 @@ function extractFrames(file, onProgress) {
 
       // Sort by score descending, keep top MAX_FRAMES, re-sort by time
       peaks.sort((a, b) => b.score - a.score);
-      const selected = peaks.slice(0, MAX_FRAMES)
+      selected = peaks.slice(0, MAX_FRAMES)
         .map(p => Math.max(0.5, p.t - CONTEXT_BEFORE))
         .sort((a, b) => a - b);
+      }
 
       // Now capture full-res frames
       const frames = [];
