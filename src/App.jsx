@@ -102,68 +102,146 @@ const TENNIS_FACTS = [
 // of that same video found 83 strikes; frames at those instants showed
 // unmistakable overhead serve contact. Thresholds below are the ones
 // validated on that footage.
+//
+// TWO STRATEGIES, one algorithm:
+//  A) Fast: decodeAudioData on the whole file. Works in desktop Chrome and
+//     most desktop browsers. iOS WebKit frequently rejects video containers
+//     here (and a 10-minute decode is a large memory spike) — confirmed in
+//     production Jul 12 via FRAME_METHOD: motion logs from iPhone.
+//  B) WebKit path: play the video silently at 4x through the Web Audio graph
+//     and measure RMS as it streams — no container decode, near-zero memory.
+//     Costs real time (~2.5 min for a 10-min video) but replaces the motion
+//     scan's thousand seeks, so total extraction time is comparable.
 // Fail-open: any error, missing audio track, or too few transients returns
 // null and the motion pipeline runs exactly as before.
-async function detectAudioStrikes(file) {
-  try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return null;
-    const buf = await file.arrayBuffer();
-    const ac = new AC();
-    let decoded;
-    try {
-      decoded = await ac.decodeAudioData(buf);
-    } finally {
-      ac.close?.();
-    }
-    if (!decoded || !decoded.length) return null;
-    const data = decoded.getChannelData(0);
-    const sr = decoded.sampleRate;
 
-    // 10ms RMS energy windows
-    const win = Math.round(0.01 * sr);
-    const n = Math.floor(data.length / win);
-    if (n < 200) return null; // too short to be meaningful
-    const rms = new Float32Array(n);
-    for (let i = 0; i < n; i++) {
-      let s = 0;
-      const off = i * win;
-      for (let j = 0; j < win; j++) { const v = data[off + j]; s += v * v; }
-      rms[i] = Math.sqrt(s / win);
-    }
-
-    // Contrast vs local background (median over ~1s of windows) — a strike is
-    // a spike relative to its neighborhood, which stays robust across quiet
-    // courts, wind, and background chatter.
-    const BG = 101, half = 50;
-    const contrast = new Float32Array(n);
-    const scratch = new Float32Array(BG);
-    for (let i = 0; i < n; i++) {
-      const a = Math.max(0, i - half), b = Math.min(n, i + half + 1);
-      const len = b - a;
-      scratch.set(rms.subarray(a, b));
-      const view = scratch.subarray(0, len);
-      // median via sort of the small window copy
-      const sorted = Array.prototype.slice.call(view).sort((x, y) => x - y);
-      const bg = sorted[len >> 1] || 1e-6;
-      contrast[i] = rms[i] / (bg + 1e-6);
-    }
-
-    // Peak pick: validated thresholds — contrast ≥ 4, ≥ 2s apart
-    const MIN_CONTRAST = 4.0, MIN_GAP_S = 2.0;
-    const strikes = [];
-    for (let i = 1; i < n - 1; i++) {
-      if (contrast[i] >= MIN_CONTRAST && contrast[i] >= contrast[i - 1] && contrast[i] >= contrast[i + 1]) {
-        const t = i * 0.01;
-        if (!strikes.length || t - strikes[strikes.length - 1].t >= MIN_GAP_S) {
-          strikes.push({ t, score: contrast[i] });
-        }
+// Shared: RMS series (one value per 10ms of media time) → strike list.
+// Contrast vs local ~1s median background keeps this robust across quiet
+// courts, wind, and background chatter. Validated thresholds: ≥4x contrast,
+// ≥2s apart, ≥15 strikes to trust the audio picture at all.
+function strikesFromRms(rms) {
+  const n = rms.length;
+  if (n < 200) return null;
+  const BG = 101, half = 50;
+  const contrast = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const a = Math.max(0, i - half), b = Math.min(n, i + half + 1);
+    const sorted = Array.prototype.slice.call(rms.subarray ? rms.subarray(a, b) : rms.slice(a, b)).sort((x, y) => x - y);
+    const bg = sorted[(b - a) >> 1] || 1e-6;
+    contrast[i] = rms[i] / (bg + 1e-6);
+  }
+  const MIN_CONTRAST = 4.0, MIN_GAP_S = 2.0;
+  const strikes = [];
+  for (let i = 1; i < n - 1; i++) {
+    if (contrast[i] >= MIN_CONTRAST && contrast[i] >= contrast[i - 1] && contrast[i] >= contrast[i + 1]) {
+      const t = i * 0.01;
+      if (!strikes.length || t - strikes[strikes.length - 1].t >= MIN_GAP_S) {
+        strikes.push({ t, score: contrast[i] });
       }
     }
-    // Require enough strikes to trust the audio picture of the session —
-    // otherwise fall back to motion (silent video, music dubbed over, etc.)
-    if (strikes.length < 15) return null;
-    return strikes;
+  }
+  return strikes.length >= 15 ? strikes : null;
+}
+
+// Strategy A: full-file decode (desktop fast path)
+async function decodeStrikesFast(file) {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  const buf = await file.arrayBuffer();
+  const ac = window.__ffAudioCtx || new AC();
+  const decoded = await ac.decodeAudioData(buf); // throws on WebKit video containers → caller catches
+  if (!decoded || !decoded.length) return null;
+  const data = decoded.getChannelData(0);
+  const sr = decoded.sampleRate;
+  const win = Math.round(0.01 * sr);
+  const n = Math.floor(data.length / win);
+  const rms = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let s = 0;
+    const off = i * win;
+    for (let j = 0; j < win; j++) { const v = data[off + j]; s += v * v; }
+    rms[i] = Math.sqrt(s / win);
+  }
+  return strikesFromRms(rms);
+}
+
+// Strategy B: silent accelerated playback capture (iOS WebKit path).
+// The media element's audio is routed into the Web Audio graph (per spec,
+// unaffected by element volume) and silenced with a zero-gain node, so the
+// user hears nothing. RMS windows are counted in MEDIA time: at playback
+// rate R, (sampleRate * 0.01 / R) streamed samples represent 10ms of video.
+function detectStrikesViaPlayback(file, onProgress) {
+  return new Promise((resolve) => {
+    let settled = false;
+    let v, src, proc, mute, url, watchdog, hardTimeout;
+    const cleanup = () => {
+      try { if (proc) proc.onaudioprocess = null; } catch (e) {}
+      try { src && src.disconnect(); } catch (e) {}
+      try { proc && proc.disconnect(); } catch (e) {}
+      try { mute && mute.disconnect(); } catch (e) {}
+      try { v && v.pause(); } catch (e) {}
+      try { url && URL.revokeObjectURL(url); } catch (e) {}
+      clearTimeout(watchdog); clearTimeout(hardTimeout);
+    };
+    const done = (result) => { if (!settled) { settled = true; cleanup(); resolve(result); } };
+    try {
+      const ac = window.__ffAudioCtx;
+      if (!ac) return done(null);
+      const RATE = 4;
+      url = URL.createObjectURL(file);
+      v = document.createElement("video");
+      v.src = url; v.playsInline = true; v.preload = "auto";
+      const rms = [];
+      let acc = 0, accN = 0;
+
+      v.addEventListener("loadedmetadata", () => {
+        const dur = v.duration;
+        // Listening runs at 1/4 real time — cap it for very long videos
+        if (!isFinite(dur) || dur > 900) return done(null);
+        try {
+          src = ac.createMediaElementSource(v);
+          proc = ac.createScriptProcessor(4096, 1, 1);
+          mute = ac.createGain(); mute.gain.value = 0;
+          src.connect(proc); proc.connect(mute); mute.connect(ac.destination);
+        } catch (e) { return done(null); }
+        const winSamples = Math.max(16, Math.round(ac.sampleRate * 0.01 / RATE));
+        proc.onaudioprocess = (e) => {
+          const d = e.inputBuffer.getChannelData(0);
+          for (let i = 0; i < d.length; i++) {
+            const s = d[i]; acc += s * s; accN++;
+            if (accN >= winSamples) { rms.push(Math.sqrt(acc / accN)); acc = 0; accN = 0; }
+          }
+        };
+        v.addEventListener("timeupdate", () => {
+          onProgress?.(Math.min(39, Math.round((v.currentTime / dur) * 40)), 100, "scanning");
+        });
+        v.playbackRate = RATE;
+        ac.resume?.();
+        const tryPlay = v.play();
+        if (tryPlay && tryPlay.catch) tryPlay.catch(() => { v.muted = true; v.play().catch(() => done(null)); });
+        // If no samples arrive within 6s of starting, the graph is silent on
+        // this engine — bail to motion rather than waste minutes.
+        watchdog = setTimeout(() => { if (!rms.length) done(null); }, 6000);
+        // Hard cap: media duration at RATE plus generous margin
+        hardTimeout = setTimeout(() => done(strikesFromRms(rms)), (dur / RATE + 45) * 1000);
+      });
+      v.addEventListener("ended", () => done(strikesFromRms(rms)));
+      v.addEventListener("error", () => done(null));
+    } catch (e) {
+      done(null);
+    }
+  });
+}
+
+async function detectAudioStrikes(file, onProgress) {
+  try {
+    const fast = await decodeStrikesFast(file);
+    if (fast) return fast;
+  } catch (e) {
+    console.warn("Fast audio decode unavailable (expected on iOS), trying playback capture:", e?.message);
+  }
+  try {
+    return await detectStrikesViaPlayback(file, onProgress);
   } catch (e) {
     console.warn("Audio strike detection unavailable, falling back to motion:", e?.message);
     return null;
@@ -210,8 +288,8 @@ function extractFrames(file, onProgress) {
       // Try audio contact detection first — it finds actual shot moments
       // (contact instants) instead of pixel motion, which testing proved can
       // completely miss the shots (player far from camera) while firing on
-      // walking (player near camera). Also much faster: no 1000+ video seeks.
-      const strikes = await detectAudioStrikes(file);
+      // walking (player near camera).
+      const strikes = await detectAudioStrikes(file, onProgress);
       if (strikes && strikes.length) {
         onProgress?.(40, 100, "scanning");
         startCapture(dur, strikes);
@@ -724,6 +802,14 @@ export default function App() {
   const ADMIN_EMAILS = ["ayerswilliam@gmail.com", "nimrodayers@gmail.com", "rallyticshq@gmail.com"];
 
   const analyze = async () => {
+    // iOS requires an AudioContext born from a user gesture — create it
+    // synchronously here (the button click) so the audio strike detector can
+    // use it later, after async work has consumed the transient activation.
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC && !window.__ffAudioCtx) window.__ffAudioCtx = new AC();
+      window.__ffAudioCtx?.resume?.();
+    } catch (e) { /* no audio support — motion fallback will handle it */ }
     setStage("working"); setPct(0); setError(null); setFramesDone(0); setStatusPhase(0);
     setElapsedSecs(0);
     elapsedTimer.current = setInterval(() => setElapsedSecs(s => s + 1), 1000);
