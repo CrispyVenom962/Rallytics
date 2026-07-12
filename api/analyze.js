@@ -1198,6 +1198,7 @@ export default async function handler(req, res) {
   };
 
   const inventory = await classifyFootage(frames, ts, fmtTime);
+  console.log("FOOTAGE_INVENTORY:", inventory ? JSON.stringify(inventory) : "CLASSIFIER_FAILED_OR_TIMED_OUT");
 
   // The coaching brain is selected from what the footage ACTUALLY shows, not
   // from the user's menu selection — testing proved users mislabel sessions
