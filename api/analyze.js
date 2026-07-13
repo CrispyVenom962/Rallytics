@@ -1072,21 +1072,32 @@ async function classifyFootage(frames, ts, fmtTime, frameMethodHint) {
     const timer = setTimeout(() => ac.abort(), 50000); // hard cap: never let Pass 1 sink the report
     let resp;
     try {
-      resp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": process.env.ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 700,
-          system: CLASSIFIER_PROMPT,
-          messages: [{ role: "user", content }],
-        }),
-        signal: ac.signal,
-      });
+      // Shot IDENTITY (serve vs forehand on small distant figures) is the
+      // one failure that survived every prompt-level fix — a perception
+      // ceiling. Run the classifier on the strongest available model; fall
+      // back to sonnet if the key lacks access. The call is small (~24
+      // images, tiny output) so the cost delta per report is modest.
+      const CLASSIFIER_MODELS = ["claude-fable-5", "claude-sonnet-4-6"];
+      for (const model of CLASSIFIER_MODELS) {
+        resp = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": process.env.ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 700,
+            system: CLASSIFIER_PROMPT,
+            messages: [{ role: "user", content }],
+          }),
+          signal: ac.signal,
+        });
+        if (resp.ok) { console.log("CLASSIFIER_MODEL:", model); break; }
+        const errBody = await resp.text().catch(() => "");
+        console.warn(`Classifier model ${model} unavailable (${resp.status}): ${errBody.slice(0, 200)}`);
+      }
     } finally {
       clearTimeout(timer);
     }
