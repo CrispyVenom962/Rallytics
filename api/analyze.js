@@ -1039,10 +1039,20 @@ async function classifyFootage(frames, ts, fmtTime, frameMethodHint) {
     // which are the most informative for shot identification.
     let indices;
     if (frameMethodHint === "audio_hybrid") {
-      // Send complete 3-frame swing sequences (first 8 clusters = 24 frames)
-      // rather than isolated middle frames — sequences are what make a serve
-      // unmistakable versus a groundstroke.
-      indices = frames.map((_, i) => i).slice(0, 24);
+      // Send complete 3-frame swing sequences — sequences are what make a
+      // serve unmistakable versus a groundstroke — and SPREAD the sampled
+      // triplets across the whole session. Sampling only the first frames
+      // meant the classifier saw just the session's opening minutes and
+      // missed the serving entirely (confirmed in production Jul 13).
+      const tripletCount = Math.floor(frames.length / 3);
+      const takeTriplets = Math.min(8, tripletCount);
+      indices = [];
+      for (let k = 0; k < takeTriplets; k++) {
+        const tri = Math.floor((k * tripletCount) / takeTriplets);
+        indices.push(tri * 3, tri * 3 + 1, tri * 3 + 2);
+      }
+      indices = indices.filter((i) => i < frames.length);
+      if (!indices.length) indices = frames.map((_, i) => i).slice(0, 24);
     } else if (frameMethodHint === "audio_pairs") {
       indices = frames.map((_, i) => i).filter((i) => i % 2 === 1).slice(0, 24);
       if (!indices.length) indices = frames.map((_, i) => i).slice(0, 24);
