@@ -292,8 +292,13 @@ function strikesToWindows(strikes, dur) {
   }
   clusters.push(cur);
   // Strongest 15 clusters, each expanded into a scan window around it
+  // Rank clusters by RICHNESS first (transient count), loudness second.
+  // A shot ritual produces multi-sound clusters (bounce, contact, ball
+  // landing/fence); stray loud noises are lone transients. Loudness-first
+  // ranking favored fence rattles and near-mic bounces, making frame
+  // selection unstable run to run (same video produced different reports).
   const top = clusters
-    .sort((a, b) => Math.max(...b.map(x => x.score)) - Math.max(...a.map(x => x.score)))
+    .sort((a, b) => (b.length - a.length) || (Math.max(...b.map(x => x.score)) - Math.max(...a.map(x => x.score))))
     .slice(0, 15)
     .sort((a, b) => a[0].t - b[0].t);
   return top.map(cl => {
@@ -531,8 +536,14 @@ function extractFrames(file, onProgress, preStrikes) {
         for (const w of windows) {
           const inWin = motionScores.filter((m, i) => i > 0 && m.t >= w.t0 && m.t < w.t1 && motionScores[i - 1].t >= w.t0);
           if (!inWin.length) continue;
-          let best = inWin[0];
-          for (const m of inWin) if (m.score > best.score) best = m;
+          // A swing is a motion SPIKE; walking is a plateau. Penalizing the
+          // window mean keeps sustained walking from outranking the swing.
+          const mean = inWin.reduce((s, m) => s + m.score, 0) / inWin.length;
+          let best = inWin[0], bestVal = -Infinity;
+          for (const m of inWin) {
+            const v = m.score - 0.5 * mean;
+            if (v > bestVal) { bestVal = v; best = m; }
+          }
           const p = best.t;
           times.push(Math.max(0.5, p - 0.5), p, Math.min(Math.max(0.5, dur - 0.5), p + 0.5));
         }
