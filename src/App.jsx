@@ -296,10 +296,16 @@ function strikesToWindows(strikes, dur) {
     .sort((a, b) => Math.max(...b.map(x => x.score)) - Math.max(...a.map(x => x.score)))
     .slice(0, 15)
     .sort((a, b) => a[0].t - b[0].t);
-  return top.map(cl => ({
-    t0: Math.max(0.5, cl[0].t - 1.5),
-    t1: Math.min(dur - 0.5, cl[cl.length - 1].t + 2.0),
-  }));
+  return top.map(cl => {
+    // Center a tight 4s window on the cluster's strongest transient — enough
+    // to contain the swing, few enough seeks to stay fast on iOS.
+    let peak = cl[0];
+    for (const x of cl) if (x.score > peak.score) peak = x;
+    return {
+      t0: Math.max(0.5, peak.t - 1.6),
+      t1: Math.min(dur - 0.5, peak.t + 2.4),
+    };
+  });
 }
 
 // ── Motion-based frame extractor ─────────────────────────────────────────────
@@ -352,7 +358,7 @@ function extractFrames(file, onProgress, preStrikes) {
       if (strikes && strikes.length) {
         windows = strikesToWindows(strikes, dur);
         for (const w of windows) {
-          for (let t = w.t0; t < w.t1; t += 0.25) {
+          for (let t = w.t0; t < w.t1; t += 0.4) {
             scanTimes.push(parseFloat(t.toFixed(2)));
           }
         }
@@ -364,16 +370,39 @@ function extractFrames(file, onProgress, preStrikes) {
       audioWindows = windows;
       scanBase = windows ? 30 : 0; // listening already consumed 0-30 when audio ran
 
+      let seekWatchdog = null;
+      let missedSeeks = 0;
       const doScan = () => {
         if (scanIdx >= scanTimes.length) {
+          clearTimeout(seekWatchdog);
           // Pass 1 complete — build peaks and start Pass 2
           startCapture(dur, audioWindows);
           return;
         }
-        scanVideo.currentTime = scanTimes[scanIdx];
+        // Per-seek watchdog: iOS occasionally never fires 'seeked'. Skip the
+        // dead point rather than hang; if seeks die repeatedly, surface a
+        // real error instead of freezing the progress screen.
+        clearTimeout(seekWatchdog);
+        seekWatchdog = setTimeout(() => {
+          missedSeeks++;
+          if (missedSeeks > 12) {
+            reject(new Error("Video scanning stalled — please try again."));
+            return;
+          }
+          scanIdx++;
+          doScan();
+        }, 3000);
+        const t = scanTimes[scanIdx];
+        // fastSeek is dramatically quicker on iOS; keyframe-level precision
+        // is fine for 160x90 motion scoring (capture pass still seeks
+        // precisely).
+        if (typeof scanVideo.fastSeek === "function") scanVideo.fastSeek(t);
+        else scanVideo.currentTime = t;
       };
 
       scanVideo.addEventListener("seeked", () => {
+        clearTimeout(seekWatchdog);
+        missedSeeks = 0;
         scanCtx.drawImage(scanVideo, 0, 0, scanW, scanH);
         const pixels = scanCtx.getImageData(0, 0, scanW, scanH).data;
 
@@ -392,7 +421,7 @@ function extractFrames(file, onProgress, preStrikes) {
         prevPixels = new Uint8ClampedArray(pixels);
 
         // Progress: pass 1 = 0-40%
-        onProgress?.(scanBase + Math.round((scanIdx / scanTimes.length) * (40 - scanBase)), 100, "scanning");
+        onProgress?.(scanBase + Math.round((scanIdx / scanTimes.length) * (60 - scanBase)), 100, "scanning");
         scanIdx++;
         doScan();
       });
@@ -505,8 +534,8 @@ function extractFrames(file, onProgress, preStrikes) {
             frameIndex: capIdx,
           });
 
-          // Progress: pass 2 = 40-95%
-          const pct = 40 + Math.round((capIdx / selected.length) * 55);
+          // Progress: pass 2 = 60-95%
+          const pct = 60 + Math.round((capIdx / selected.length) * 35);
           onProgress?.(pct, 100, "capturing");
 
           capIdx++;
