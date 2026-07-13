@@ -593,6 +593,7 @@ function extractFrames(file, onProgress, preStrikes) {
           if (capIdx >= selected.length) {
             URL.revokeObjectURL(url);
             frames.method = usedHybrid ? "audio_hybrid" : "motion";
+            frames.clientBuild = "v3-richness-2026-07-13";
             resolve(frames);
             return;
           }
@@ -1128,6 +1129,7 @@ export default function App() {
           frames: framesToSend.map(f => f.base64),
           frameTimestamps: framesToSend.map(f => f.timestamp),
           frameMethod: frames.method || "motion",
+          clientBuild: frames.clientBuild || "unknown",
           context: context.trim(), playerId: playerId.trim(),
           frameCount: framesToSend.length, durationLabel: dLabel,
           firstName: firstName.trim().replace(/\b\w/g, c => c.toUpperCase()), email: email.trim(), level, sessionType,
