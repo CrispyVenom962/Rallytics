@@ -130,7 +130,7 @@ function strikesFromRms(rms) {
     const bg = sorted[(b - a) >> 1] || 1e-6;
     contrast[i] = rms[i] / (bg + 1e-6);
   }
-  const MIN_CONTRAST = 4.0, MIN_GAP_S = 2.0;
+  const MIN_CONTRAST = 4.0, MIN_GAP_S = 0.3; // raw transients — clustering groups them downstream
   const strikes = [];
   for (let i = 1; i < n - 1; i++) {
     if (contrast[i] >= MIN_CONTRAST && contrast[i] >= contrast[i - 1] && contrast[i] >= contrast[i + 1]) {
@@ -248,6 +248,35 @@ async function detectAudioStrikes(file, onProgress) {
   }
 }
 
+// Group raw transients into activity clusters and return scan windows.
+// WHY (validated on the Jul 12 serve-drill footage): a session's transients
+// are a mix of true racket contacts, pre-shot ball bounces near the mic,
+// balls rattling the far fence (the loudest object on any court), and other
+// people's hits. No audio feature reliably isolates the player's contact —
+// loudness favors near-mic bounces, and distance strips the high frequencies
+// that would distinguish a string crack from a bounce thud. So audio is used
+// only for WHERE (activity windows), and a fine-grained motion scan inside
+// each window finds WHEN (the swing is a genuine local motion peak there).
+function strikesToWindows(strikes, dur) {
+  const raw = [...strikes].sort((a, b) => a.t - b.t);
+  const clusters = [];
+  let cur = [raw[0]];
+  for (let i = 1; i < raw.length; i++) {
+    if (raw[i].t - cur[cur.length - 1].t < 1.8) cur.push(raw[i]);
+    else { clusters.push(cur); cur = [raw[i]]; }
+  }
+  clusters.push(cur);
+  // Strongest 15 clusters, each expanded into a scan window around it
+  const top = clusters
+    .sort((a, b) => Math.max(...b.map(x => x.score)) - Math.max(...a.map(x => x.score)))
+    .slice(0, 15)
+    .sort((a, b) => a[0].t - b[0].t);
+  return top.map(cl => ({
+    t0: Math.max(0.5, cl[0].t - 1.5),
+    t1: Math.min(dur - 0.5, cl[cl.length - 1].t + 2.0),
+  }));
+}
+
 // ── Motion-based frame extractor ─────────────────────────────────────────────
 // Pass 1: Scan at low resolution using seeked events to detect motion peaks
 // Pass 2: Capture high-quality frames at the detected action moments
@@ -278,6 +307,7 @@ function extractFrames(file, onProgress) {
 
     let motionScores = [];
     let scanTimes = [];
+    let audioWindows = null;
     let scanIdx = 0;
     let prevPixels = null;
 
@@ -285,25 +315,30 @@ function extractFrames(file, onProgress) {
     scanVideo.addEventListener("loadedmetadata", async () => {
       const dur = scanVideo.duration;
 
-      // Try audio contact detection first — it finds actual shot moments
-      // (contact instants) instead of pixel motion, which testing proved can
-      // completely miss the shots (player far from camera) while firing on
-      // walking (player near camera).
+      // Try audio contact detection first. Audio locates ACTIVITY WINDOWS;
+      // the motion scan then runs only inside those windows at fine
+      // resolution to find the swing instants. Two senses, each doing the
+      // job it's actually reliable at.
       const strikes = await detectAudioStrikes(file, onProgress);
+      let windows = null;
       if (strikes && strikes.length) {
-        onProgress?.(40, 100, "scanning");
-        startCapture(dur, strikes);
-        return;
+        windows = strikesToWindows(strikes, dur);
+        for (const w of windows) {
+          for (let t = w.t0; t < w.t1; t += 0.25) {
+            scanTimes.push(parseFloat(t.toFixed(2)));
+          }
+        }
+      } else {
+        for (let t = 1; t < dur - 1; t += SCAN_INTERVAL) {
+          scanTimes.push(parseFloat(t.toFixed(1)));
+        }
       }
-
-      for (let t = 1; t < dur - 1; t += SCAN_INTERVAL) {
-        scanTimes.push(parseFloat(t.toFixed(1)));
-      }
+      audioWindows = windows;
 
       const doScan = () => {
         if (scanIdx >= scanTimes.length) {
           // Pass 1 complete — build peaks and start Pass 2
-          startCapture(dur);
+          startCapture(dur, audioWindows);
           return;
         }
         scanVideo.currentTime = scanTimes[scanIdx];
@@ -337,28 +372,29 @@ function extractFrames(file, onProgress) {
     });
 
     // ── PASS 2: Smart frame capture ─────────────────────────────────────────
-    function startCapture(dur, audioStrikes) {
+    function startCapture(dur, windows) {
       let selected;
-      let usedAudioPairs = false;
-      if (audioStrikes) {
-        // Strongest strikes only: the filmed player's own contacts are the
-        // loudest (closest to the mic). Weaker transients are other people's
-        // hits and bounces — frames at those instants show the player idle,
-        // which diluted the frame set and misled the model (validated on the
-        // Jul 12 serve-drill footage). For each strong strike capture a
-        // 2-frame micro-burst: preparation (~0.35s before) + the contact
-        // instant. Sequential pairs make the shot type unmistakable — for a
-        // serve that's toss/trophy then overhead contact.
-        usedAudioPairs = true;
-        const byStrength = [...audioStrikes].sort((a, b) => b.score - a.score);
-        const strongest = byStrength.slice(0, 30);
+      let usedHybrid = false;
+      if (windows && windows.length) {
+        // Hybrid: within each audio activity window, the swing is the local
+        // motion maximum. Capture a 3-frame burst around it (prep, swing,
+        // finish) so the model reads each shot as a sequence. Skip each
+        // window's first sample — its diff is against the previous window's
+        // last frame and is meaningless.
+        usedHybrid = true;
         const times = [];
-        for (const p of strongest) {
-          const tC = Math.min(Math.max(0.5, p.t), Math.max(0.5, dur - 0.5));
-          times.push(Math.max(0.5, tC - 0.35), tC);
+        for (const w of windows) {
+          const inWin = motionScores.filter((m, i) => i > 0 && m.t >= w.t0 && m.t < w.t1 && motionScores[i - 1].t >= w.t0);
+          if (!inWin.length) continue;
+          let best = inWin[0];
+          for (const m of inWin) if (m.score > best.score) best = m;
+          const p = best.t;
+          times.push(Math.max(0.5, p - 0.5), p, Math.min(Math.max(0.5, dur - 0.5), p + 0.5));
         }
         selected = [...new Set(times.map(t => Math.round(t * 100) / 100))].sort((a, b) => a - b);
-      } else {
+        if (!selected.length) { usedHybrid = false; }
+      }
+      if (!selected || !selected.length) {
       // Find motion peaks
       const peaks = [];
       for (let i = 1; i < motionScores.length - 1; i++) {
@@ -400,7 +436,7 @@ function extractFrames(file, onProgress) {
         const doCapture = () => {
           if (capIdx >= selected.length) {
             URL.revokeObjectURL(url);
-            frames.method = usedAudioPairs ? "audio_pairs" : "motion";
+            frames.method = usedHybrid ? "audio_hybrid" : "motion";
             resolve(frames);
             return;
           }
