@@ -205,6 +205,7 @@ function detectStrikesViaPlayback(file, onProgress) {
           src.connect(proc); proc.connect(mute); mute.connect(ac.destination);
         } catch (e) { return done(null); }
         const winSamples = Math.max(16, Math.round(ac.sampleRate * 0.01 / RATE));
+        let playStartWall = null;
         proc.onaudioprocess = (e) => {
           const d = e.inputBuffer.getChannelData(0);
           for (let i = 0; i < d.length; i++) {
@@ -213,10 +214,20 @@ function detectStrikesViaPlayback(file, onProgress) {
           }
         };
         v.addEventListener("timeupdate", () => {
-          onProgress?.(Math.min(39, Math.round((v.currentTime / dur) * 40)), 100, "scanning");
+          onProgress?.(Math.min(30, Math.round((v.currentTime / dur) * 30)), 100, "scanning");
+          // Belt and braces: some WebKit builds never fire 'ended' at
+          // elevated playbackRate — treat near-end as completion.
+          if (v.currentTime >= dur - 0.5) done(strikesFromRms(rms));
+          // If the engine silently ignored our playbackRate, listening would
+          // take the video's full real duration — detect and bail to motion.
+          if (playStartWall && Date.now() - playStartWall > 12000) {
+            const wallSec = (Date.now() - playStartWall) / 1000;
+            if (v.currentTime < wallSec * 1.5) done(null);
+          }
         });
         v.playbackRate = RATE;
         ac.resume?.();
+        v.addEventListener("playing", () => { if (!playStartWall) playStartWall = Date.now(); });
         const tryPlay = v.play();
         if (tryPlay && tryPlay.catch) tryPlay.catch(() => { v.muted = true; v.play().catch(() => done(null)); });
         // If no samples arrive within 6s of starting, the graph is silent on
@@ -281,7 +292,7 @@ function strikesToWindows(strikes, dur) {
 // Pass 1: Scan at low resolution using seeked events to detect motion peaks
 // Pass 2: Capture high-quality frames at the detected action moments
 // Event-listener pattern used for mobile Safari compatibility
-function extractFrames(file, onProgress) {
+function extractFrames(file, onProgress, preStrikes) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
 
@@ -308,18 +319,21 @@ function extractFrames(file, onProgress) {
     let motionScores = [];
     let scanTimes = [];
     let audioWindows = null;
+    let scanBase = 0;
     let scanIdx = 0;
     let prevPixels = null;
 
     // ── PASS 1: Audio-first, motion fallback ───────────────────────────────
-    scanVideo.addEventListener("loadedmetadata", async () => {
+    scanVideo.addEventListener("loadedmetadata", () => {
       const dur = scanVideo.duration;
 
-      // Try audio contact detection first. Audio locates ACTIVITY WINDOWS;
-      // the motion scan then runs only inside those windows at fine
-      // resolution to find the swing instants. Two senses, each doing the
-      // job it's actually reliable at.
-      const strikes = await detectAudioStrikes(file, onProgress);
+      // Audio strike detection ran BEFORE this function (in the click
+      // handler flow) so its playback element was the only video decoder
+      // alive — iOS starves third simultaneous decoders, which froze
+      // extraction at the listening stage in production (Jul 13). Audio
+      // locates ACTIVITY WINDOWS; the motion scan runs only inside those
+      // windows at fine resolution to find the swing instants.
+      const strikes = preStrikes || null;
       let windows = null;
       if (strikes && strikes.length) {
         windows = strikesToWindows(strikes, dur);
@@ -334,6 +348,7 @@ function extractFrames(file, onProgress) {
         }
       }
       audioWindows = windows;
+      scanBase = windows ? 30 : 0; // listening already consumed 0-30 when audio ran
 
       const doScan = () => {
         if (scanIdx >= scanTimes.length) {
@@ -363,7 +378,7 @@ function extractFrames(file, onProgress) {
         prevPixels = new Uint8ClampedArray(pixels);
 
         // Progress: pass 1 = 0-40%
-        onProgress?.(Math.round((scanIdx / scanTimes.length) * 40), 100, "scanning");
+        onProgress?.(scanBase + Math.round((scanIdx / scanTimes.length) * (40 - scanBase)), 100, "scanning");
         scanIdx++;
         doScan();
       });
@@ -905,11 +920,16 @@ export default function App() {
       setStatusMsg(phases[0]);
       setStatusPhase(0);
 
+      const preStrikes = await detectAudioStrikes(videoFile, (pct, total, phase) => {
+        setPct(pct);
+        setStatusMsg(phases[1]);
+      });
+
       const frames = await extractFrames(videoFile, (pct, total, phase) => {
         setPct(pct);
         if (pct < 65) setStatusMsg(phases[1]);
         else setStatusMsg(phases[2]);
-      });
+      }, preStrikes);
 
       setFramesDone(frames.length);
       setFramesTotal(frames.length);
