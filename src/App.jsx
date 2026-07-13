@@ -344,16 +344,103 @@ function extractFrames(file, onProgress, preStrikes) {
     let prevPixels = null;
 
     // ── PASS 1: Audio-first, motion fallback ───────────────────────────────
-    scanVideo.addEventListener("loadedmetadata", () => {
+    // Listen for ball-strike transients by playing scanVideo itself at 4x
+    // through a silent WebAudio graph. Resolves strikes or null; never
+    // rejects into a hang — every exit path is timed.
+    function listenOnScanVideo(dur) {
+      return new Promise((res) => {
+        let finished = false;
+        let proc, srcNode, mute, hardTimeout, sampleWatchdog, onTimeRef = null;
+        const rms = [];
+        let acc = 0, accN = 0, playStartWall = null;
+        const RATE = 4;
+        const finish = (result) => {
+          if (finished) return;
+          finished = true;
+          clearTimeout(hardTimeout); clearTimeout(sampleWatchdog);
+          try { if (proc) proc.onaudioprocess = null; } catch (e) {}
+          try { proc && proc.disconnect(); } catch (e) {}
+          try { mute && mute.disconnect(); } catch (e) {}
+          // srcNode stays attached to scanVideo (cannot be detached) — its
+          // audio simply routes nowhere audible during later seeking.
+          try { if (onTimeRef) scanVideo.removeEventListener("timeupdate", onTimeRef); } catch (e) {}
+          try { scanVideo.pause(); } catch (e) {}
+          try { scanVideo.playbackRate = 1; } catch (e) {}
+          try { scanVideo.muted = true; } catch (e) {}
+          res(result);
+        };
+        try {
+          const ac = window.__ffAudioCtx;
+          if (!ac || dur > 900) return finish(null);
+          try {
+            srcNode = ac.createMediaElementSource(scanVideo);
+            proc = ac.createScriptProcessor(4096, 1, 1);
+            mute = ac.createGain(); mute.gain.value = 0;
+            srcNode.connect(proc); proc.connect(mute); mute.connect(ac.destination);
+          } catch (e) { return finish(null); }
+          const winSamples = Math.max(16, Math.round(ac.sampleRate * 0.01 / RATE));
+          proc.onaudioprocess = (e) => {
+            const d = e.inputBuffer.getChannelData(0);
+            for (let i = 0; i < d.length; i++) {
+              const s = d[i]; acc += s * s; accN++;
+              if (accN >= winSamples) { rms.push(Math.sqrt(acc / accN)); acc = 0; accN = 0; }
+            }
+          };
+          const onTime = () => {
+            onProgress?.(Math.min(30, Math.round((scanVideo.currentTime / dur) * 30)), 100, "scanning");
+            if (scanVideo.currentTime >= dur - 0.5) { scanVideo.removeEventListener("timeupdate", onTime); finish(strikesFromRms(rms)); return; }
+            if (playStartWall && Date.now() - playStartWall > 12000) {
+              const wallSec = (Date.now() - playStartWall) / 1000;
+              if (scanVideo.currentTime < wallSec * 1.5) { scanVideo.removeEventListener("timeupdate", onTime); finish(null); }
+            }
+          };
+          onTimeRef = onTime;
+          scanVideo.addEventListener("timeupdate", onTime);
+          scanVideo.addEventListener("ended", () => finish(strikesFromRms(rms)), { once: true });
+          // Unmute during listening: output is routed through a zero-gain
+          // node so nothing is audible, but some WebKit builds deliver no
+          // samples from a muted element into the graph.
+          scanVideo.muted = false;
+          scanVideo.playbackRate = RATE;
+          ac.resume?.();
+          scanVideo.addEventListener("playing", () => { if (!playStartWall) playStartWall = Date.now(); }, { once: true });
+          const p = scanVideo.play();
+          if (p && p.catch) p.catch(() => finish(null));
+          sampleWatchdog = setTimeout(() => { if (!rms.length) finish(null); }, 6000);
+          hardTimeout = setTimeout(() => finish(strikesFromRms(rms)), (dur / RATE + 45) * 1000);
+        } catch (e) {
+          finish(null);
+        }
+      });
+    }
+
+    scanVideo.addEventListener("loadedmetadata", async () => {
       const dur = scanVideo.duration;
 
-      // Audio strike detection ran BEFORE this function (in the click
-      // handler flow) so its playback element was the only video decoder
-      // alive — iOS starves third simultaneous decoders, which froze
-      // extraction at the listening stage in production (Jul 13). Audio
-      // locates ACTIVITY WINDOWS; the motion scan runs only inside those
-      // windows at fine resolution to find the swing instants.
-      const strikes = preStrikes || null;
+      // Audio strike detection runs ON THIS SAME scanVideo element — the
+      // third architecture for this after two iOS failures: a separate
+      // listener element (video, then audio) stalled the handoff to scanning
+      // both times, most likely WebKit resource contention that survives
+      // element cleanup. Same element = no handoff exists. The element's
+      // audio is routed into the WebAudio graph through a zero-gain node
+      // (silent), samples are measured during 4x playback, then the very
+      // same element is reused for seek-scanning. Fast full-file decode is
+      // still tried first (desktop); every audio failure falls back to the
+      // full motion scan exactly as before.
+      let strikes = null;
+      try {
+        strikes = await decodeStrikesFast(file);
+      } catch (err) {
+        console.warn("Fast audio decode unavailable (expected on iOS):", err?.message);
+      }
+      if (!strikes) {
+        try {
+          strikes = await listenOnScanVideo(dur);
+        } catch (err) {
+          console.warn("Playback listening failed, motion fallback:", err?.message);
+          strikes = null;
+        }
+      }
       let windows = null;
       if (strikes && strikes.length) {
         windows = strikesToWindows(strikes, dur);
@@ -973,16 +1060,11 @@ export default function App() {
       setStatusMsg(phases[0]);
       setStatusPhase(0);
 
-      const preStrikes = await detectAudioStrikes(videoFile, (pct, total, phase) => {
-        setPct(pct);
-        setStatusMsg(phases[1]);
-      });
-
       const frames = await extractFrames(videoFile, (pct, total, phase) => {
         setPct(pct);
         if (pct < 65) setStatusMsg(phases[1]);
         else setStatusMsg(phases[2]);
-      }, preStrikes);
+      });
 
       setFramesDone(frames.length);
       setFramesTotal(frames.length);
@@ -1089,7 +1171,7 @@ export default function App() {
       if (aiTimer) clearInterval(aiTimer);
       if (wakeLock.current) { try { await wakeLock.current.release(); } catch(err) {} wakeLock.current = null; }
       clearInterval(elapsedTimer.current);
-      setError("ANALYSIS_ERROR"); setStage("context");
+      setError("ANALYSIS_ERROR:" + (e?.message || "unknown")); setStage("context");
     }
   };
 
@@ -1520,7 +1602,7 @@ export default function App() {
             </div>
             <input ref={fileRef} type="file" accept="video/*" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
 
-            {error && error !== "ANALYSIS_ERROR" && (
+            {error && !error.startsWith("ANALYSIS_ERROR") && error !== "DUPLICATE_VIDEO" && !error.startsWith("NOT_TENNIS:") && (
               <div style={{ marginTop: "14px", background: "#120808", border: "1px solid #2e1010", borderRadius: "10px", padding: "14px 18px", color: "#e05555", fontSize: "13px" }}>
                 {error}
               </div>
@@ -1831,11 +1913,14 @@ export default function App() {
                     <p style={{ margin: 0, fontSize: "13px", color: "#555", lineHeight: "1.6" }}>Upload a video of a tennis match, lesson, or drilling session — filmed from the side of the court or behind the baseline.</p>
                   </>
                 )}
-                {error !== "DUPLICATE_VIDEO" && !error.startsWith("NOT_TENNIS:") && (
+                {error && !["DUPLICATE_VIDEO"].includes(error) && !error.startsWith("NOT_TENNIS:") && (
                   <>
                     <div style={{ fontSize: "20px", marginBottom: "8px" }}>🎾</div>
                     <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "6px" }}>Oops — your coaching engine hit one into the net.</div>
                     <p style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", lineHeight: "1.6" }}>Something went wrong during analysis. This is usually a one-time glitch — hit the button again and it should work.</p>
+                    {error && error.startsWith("ANALYSIS_ERROR:") && error.length > 15 && (
+                      <p style={{ margin: "0 0 12px", fontSize: "11px", color: "#555", lineHeight: "1.5" }}>Detail: {error.slice(15)}</p>
+                    )}
                     <p style={{ margin: 0, fontSize: "14px", color: "#888", lineHeight: "1.6" }}>If this keeps happening, reach out at{" "}<a href="mailto:coach@fortyfifteen.app" style={{ color: "#3b82f6", textDecoration: "none" }}>coach@fortyfifteen.app</a>{" "}and we will sort it out.</p>
                   </>
                 )}
