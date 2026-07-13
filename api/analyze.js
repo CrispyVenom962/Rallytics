@@ -1165,7 +1165,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { frames, context, playerId, frameCount, durationLabel, firstName, email, level, sessionType, dominantHand, backhandType, matchFormat, frameTimestamps, frameMethod } = req.body;
+  const { frames, context, playerId, frameCount, durationLabel, firstName, email, level, sessionType, dominantHand, backhandType, matchFormat, frameTimestamps, frameMethod, clientBuild } = req.body;
 
   if (!frames || !Array.isArray(frames) || frames.length === 0) {
     return res.status(400).json({ error: "No frames provided" });
@@ -1251,7 +1251,7 @@ export default async function handler(req, res) {
   };
 
   const inventory = await classifyFootage(frames, ts, fmtTime, frameMethod);
-  console.log("FRAME_METHOD:", frameMethod || "motion(legacy)");
+  console.log("FRAME_METHOD:", frameMethod || "motion(legacy)", "| CLIENT_BUILD:", clientBuild || "pre-v3");
   console.log("FOOTAGE_INVENTORY:", inventory ? JSON.stringify(inventory) : "CLASSIFIER_FAILED_OR_TIMED_OUT");
 
   // The coaching brain is selected from what the footage ACTUALLY shows, not
