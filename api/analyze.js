@@ -289,6 +289,15 @@ observed_evidence is generated FIRST and everything after it must be consistent 
 - The declared session type is a menu selection made by the user and is frequently wrong. THE FRAMES ARE THE TRUTH, THE LABEL IS NOT. If the user selected "match" but the frames show one player drilling serves with no rallies, set session_matches_declared_type to false, explain in mismatch_note, and write the entire report about the serve drill that is actually in the footage. Producing match-style commentary — rallies, point construction, momentum, opponent patterns — for footage that contains no rallies is fabrication and is the single worst failure this system can produce.
 - Before returning your JSON, re-read your own observed_evidence counts and verify every downstream section respects them. If your match_overview mentions a rally and rally_exchange_visible is false, you have failed — rewrite before returning.
 
+RULE 11 — NARRATIVE WEIGHT MUST BE PROPORTIONAL TO EVIDENCE:
+The shot family that receives the report's central thesis — the root fault, the recurring patterns, the top fixes, the drills — must be the family with the MOST observed frames, and it must have at least 5 clearly observed frames to carry that weight. A family observed in fewer than 5 frames may receive brief directional observations at low confidence, but never a root-fault diagnosis, never percentage claims ("visible in 70% of frames" from a 3-frame sample is statistically meaningless and reads as false precision), and never a full drill prescription built on it. If NO shot family reaches 5 clearly observed frames, the honest report says so: state what little was seen, at what confidence, and make the primary recommendation a filming one — what to record, from what angle, to enable real coaching. A brief honest report that asks for better footage builds more trust than a confident thesis built on 3 frames.
+
+RULE 12 — FRAME NUMBERS ARE INTERNAL, NEVER CUSTOMER-FACING:
+Frame indices (F28, frames 43-44, and similar) are internal pipeline references. They must NEVER appear in any narrative field the customer reads: match_overview, coach verdict, strengths, fixes, drills, shot assessments, camera notes, or anywhere else. Refer to evidence in coaching language instead: "across the majority of your forehands", "on the clearest serve in the footage", "in several sequences late in the session". Numeric frame counts belong ONLY in observed_evidence and structured count fields.
+
+RULE 13 — ONE FOCUS PLAYER, THEIR SHOTS ONLY:
+Footage often contains multiple people: the player, a partner or coach on the far side, someone feeding balls, people on adjacent courts. The report is about ONE person — the focus player identified by the user's description, or if none, the near-court player most prominent in the frames. Shots hit by anyone else do not exist for this report: they are not counted in observed_evidence, not assessed, not used as evidence of "exchanges." If the frames mainly show the focus player collecting balls, walking, or preparing while others hit, then that is what the evidence shows — say so honestly rather than attributing anyone else's swings to the focus player. Attributing another person's shots to the customer is a fabrication failure as serious as inventing shots outright.
+
 ══════════════════════════════════════════════════════════════
 END UNIQUENESS ENFORCEMENT
 ══════════════════════════════════════════════════════════════ Your knowledge comes from the world's leading coaching publications, world-leading books, peer-reviewed biomechanics research, and methodology from elite coaches and conferences around the globe. You have deep knowledge of professional player biomechanics, playing styles, and technical signatures — use this to make accurate, specific pro player comparisons where clearly applicable. Every observation must include honest confidence scoring based on how many frames confirmed it. Write like a great coach talking — specific, visual, and memorable.
@@ -1000,6 +1009,8 @@ const CLASSIFIER_PROMPT = `You are a neutral video-frame classifier. You know no
 
 Count conservatively: only count a shot when you can clearly see the stroke being executed with a ball. A player walking, bouncing a ball, collecting balls, standing, or stretching is NOT a shot. If you cannot clearly distinguish what a movement is, do not count it. Undercounting is acceptable; inventing is not.
 
+Focus discipline: if multiple people are visible, your counts describe ONLY the most prominent near-court player. Shots by anyone else — far side of the net, adjacent courts, someone feeding balls — are not counted, but note their presence in players_actively_hitting and session_description.
+
 Respond with ONLY a valid JSON object, no other text:
 {
   "session_description": "One factual sentence describing what the frames show, e.g. 'A single player repeatedly serving from the baseline with no opponent and no rallies.'",
@@ -1012,14 +1023,17 @@ Respond with ONLY a valid JSON object, no other text:
   "activity_type": "serve_practice | rally_drill | match_play | lesson | mixed | unclear"
 }`;
 
-async function classifyFootage(frames, ts, fmtTime, isAudioPairs) {
+async function classifyFootage(frames, ts, fmtTime, frameMethodHint) {
   try {
     // Subsample: up to 24 frames is enough to characterize a session and keeps
     // this pass fast and cheap. With audio pairs, frames alternate
     // [preparation, contact] — prefer the contact instants (odd indices),
     // which are the most informative for shot identification.
     let indices;
-    if (isAudioPairs) {
+    if (frameMethodHint === "audio_hybrid") {
+      indices = frames.map((_, i) => i).filter((i) => i % 3 === 1).slice(0, 24);
+      if (!indices.length) indices = frames.map((_, i) => i).slice(0, 24);
+    } else if (frameMethodHint === "audio_pairs") {
       indices = frames.map((_, i) => i).filter((i) => i % 2 === 1).slice(0, 24);
       if (!indices.length) indices = frames.map((_, i) => i).slice(0, 24);
     } else {
@@ -1205,7 +1219,7 @@ export default async function handler(req, res) {
     return `${m}:${String(s).padStart(2, "0")}`;
   };
 
-  const inventory = await classifyFootage(frames, ts, fmtTime, frameMethod === "audio_pairs");
+  const inventory = await classifyFootage(frames, ts, fmtTime, frameMethod);
   console.log("FRAME_METHOD:", frameMethod || "motion(legacy)");
   console.log("FOOTAGE_INVENTORY:", inventory ? JSON.stringify(inventory) : "CLASSIFIER_FAILED_OR_TIMED_OUT");
 
@@ -1228,7 +1242,7 @@ export default async function handler(req, res) {
   const content = [
     {
       type: "text",
-      text: `${inventoryBlock}${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${effectiveSessionType === "match" ? "match" : effectiveSessionType === "drilling" ? "drilling session" : "lesson"}.${frameMethod === "audio_pairs" ? " Frames were captured as PAIRS around detected ball-contact sounds: for each shot, a preparation frame (~0.35s before contact) immediately followed by the contact-instant frame. Read consecutive frames as one swing sequence — preparation then contact — when identifying shot types." : ""}${ts ? " Each frame is preceded by its timestamp within the session — use these to ground any observations about fatigue, momentum, or how patterns evolve over time." : ""}${labeledFrameDesc}\n\nUse the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
+      text: `${inventoryBlock}${playerFocus}${playerProfile ? "\n\n" + playerProfile : ""}\n\n${context ? `Player context: "${context}"\n\n` : ""}You are reviewing ${frames.length} frames extracted from a ${durationLabel} ${effectiveSessionType === "match" ? "match" : effectiveSessionType === "drilling" ? "drilling session" : "lesson"}.${frameMethod === "audio_hybrid" ? " Frames were captured as 3-frame BURSTS at detected shot moments: preparation, swing, and finish, roughly half a second apart. Read each consecutive triplet as one swing sequence when identifying shot types." : frameMethod === "audio_pairs" ? " Frames were captured as PAIRS around detected ball-contact sounds: for each shot, a preparation frame (~0.35s before contact) immediately followed by the contact-instant frame. Read consecutive frames as one swing sequence — preparation then contact — when identifying shot types." : ""}${ts ? " Each frame is preceded by its timestamp within the session — use these to ground any observations about fatigue, momentum, or how patterns evolve over time." : ""}${labeledFrameDesc}\n\nUse the shot classification taxonomy to identify shot types. Detect and state the player court position from visual evidence — never assume baseline. Apply the full coaching brain to produce a complete report tailored to this session type.\n\nCRITICAL: Your entire response must be one valid JSON object only. No text before or after. No markdown. No backticks. Start with { and end with }. Never use apostrophes inside string values. Never use unescaped quotes inside string values. Keep all string values on a single line. All shot_distribution count fields must be integers.`,
     },
     ...frames.flatMap((base64, idx) => {
       const img = { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } };
