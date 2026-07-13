@@ -180,17 +180,31 @@ function detectStrikesViaPlayback(file, onProgress) {
       try { proc && proc.disconnect(); } catch (e) {}
       try { mute && mute.disconnect(); } catch (e) {}
       try { v && v.pause(); } catch (e) {}
+      // Canonical iOS media release: detach the source and force load(),
+      // otherwise the element keeps its decoder allocated after pause and
+      // starves the video elements created next (froze extraction Jul 13).
+      try { if (v) { v.removeAttribute("src"); v.load(); } } catch (e) {}
       try { url && URL.revokeObjectURL(url); } catch (e) {}
       clearTimeout(watchdog); clearTimeout(hardTimeout);
     };
-    const done = (result) => { if (!settled) { settled = true; cleanup(); resolve(result); } };
+    const done = (result) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      // Give WebKit a beat to actually free the media resources before the
+      // frame-extraction video elements are created.
+      setTimeout(() => resolve(result), 300);
+    };
     try {
       const ac = window.__ffAudioCtx;
       if (!ac) return done(null);
       const RATE = 4;
       url = URL.createObjectURL(file);
-      v = document.createElement("video");
-      v.src = url; v.playsInline = true; v.preload = "auto";
+      // An AUDIO element playing the MP4 decodes only the audio track — zero
+      // video-decoder contention with the scan/capture elements, which is
+      // the scarce resource on iOS.
+      v = document.createElement("audio");
+      v.src = url; v.preload = "auto";
       const rms = [];
       let acc = 0, accN = 0;
 
@@ -507,6 +521,16 @@ function extractFrames(file, onProgress, preStrikes) {
 
     scanVideo.addEventListener("error", () => reject(new Error("Could not load video.")));
     capVideo.addEventListener("error", () => reject(new Error("Could not load video.")));
+
+    // Init watchdog: if metadata never arrives (e.g. decoder starvation on
+    // iOS), fail loudly into the error UI instead of hanging the progress
+    // screen forever.
+    const initWatchdog = setTimeout(() => {
+      if (scanVideo.readyState < 1) {
+        reject(new Error("Video could not initialize — please close other apps and try again."));
+      }
+    }, 15000);
+    scanVideo.addEventListener("loadedmetadata", () => clearTimeout(initWatchdog), { once: true });
   });
 }
 
