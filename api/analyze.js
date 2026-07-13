@@ -1007,13 +1007,18 @@ const ADMIN_EMAILS = ["ayerswilliam@gmail.com", "nimrodayers@gmail.com", "rallyt
 // this one has a hard abort and the report proceeds without it on any failure.
 const CLASSIFIER_PROMPT = `You are a neutral video-frame classifier. You know nothing about the purpose of this footage and must not assume it. Look only at what is literally visible in the frames.
 
-Count conservatively: only count a shot when you can clearly see the stroke being executed with a ball. A player walking, bouncing a ball, collecting balls, standing, or stretching is NOT a shot. If you cannot clearly distinguish what a movement is, do not count it. Undercounting is acceptable; inventing is not.
+FIRST, identify the focus player: the single most prominent near-court player. Everything you count refers to that one person only.
 
-Focus discipline: if multiple people are visible, your counts describe ONLY the most prominent near-court player. Shots by anyone else — far side of the net, adjacent courts, someone feeding balls — are not counted, but note their presence in players_actively_hitting and session_description.
+Count conservatively: only count a shot when you can clearly see the focus player executing a stroke with a ball. Walking, bouncing a ball, flicking or scooping balls up off the court with the racket, collecting balls, standing, or stretching is NOT a shot — players picking up balls with a racket look superficially like low groundstrokes and must not be counted as strokes. If you cannot clearly distinguish what a movement is, do not count it. Undercounting is acceptable; inventing is not.
+
+rally_exchange_visible has a strict definition: BOTH players must be visibly striking the ball in alternation within the frames. A focus player hitting toward a far side where someone merely stands, watches, or collects balls is NOT a rally — that is practice with a person present, and rally_exchange_visible must be false.
+
+If frames appear in consecutive short sequences (the same player a fraction of a second apart), read each sequence as ONE swing in phases — preparation, swing, finish — not as multiple separate shots.
 
 Respond with ONLY a valid JSON object, no other text:
 {
-  "session_description": "One factual sentence describing what the frames show, e.g. 'A single player repeatedly serving from the baseline with no opponent and no rallies.'",
+  "focus_player": "Brief physical description of the near-court player being counted, e.g. 'player in dark top and white skirt on the near court'",
+  "session_description": "One factual sentence describing what the frames show the FOCUS PLAYER doing, e.g. 'A single player repeatedly serving from the baseline with no opponent and no rallies.'",
   "players_actively_hitting": 1,
   "serves_seen": 0,
   "forehands_seen": 0,
@@ -1031,8 +1036,10 @@ async function classifyFootage(frames, ts, fmtTime, frameMethodHint) {
     // which are the most informative for shot identification.
     let indices;
     if (frameMethodHint === "audio_hybrid") {
-      indices = frames.map((_, i) => i).filter((i) => i % 3 === 1).slice(0, 24);
-      if (!indices.length) indices = frames.map((_, i) => i).slice(0, 24);
+      // Send complete 3-frame swing sequences (first 8 clusters = 24 frames)
+      // rather than isolated middle frames — sequences are what make a serve
+      // unmistakable versus a groundstroke.
+      indices = frames.map((_, i) => i).slice(0, 24);
     } else if (frameMethodHint === "audio_pairs") {
       indices = frames.map((_, i) => i).filter((i) => i % 2 === 1).slice(0, 24);
       if (!indices.length) indices = frames.map((_, i) => i).slice(0, 24);
@@ -1230,7 +1237,7 @@ export default async function handler(req, res) {
   const effectiveSessionType = (inventory && activityMap[inventory.activity_type]) || sessionType || "match";
 
   const inventoryBlock = inventory
-    ? `AUTHORITATIVE VISUAL INVENTORY — a neutral first-pass scan of this exact footage, performed with no knowledge of the declared session type, found the following:\n"${inventory.session_description}"\nShots clearly observed: ${inventory.serves_seen || 0} serves, ${inventory.forehands_seen || 0} forehands, ${inventory.backhands_seen || 0} backhands, ${inventory.volleys_or_net_play_seen || 0} volleys/net. Rally exchanges visible: ${inventory.rally_exchange_visible ? "YES" : "NO"}. Players actively hitting: ${inventory.players_actively_hitting ?? "unknown"}.\nTHIS INVENTORY IS GROUND TRUTH and overrides the declared session type. Your observed_evidence must be consistent with it. Any shot family it reports as 0 must be not_seen in your report and must not be coached anywhere. If rally exchanges are NO, your report must contain no rally, point-construction, or opponent-pattern content whatsoever — report on what is actually present.\n\n`
+    ? `PRELIMINARY VISUAL SCAN — a neutral first-pass glance at a subset of this footage, performed with no knowledge of the declared session type, reported:\n"${inventory.session_description}"${inventory.focus_player ? `\nFocus player identified: ${inventory.focus_player}` : ""}\nSubset counts: ${inventory.serves_seen || 0} serves, ${inventory.forehands_seen || 0} forehands, ${inventory.backhands_seen || 0} backhands, ${inventory.volleys_or_net_play_seen || 0} volleys/net. Rally exchanges in subset: ${inventory.rally_exchange_visible ? "YES" : "NO"}. People actively hitting: ${inventory.players_actively_hitting ?? "unknown"}.\nHow to use this: it is a PRIOR from a partial glance, not ground truth. You see the complete frame set with full swing sequences — build your own observed_evidence by examining every frame carefully, and where your careful count disagrees with this scan, YOUR count wins. Two constraints are absolute regardless of this scan: (1) the declared session type remains untrusted — report on what the frames actually contain; (2) rally, point-construction, or opponent-pattern content is permitted ONLY if you yourself observe both players striking the ball in alternation in the frames — a second person merely standing or collecting on the far side is not an opponent and not a rally, even if this preliminary scan said otherwise.\n\n`
     : "";
 
   // ── PASS 2: Full Analysis ─────────────────────────────────────────────────
