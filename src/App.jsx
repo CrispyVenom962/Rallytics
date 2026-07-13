@@ -1522,12 +1522,12 @@ export default function App() {
                     </div>
                     <div style={{ padding: "14px 16px", borderBottom: "1px solid #0e0e0e" }}>
                       <div style={{ fontSize: "14px", fontWeight: "700", color: "#ccc", marginBottom: "6px" }}>Side on, level with the player</div>
-                      <div style={{ fontSize: "14px", color: "#888", lineHeight: "1.7" }}>Position the camera at the side of the court at mid-court height. Angle it to capture the player from head to toe. For cross-court rallying, place near the net post so you see both the swing and the ball direction.</div>
+                      <div style={{ fontSize: "14px", color: "#888", lineHeight: "1.7" }}>Position the camera at the side of the court at mid-court height. Angle it to capture the player from head to toe. For cross-court rallying, place near the net post so you see both the swing and the ball direction. The closer the player is to the camera, the sharper the analysis — a player who fills the frame gets a far better technical read than a distant figure.</div>
                     </div>
                     <div style={{ padding: "12px 16px", borderBottom: "1px solid #0e0e0e" }}>
                       <div style={{ fontSize: "13px", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Quick tips</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-                        {["1–1.5m height", "Full swing in frame", "Fence or tripod", "10–15 reps minimum", "720p or higher", "MP4 or MOV"].map((t, i) => (
+                        {["1–1.5m height", "Full swing in frame", "Fence or tripod", "10–15 reps minimum", "720p or higher", "MP4 or MOV", "Player close to camera", "Name your player if others are on court"].map((t, i) => (
                           <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                             <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#3b82f6", flexShrink: 0 }}/>
                             <span style={{ fontSize: "13px", color: "#888" }}>{t}</span>
