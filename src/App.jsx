@@ -2083,7 +2083,7 @@ export default function App() {
               <p style={{ color: "#888", fontSize: "14px", margin: "6px 0 0" }}>Keep this tab open and your screen unlocked</p>
               <div style={{ marginTop: "10px", display: "inline-flex", alignItems: "center", gap: "8px", background: "#07101f", border: "1px solid #0e1e3a", borderRadius: "8px", padding: "8px 16px" }}>
                 <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#3b82f6", flexShrink: 0 }}/>
-                <span style={{ fontSize: "13px", color: "#3b82f6", fontWeight: "600" }}>This usually takes 3–5 minutes — your report is worth the wait.</span>
+                <span style={{ fontSize: "13px", color: "#3b82f6", fontWeight: "600" }}>This usually takes 4–7 minutes — your report is worth the wait.</span>
               </div>
               <div style={{ marginTop: "8px", display: "inline-flex", alignItems: "center", gap: "6px", background: "#1a1000", border: "1px solid #2a1e00", borderRadius: "8px", padding: "7px 14px" }}>
                 <span style={{ fontSize: "13px" }}>📱</span>
@@ -2095,7 +2095,7 @@ export default function App() {
                 <div style={{ fontSize: "11px", color: "#333", textTransform: "uppercase", letterSpacing: "0.12em" }}>Time elapsed</div>
                 <div style={{
                   fontFamily: "monospace", fontSize: "20px", fontWeight: "900", letterSpacing: "0.05em",
-                  color: elapsedSecs > 210 ? "#e05555" : elapsedSecs > 90 ? "#f59e0b" : "#3b82f6",
+                  color: elapsedSecs > 360 ? "#e05555" : elapsedSecs > 180 ? "#f59e0b" : "#3b82f6",
                   transition: "color 0.5s",
                 }}>
                   {String(Math.floor(elapsedSecs / 60)).padStart(2, "0")}:{String(elapsedSecs % 60).padStart(2, "0")}
@@ -2103,23 +2103,23 @@ export default function App() {
               </div>
 
               {/* ── THRESHOLD MESSAGES ── */}
-              {elapsedSecs >= 90 && elapsedSecs < 180 && (
+              {elapsedSecs >= 150 && elapsedSecs < 300 && (
                 <div style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "8px", background: "#07101f", border: "1px solid #0e1e3a", borderRadius: "8px", padding: "8px 16px", animation: "fadeUp 0.4s ease" }}>
                   <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#3b82f6", flexShrink: 0 }}/>
                   <span style={{ fontSize: "13px", color: "#3b82f6" }}>Still processing · your report is being built. Normal timing.</span>
                 </div>
               )}
-              {elapsedSecs >= 180 && elapsedSecs < 270 && (
+              {elapsedSecs >= 300 && elapsedSecs < 420 && (
                 <div style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "8px", background: "#0f0a00", border: "1px solid #2a1e00", borderRadius: "8px", padding: "8px 16px", animation: "fadeUp 0.4s ease" }}>
                   <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }}/>
                   <span style={{ fontSize: "13px", color: "#f59e0b" }}>Still building your report · almost there.</span>
                 </div>
               )}
-              {elapsedSecs >= 270 && (
+              {elapsedSecs >= 420 && (
                 <div style={{ marginTop: "14px", background: "#120808", border: "1px solid #2e1010", borderRadius: "12px", padding: "16px 18px", animation: "fadeUp 0.4s ease" }}>
                   <div style={{ fontSize: "14px", fontWeight: "800", color: "#e0e0e0", marginBottom: "6px" }}>This is taking longer than expected.</div>
                   <p style={{ margin: "0 0 14px", fontSize: "13px", color: "#888", lineHeight: "1.7" }}>
-                    The analysis may still complete — sometimes the coaching engine takes up to 5 minutes on dense footage. You can keep waiting or try again with a shorter clip (10–15 minutes works best).
+                    The analysis may still complete — sometimes the coaching engine takes up to 7 minutes on dense footage. You can keep waiting or try again with a shorter clip (10–15 minutes works best).
                   </p>
                   <button onClick={() => { clearInterval(elapsedTimer.current); setStage("context"); setError(null); setPct(0); setElapsedSecs(0); }} style={{
                     background: "none", border: "1px solid #3e1010", borderRadius: "8px",
