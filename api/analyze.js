@@ -1088,7 +1088,7 @@ async function classifyFootage(frames, ts, fmtTime, frameMethodHint) {
           },
           body: JSON.stringify({
             model,
-            max_tokens: 700,
+            max_tokens: 1200,
             system: CLASSIFIER_PROMPT,
             messages: [{ role: "user", content }],
           }),
@@ -1103,10 +1103,17 @@ async function classifyFootage(frames, ts, fmtTime, frameMethodHint) {
     }
     if (!resp.ok) return null;
     const data = await resp.json();
+    if (data.stop_reason === "max_tokens") console.warn("CLASSIFIER_TRUNCATED: response hit max_tokens");
     const raw = data.content?.map((b) => b.text || "").join("") || "";
     const s = raw.indexOf("{"), e = raw.lastIndexOf("}");
-    if (s === -1 || e <= s) return null;
-    const inv = JSON.parse(raw.slice(s, e + 1));
+    if (s === -1 || e <= s) { console.warn("CLASSIFIER_PARSE_FAIL: no JSON object found. Raw head:", raw.slice(0, 300)); return null; }
+    let inv;
+    try {
+      inv = JSON.parse(raw.slice(s, e + 1));
+    } catch (pe) {
+      console.warn("CLASSIFIER_PARSE_FAIL:", pe.message, "| Raw head:", raw.slice(0, 300));
+      return null;
+    }
     // Minimal sanity: must have the fields we rely on
     if (typeof inv.session_description !== "string" || typeof inv.rally_exchange_visible !== "boolean") return null;
     return inv;
