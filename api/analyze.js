@@ -1078,25 +1078,35 @@ async function classifyFootage(frames, ts, fmtTime, frameMethodHint) {
       // back to sonnet if the key lacks access. The call is small (~24
       // images, tiny output) so the cost delta per report is modest.
       const CLASSIFIER_MODELS = ["claude-fable-5", "claude-sonnet-4-6"];
+      outer:
       for (const model of CLASSIFIER_MODELS) {
-        resp = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": process.env.ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01",
-          },
-          body: JSON.stringify({
+        // Fable 5 spends its whole token budget on thinking blocks by
+        // default, leaving zero text (confirmed in production Jul 13) — a
+        // classifier needs no extended thinking, so disable it. If a model
+        // rejects the thinking parameter, retry once without it.
+        for (const withThinking of [true, false]) {
+          const body = {
             model,
             max_tokens: 1200,
             system: CLASSIFIER_PROMPT,
             messages: [{ role: "user", content }],
-          }),
-          signal: ac.signal,
-        });
-        if (resp.ok) { console.log("CLASSIFIER_MODEL:", model); break; }
-        const errBody = await resp.text().catch(() => "");
-        console.warn(`Classifier model ${model} unavailable (${resp.status}): ${errBody.slice(0, 200)}`);
+          };
+          if (withThinking) body.thinking = { type: "disabled" };
+          resp = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": process.env.ANTHROPIC_API_KEY,
+              "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify(body),
+            signal: ac.signal,
+          });
+          if (resp.ok) { console.log("CLASSIFIER_MODEL:", model, withThinking ? "(thinking disabled)" : "(default thinking)"); break outer; }
+          const errBody = await resp.text().catch(() => "");
+          console.warn(`Classifier ${model} thinking=${withThinking ? "disabled" : "default"} failed (${resp.status}): ${errBody.slice(0, 200)}`);
+          if (resp.status !== 400) break; // only a 400 suggests the thinking param itself; other errors -> next model
+        }
       }
     } finally {
       clearTimeout(timer);
@@ -1104,9 +1114,10 @@ async function classifyFootage(frames, ts, fmtTime, frameMethodHint) {
     if (!resp.ok) return null;
     const data = await resp.json();
     if (data.stop_reason === "max_tokens") console.warn("CLASSIFIER_TRUNCATED: response hit max_tokens");
+    const blockTypes = (data.content || []).map((b) => b.type).join(",");
     const raw = data.content?.map((b) => b.text || "").join("") || "";
     const s = raw.indexOf("{"), e = raw.lastIndexOf("}");
-    if (s === -1 || e <= s) { console.warn("CLASSIFIER_PARSE_FAIL: no JSON object found. Raw head:", raw.slice(0, 300)); return null; }
+    if (s === -1 || e <= s) { console.warn("CLASSIFIER_PARSE_FAIL: no JSON object found. Blocks:", blockTypes, "| Raw head:", raw.slice(0, 300)); return null; }
     let inv;
     try {
       inv = JSON.parse(raw.slice(s, e + 1));
@@ -1259,6 +1270,7 @@ export default async function handler(req, res) {
 
   const inventory = await classifyFootage(frames, ts, fmtTime, frameMethod);
   console.log("FRAME_METHOD:", frameMethod || "motion(legacy)", "| CLIENT_BUILD:", clientBuild || "pre-v3");
+  if (Array.isArray(frameTimestamps)) console.log("FRAME_TIMESTAMPS:", frameTimestamps.map((t) => Math.round(t * 10) / 10).join(","));
   console.log("FOOTAGE_INVENTORY:", inventory ? JSON.stringify(inventory) : "CLASSIFIER_FAILED_OR_TIMED_OUT");
 
   // The coaching brain is selected from what the footage ACTUALLY shows, not
