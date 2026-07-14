@@ -1077,7 +1077,7 @@ async function classifyFootage(frames, ts, fmtTime, frameMethodHint) {
       // ceiling. Run the classifier on the strongest available model; fall
       // back to sonnet if the key lacks access. The call is small (~24
       // images, tiny output) so the cost delta per report is modest.
-      const CLASSIFIER_MODELS = ["claude-fable-5", "claude-sonnet-4-6"];
+      const CLASSIFIER_MODELS = ["claude-sonnet-4-6"]; // Fable trialed Jul 13: never produced a working inventory (thinking ate the budget) and costs premium rates — Sonnet is sufficient inside the supported-footage boundary
       outer:
       for (const model of CLASSIFIER_MODELS) {
         // Fable 5 spends its whole token budget on thinking blocks by
