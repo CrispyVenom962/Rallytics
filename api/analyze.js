@@ -1248,13 +1248,16 @@ export default async function handler(req, res) {
   const playerProfile = [
     dominantHand === "right" ? "CONFIRMED: Player is RIGHT-HANDED." :
     dominantHand === "left"  ? "CONFIRMED: Player is LEFT-HANDED. All grip and swing direction references must be mirrored accordingly." : "",
-    backhandType === "one_handed" ? "⚠️ CRITICAL PLAYER-CONFIRMED DATA: THIS PLAYER HAS A ONE-HANDED BACKHAND. This is CONFIRMED by the player themselves and overrides ALL visual frame interpretation. Do NOT classify this as two-handed under any circumstances. Do NOT write two_handed anywhere in your response. The backhand_type field MUST be one_handed. The non-dominant hand leaving the racket during the swing is CORRECT one-handed technique — do not flag it as unusual. Analyze the one-handed backhand mechanics only." :
-    backhandType === "two_handed" ? "⚠️ CRITICAL PLAYER-CONFIRMED DATA: THIS PLAYER HAS A TWO-HANDED BACKHAND. This is CONFIRMED by the player. The backhand_type field MUST be two_handed." : "",
+    backhandType === "one_handed" ? "PLAYER-REPORTED: the player states they use a ONE-HANDED backhand. Use this ONLY to resolve one-handed vs two-handed ambiguity WHEN you actually observe backhand frames — do not label an observed backhand two-handed against this. This does NOT create backhand evidence: if the frames do not clearly show the focus player hitting backhands, mark the backhand not_seen, set backhand_type from what little is visible, and do NOT produce a backhand thesis, pro comparison, or drill. Frames govern whether a shot was hit; the label only resolves hand-form when a shot is actually seen." :
+    backhandType === "two_handed" ? "PLAYER-REPORTED: the player states they use a TWO-HANDED backhand. Use this only to resolve hand-form ambiguity when backhand frames are actually observed. It does NOT create backhand evidence — if no backhands are clearly seen, mark the backhand not_seen and do not coach it." : "",
     matchFormat === "doubles" ? "⚠️ CONFIRMED: THIS IS A DOUBLES MATCH. Apply all doubles-specific rules from the session context. Focus only on the specified player. Net positioning and net approaches are EXPECTED and CORRECT in doubles — do not flag them as unusual. Tactical recovery is to the player's half of the court not the centre mark." : "",
   ].filter(Boolean).join(" ");
 
-  // Pass 1 removed — caused reliability issues with timeouts
-  // Pass 2 runs directly with all frames
+  // NOTE: these three vars are legacy scaffolding kept only because
+  // labeledFrameDesc is still interpolated (as "") into the Pass 2 user
+  // message below. Pass 1 is NOT removed — the neutral classifier
+  // (classifyFootage) runs a few lines down. Left intact to avoid touching
+  // the Pass 2 content string; safe to delete once that interpolation goes.
   const frameLabels = [];
   const labelMap = {};
   const labeledFrameDesc = "";
@@ -1272,6 +1275,18 @@ export default async function handler(req, res) {
   console.log("FRAME_METHOD:", frameMethod || "motion(legacy)", "| CLIENT_BUILD:", clientBuild || "pre-v3");
   if (Array.isArray(frameTimestamps)) console.log("FRAME_TIMESTAMPS:", frameTimestamps.map((t) => Math.round(t * 10) / 10).join(","));
   console.log("FOOTAGE_INVENTORY:", inventory ? JSON.stringify(inventory) : "CLASSIFIER_FAILED_OR_TIMED_OUT");
+
+  // ── FAIL CLOSED ──────────────────────────────────────────────────────────
+  // A null inventory (classifier truncated, timed out, or errored) used to
+  // fall straight through to a full, confident, match-framed report — the
+  // exact fabrication this pipeline exists to prevent. We refuse to coach a
+  // clip we could not ground. Admins bypass for deliberate testing.
+  if (!inventory && !isAdmin) {
+    return res.status(422).json({
+      error: "CLASSIFIER_UNAVAILABLE",
+      message: "We could not read this clip clearly enough to coach it. Please re-upload: film side-on, keep the player close in frame, and name the focus player.",
+    });
+  }
 
   // The coaching brain is selected from what the footage ACTUALLY shows, not
   // from the user's menu selection — testing proved users mislabel sessions
