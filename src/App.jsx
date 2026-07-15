@@ -1153,10 +1153,10 @@ export default function App() {
           setError("DUPLICATE_VIDEO");
           return;
         }
-        if (e.error === "NOT_TENNIS") {
+        if (e.error === "INSUFFICIENT_EVIDENCE" || e.error === "CLASSIFIER_UNAVAILABLE") {
           if (aiTimer) clearInterval(aiTimer);
           setStage("context");
-          setError("NOT_TENNIS:" + (e.message || "This does not appear to be tennis footage."));
+          setError("UNREADABLE:" + (e.message || "We could not read enough of your shots in this clip to coach it honestly."));
           return;
         }
         throw new Error(e.message || e.error || `Error ${apiRes.status}`);
@@ -1926,7 +1926,15 @@ export default function App() {
                     <p style={{ margin: 0, fontSize: "13px", color: "#555", lineHeight: "1.6" }}>Upload a video of a tennis match, lesson, or drilling session — filmed from the side of the court or behind the baseline.</p>
                   </>
                 )}
-                {error && !["DUPLICATE_VIDEO"].includes(error) && !error.startsWith("NOT_TENNIS:") && (
+               {error.startsWith("UNREADABLE:") && (
+                  <>
+                    <div style={{ fontSize: "20px", marginBottom: "8px" }}>🎾</div>
+                    <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "8px" }}>Oops — the coach sent that one into the net.</div>
+                    <p style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", lineHeight: "1.7" }}>{error.replace("UNREADABLE:", "").trim()}</p>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#555", lineHeight: "1.6" }}>Your video is still loaded above — trim to a clearer stretch, or upload a new one, and try again.</p>
+                  </>
+                )}
+                {error && !["DUPLICATE_VIDEO"].includes(error) && !error.startsWith("NOT_TENNIS:") && !error.startsWith("UNREADABLE:") && (
                   <>
                     <div style={{ fontSize: "20px", marginBottom: "8px" }}>🎾</div>
                     <div style={{ fontSize: "15px", fontWeight: "800", color: "#e8e8e8", marginBottom: "6px" }}>Oops — your coaching engine hit one into the net.</div>
