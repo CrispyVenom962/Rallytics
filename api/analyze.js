@@ -1288,6 +1288,42 @@ export default async function handler(req, res) {
     });
   }
 
+  // ── THIN-EVIDENCE REFUSAL ──────────────────────────────────────────────────
+  // The classifier ran and returned an inventory, but "ran" is not "read it
+  // well." When the strongest shot family it could identify is below the
+  // threshold the coaching brain ITSELF requires to diagnose anything
+  // (Rule 11: a family needs >=5 clearly observed frames to carry a thesis),
+  // there is not enough grounded evidence to coach — and coaching anyway is
+  // exactly how a serves-only clip came back as a forehand report on Jul 15
+  // (serves_seen 0, forehands_seen 3, yet Pass 2 wrote a full forehand thesis
+  // and four backhands on that 3-frame sample). We refuse rather than let
+  // Pass 2 invent depth the footage does not support.
+  //
+  // IMPORTANT — what this does NOT catch: this is an EVIDENCE FLOOR, not a
+  // correctness check. If the classifier confidently MISlabels 6 serves as 6
+  // forehands, the count clears this gate and the report is still wrong. That
+  // failure needs the pose layer (serve = wrist above head at contact), which
+  // is a separate build. This gate only stops the THIN reads. Counts come from
+  // a ~24-frame subsample, so this is intentionally conservative and tuned to
+  // over-refuse rather than fabricate — the safe direction. Tune with data.
+  // Admins bypass for testing.
+  const MIN_DOMINANT_FRAMES = 5; // mirrors Rule 11; raise/lower once real reports accumulate
+  if (inventory && !isAdmin) {
+    const strongestFamily = Math.max(
+      inventory.serves_seen || 0,
+      inventory.forehands_seen || 0,
+      inventory.backhands_seen || 0,
+      inventory.volleys_or_net_play_seen || 0,
+    );
+    if (strongestFamily < MIN_DOMINANT_FRAMES) {
+      console.log("THIN_EVIDENCE_REFUSAL: strongest family", strongestFamily, "<", MIN_DOMINANT_FRAMES, "| inventory:", JSON.stringify(inventory));
+      return res.status(422).json({
+        error: "INSUFFICIENT_EVIDENCE",
+        message: "We could not clearly read enough of your shots in this clip to coach it honestly — so rather than guess, we are asking for a clearer angle. For the sharpest read: film side-on, keep the player filling more of the frame, and capture a stretch where the same shot repeats several times.",
+      });
+    }
+  }
+
   // The coaching brain is selected from what the footage ACTUALLY shows, not
   // from the user's menu selection — testing proved users mislabel sessions
   // and the match-primed brain then fabricates match content.
